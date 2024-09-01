@@ -1,0 +1,59 @@
+syntax = "v1"
+
+type (
+	SignReq {
+		Username string `json:"username"`
+		Password string `json:"password"`
+		Email    string `json:"email"`
+	}
+	SignResp {
+		Code int32  `json:"code"`
+		Msg  string `json:"msg"`
+	}
+)
+
+type (
+	LoginReq {
+		Username string `json:"username"`
+		Password string `json:"password"`
+	}
+	LoginResp {
+		Id       int64  `json:"id"`
+		Name     string `json:"name"`
+		Token    string `json:"token"`
+		ExpireAt string `json:"expireAt"`
+	}
+)
+
+type (
+	UserInfoReq {
+		Username string `json:"username"`
+		Password string `json:"password"`
+		Email    string `json:"email"`
+	}
+	UserInfoResp {
+		Code int32  `json:"code"`
+		Msg  string `json:"msg"`
+	}
+)
+
+@server (
+	prefix:   /v1
+	group:    user
+	timeout:  3s
+	maxBytes: 1048576
+)
+service user {
+	@handler sign
+	post /user/sign (SignReq) returns (SignResp)
+
+	@handler login
+	post /user/login (LoginReq) returns (LoginResp)
+
+	@handler edit
+	post /user/edit (UserInfoReq) returns (UserInfoResp)
+
+	@handler profile
+	get /user/:id returns (UserInfoResp)
+}
+
