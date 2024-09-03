@@ -42,10 +42,7 @@ func (d *UserDao) Create(ctx context.Context, user *model.User) error {
 
 func (d *UserDao) Find(ctx context.Context, user *model.User) (users []model.User, err error) {
 	err = d.db.WithContext(ctx).Where(user).Find(&users).Error
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, common.UserEmailNotExistErr
-		}
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound){
 		return nil, err
 	}
 	return
