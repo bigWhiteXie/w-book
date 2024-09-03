@@ -35,5 +35,8 @@ func (d *UserRepository) FindUserByEmail(ctx context.Context, email string) (*mo
 	if err != nil {
 		return nil, err
 	}
-	return &users[0], nil
+	if len(users) > 0 {
+		return &users[0], nil
+	}
+	return nil, common.UserEmailNotExistErr
 }
