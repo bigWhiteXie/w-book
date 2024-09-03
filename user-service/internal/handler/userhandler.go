@@ -52,8 +52,9 @@ func LoginHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			logx.Errorf("fail to login, cause: %s", err.Error())
 			if errors.Is(err, common.UserPwdNotMatchErr) {
 				resp = response.Fail(500, "密码错误")
+			} else {
+				resp = response.Fail(500, "系统错误，登录失败")
 			}
-			resp = response.Fail(500, "系统错误，注册失败")
 		} else {
 			resp = response.Ok(loginInfo)
 		}
@@ -72,7 +73,7 @@ func ProfileHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 			if errors.Is(err, common.UserEmailNotExistErr) {
 				resp = response.Fail(500, "该邮箱不存在")
 			}
-			resp = response.Fail(500, "系统错误，注册失败")
+			resp = response.Fail(500, "系统错误，请求失败")
 		} else {
 			resp = response.Ok(user)
 		}
