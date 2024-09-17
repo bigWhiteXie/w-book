@@ -1,0 +1,34 @@
+Name: user-service
+Host: 0.0.0.0
+Port: 20800
+
+Auth:
+  AccessSecret: w-book-authentication-sadgeadSDSA
+  AccessExpire: 3600
+
+IpRate:
+  Rate: 10
+  Capacity: 20
+
+MySQLConf:
+  Enable: true
+  User: root
+  Password: j3391111
+  Host: 192.168.126.100
+  Port: 3306
+  Database: w-book-user
+  CharSet: utf8
+  ParseTime: true
+  TimeZOne: Local
+  AutoMigrate: true
+  Gorm:
+    SingularTable: true
+    MaxOpenConns: 100
+    MaxIdleConns: 5
+    ConnMaxLifetime: 600
+
+RedisConf:
+  Host: 192.168.126.100:6379
+  PASS: 91offer
+
+

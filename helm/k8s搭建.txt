@@ -1,0 +1,24 @@
+kubeadm config print init-defaults > init-config.yaml
+kubeadm config images list --config init-config.yaml
+
+kubeadm init --apiserver-advertise-address=192.168.126.100 --apiserver-bind-port=6443 --pod-network-cidr=10.244.0.0/16  --service-cidr=10.96.0.0/12 --kubernetes-version=1.28.2 --image-repository registry.aliyuncs.com/google_containers
+
+kubeadm init --apiserver-advertise-address=192.168.126.100 --apiserver-bind-port=6443 --pod-network-cidr=10.244.0.0/16  --service-cidr=10.96.0.0/12 --kubernetes-version=1.28.2 --image-repository registry.aliyuncs.com/google_containers
+
+crictl --runtime-endpoint unix:///var/run/containerd/containerd.sock ps -a | grep kube | grep -v pause
+journalctl -xeu kubelet
+
+kubeadm reset 后记得 rm -rf $HOME/.kube
+
+docker run --name mariadb -p 3306:3306 -e MYSQL_ROOT_PASSWORD=j3391111 -v /data/mariadb/data:/var/lib/mysql -d mariadb
+
+# kubeadm初始化集群后执行如下命令，使得kubectl能够连接集群
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+
+# 检查代理
+echo $HTTP_PROXY
+echo $HTTPS_PROXY
+echo $NO_PROXY

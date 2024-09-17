@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-service
+  namespace: default  # 可以根据需要设置为你希望的 namespace
+  labels:
+    app: user-service
+spec:
+  replicas: 1  # 副本数
+  selector:
+    matchLabels:
+      app: user-service
+  template:
+    metadata:
+      labels:
+        app: user-service
+    spec:
+      containers:
+        - name: user-service
+          image: flycash/webook:v0.0.1  # 镜像
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 20800  # 容器内端口
+          env:
+            - name: ENVIRONMENT
+              value: "production"  # 环境变量示例
+
