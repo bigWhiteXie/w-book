@@ -26,6 +26,18 @@ type (
 )
 
 type (
+	SmsLoginReq {
+		Phone string  `json:"phone"`
+		Code  string  `json:"code"`
+	}
+
+	SmsSendCodeReq {
+		Phone string `json:"phone"`
+	}
+)
+
+
+type (
 	UserInfoReq {
 		Username string `json:"username"`
 		Password string `json:"password"`

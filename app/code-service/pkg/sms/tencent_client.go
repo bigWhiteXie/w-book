@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common"
 	"github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common/errors"
 	"github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common/profile"
-	sms "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/sms/v20210111"
+	tcsms "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/sms/v20210111"
 )
 
 var (
@@ -16,7 +17,7 @@ var (
 	sign     = "HmacSHA1"
 )
 
-var smsClient *sms.Client
+var smsClient *tcsms.Client
 
 type TCSmsRequst struct {
 	TemplateId       string   `json`
@@ -41,7 +42,7 @@ func NewTCSmsClient(conf Tencent) *TCSmsClient {
 	cpf.HttpProfile.Endpoint = endpoint
 	cpf.SignMethod = sign
 
-	smsClient, _ = sms.NewClient(credential, conf.Region, cpf)
+	smsClient, _ = tcsms.NewClient(credential, conf.Region, cpf)
 
 	return &TCSmsClient{
 		appId:    conf.AppId,
@@ -49,7 +50,7 @@ func NewTCSmsClient(conf Tencent) *TCSmsClient {
 	}
 }
 
-func (client *TCSmsClient) SendSms(ctx context.Context, phone string, args map[string]interface{}) error {
+func (client *TCSmsClient) SendSms(ctx context.Context, phone string, args map[string]string) error {
 	request, err := client.mapToTCSmsRequst(args)
 	if err != nil {
 		return err
@@ -69,28 +70,25 @@ func (client *TCSmsClient) SendSms(ctx context.Context, phone string, args map[s
 	return nil
 }
 
-func (client *TCSmsClient) mapToTCSmsRequst(args map[string]interface{}) (*sms.SendSmsRequest, error) {
+func (client *TCSmsClient) mapToTCSmsRequst(args map[string]string) (*tcsms.SendSmsRequest, error) {
 	// 创建一个 TCSmsRequst 实例
-	req := &sms.SendSmsRequest{}
+	req := &tcsms.SendSmsRequest{}
 
 	// 从 map 中提取值并进行类型断言和转换
 	req.SmsSdkAppId = common.StringPtr(client.appId)
 	req.SignName = common.StringPtr(client.signName)
 
-	if templateId, ok := args["TemplateId"].(string); ok {
+	if templateId, ok := args["TemplateId"]; ok {
 		req.TemplateId = common.StringPtr(templateId)
 	} else {
 		return nil, fmt.Errorf("invalid type for TemplateId")
 	}
 
-	if templateParamSet, ok := args["TemplateParamSet"].([]interface{}); ok {
+	if templateParam, ok := args["TemplateParamSet"]; ok {
 		// 将 []interface{} 转换为 []string
+		templateParamSet := strings.Split(templateParam, ",")
 		for _, param := range templateParamSet {
-			if strParam, ok := param.(string); ok {
-				req.TemplateParamSet = append(req.TemplateParamSet, common.StringPtr(strParam))
-			} else {
-				return nil, fmt.Errorf("invalid type in TemplateParamSet")
-			}
+			req.TemplateParamSet = append(req.TemplateParamSet, common.StringPtr(param))
 		}
 	} else {
 		return nil, fmt.Errorf("invalid type for TemplateParamSet")

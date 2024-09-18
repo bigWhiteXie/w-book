@@ -2,12 +2,15 @@ package dao
 
 import (
 	"codexie.com/w-book-user/internal/model"
-	"codexie.com/w-book-user/pkg/common/code"
-	"codexie.com/w-book-user/pkg/common/codeerr"
 	"context"
+	"errors"
 	"github.com/go-sql-driver/mysql"
 	"gorm.io/gorm"
 	"time"
+)
+
+var (
+	ErrUserEmailDuplicate = errors.New("user dupliacate")
 )
 
 type UserDao struct {
@@ -33,19 +36,16 @@ func (d *UserDao) Create(ctx context.Context, user *model.User) error {
 	user.Utime = time.Now()
 	if me, ok := err.(*mysql.MySQLError); ok {
 		if uniqueIndexErrNo := uint16(1062); me.Number == uniqueIndexErrNo {
-			return codeerr.WithCode(code.UserEmailDuplicateCode, "email %s is already exist", user.Email)
+			return ErrUserEmailDuplicate
 		}
 	}
 	return err
 }
 
-func (d *UserDao) Find(ctx context.Context, user *model.User) (users []model.User, err error) {
-	err = d.db.WithContext(ctx).Where(user).Find(&users).Error
+func (d *UserDao) FindOne(ctx context.Context, user *model.User) (*model.User, error) {
+	err := d.db.WithContext(ctx).Where(user).First(user).Error
 	if err != nil {
 		return nil, err
 	}
-	if len(users) == 0 {
-		err = gorm.ErrRecordNotFound
-	}
-	return
+	return user, err
 }

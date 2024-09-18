@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package api;
+// protoc --proto_path=. --go_out=. ./err.proto
+// 生成 golang 代码后的包名
+option go_package = "codexie.com/w-book-user";
+
+message WithCodeErr {
+  int32 Code = 1;
+  string Msg = 2;
+}

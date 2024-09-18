@@ -22,6 +22,16 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Path:    "/user/sign",
 				Handler: SignHandler(serverCtx),
 			},
+			{
+				Method:  http.MethodPost,
+				Path:    "/user/login_sms",
+				Handler: SmsLoginHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPost,
+				Path:    "/user/login_sms/code",
+				Handler: SendLoginCodeHandler(serverCtx),
+			},
 		},
 		rest.WithPrefix("/v1"),
 		rest.WithMaxBytes(1048576),
@@ -40,6 +50,7 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Handler: EditHandler(serverCtx),
 			},
 		},
+
 		rest.WithPrefix("/v1"),
 		rest.WithMaxBytes(1048576),
 		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),

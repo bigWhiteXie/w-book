@@ -1,21 +1,16 @@
 package config
 
 import (
-	"codexie.com/w-book-user/pkg/limiter"
-	"github.com/zeromicro/go-zero/rest"
+	"codexie.com/w-book-code/pkg/sms"
 	"github.com/zeromicro/go-zero/zrpc"
 )
 
 type Config struct {
-	rest.RestConf
-	Auth struct { // JWT 认证需要的密钥和过期时间配置
-		AccessSecret string
-		AccessExpire int64
-	}
-	CodeRpcConf zrpc.RpcClientConf
-	MySQLConf   MySQLConf
-	RedisConf   RedisConf
-	IpRate      limiter.IpLimitConfig
+	zrpc.RpcServerConf
+
+	SmsConf   sms.SmsConf `json:",optional"`
+	MySQLConf MySQLConf
+	RedisConf RedisConf
 }
 
 type MySQLConf struct {
@@ -29,14 +24,7 @@ type MySQLConf struct {
 	ParseTime bool   `json:"" yaml:"ParseTime"`
 	Enable    bool   `json:"" yaml:"Enable"` // use mysql or not
 
-	//DefaultStringSize         uint          `json:"" yaml:"DefaultStringSize"`         // string 类型字段的默认长度
 	AutoMigrate bool `json:"" yaml:"AutoMigrate"`
-	//DisableDatetimePrecision  bool          `json:"" yaml:"DisableDatetimePrecision"`  // 禁用 datetime 精度
-	//SkipInitializeWithVersion bool          `json:"" yaml:"SkipInitializeWithVersion"` // 根据当前 MySQL 版本自动配置
-	//
-	//SlowSql                   time.Duration `json:"" yaml:"SlowSql"`                   //慢SQL
-	//LogLevel                  string        `json:"" yaml:"LogLevel"`                  // 日志记录级别
-	//IgnoreRecordNotFoundError bool          `json:"" yaml:"IgnoreRecordNotFoundError"` // 是否忽略ErrRecordNotFound(未查到记录错误)
 
 	Gorm GormConf `json:"" yaml:"Gorm"`
 }

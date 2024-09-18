@@ -1,6 +1,7 @@
 package logic
 
 import (
+	"codexie.com/w-book-code/api/pb"
 	"codexie.com/w-book-user/internal/model"
 	"codexie.com/w-book-user/internal/repo"
 	"codexie.com/w-book-user/internal/repo/cache"
@@ -8,6 +9,8 @@ import (
 	"codexie.com/w-book-user/internal/svc"
 	"codexie.com/w-book-user/internal/types"
 	"codexie.com/w-book-user/pkg/common"
+	"codexie.com/w-book-user/pkg/common/codeerr"
+	"codexie.com/w-book-user/pkg/common/sql"
 	"context"
 	"github.com/zeromicro/go-zero/core/logx"
 	"golang.org/x/crypto/bcrypt"
@@ -18,6 +21,7 @@ type UserLogic struct {
 	logx.Logger
 	ctx       context.Context
 	userRepo  *repo.UserRepository
+	codeRpc   pb.CodeClient
 	jwtSecret string
 	jwtExpire int64
 }
@@ -31,13 +35,15 @@ func NewUserLogic(ctx context.Context, svc *svc.ServiceContext) *UserLogic {
 		userRepo:  repo.NewUserRepository(userDao, userCache),
 		jwtSecret: svc.Config.Auth.AccessSecret,
 		jwtExpire: svc.Config.Auth.AccessExpire,
+		codeRpc:   svc.CodeRpcClient,
 	}
 }
 
 func (l *UserLogic) Sign(req *types.SignReq) error {
 	var pwd []byte
+
 	pwd, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
-	user := &model.User{Email: req.Email, Password: string(pwd)}
+	user := &model.User{Email: sql.StringToNullString(req.Email), Password: string(pwd)}
 	if err = l.userRepo.Create(l.ctx, user); err != nil {
 		return err
 	}
@@ -52,10 +58,7 @@ func (l *UserLogic) Login(req *types.LoginReq) (resp *types.LoginInfo, err error
 	if err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
 		return nil, err
 	}
-	claim := make(map[string]interface{})
-	claim["email"] = req.Email
-	claim["id"] = strconv.Itoa(user.Id)
-	token, err := common.GetJwtToken(l.jwtSecret, l.jwtExpire, claim)
+	token, err := l.createTokenByUser(user)
 	if err != nil {
 		return nil, err
 	}
@@ -74,4 +77,40 @@ func (l *UserLogic) Profile() (user *model.User, err error) {
 		return nil, err
 	}
 	return user, nil
+}
+
+func (l *UserLogic) SmsLogin(smsLoginReq *types.SmsLoginReq) (resp *types.LoginInfo, err error) {
+	// grpc校验验证码
+	codeRpcReq := &pb.VerifyCodeReq{Code: smsLoginReq.Code, Biz: "login", Phone: smsLoginReq.Phone}
+	_, grpcErr := l.codeRpc.VerifyCode(l.ctx, codeRpcReq)
+	if grpcErr != nil {
+		return nil, codeerr.ParseGrpcErr(grpcErr)
+	}
+	// 根据phone查找或创建用户
+	user, err := l.userRepo.FindOrCreate(l.ctx, smsLoginReq.Phone)
+	if err != nil {
+		return nil, err
+	}
+	token, err := l.createTokenByUser(user)
+	// 构造token并返回
+	if err != nil {
+		return nil, err
+	}
+	return &types.LoginInfo{Token: token}, nil
+}
+
+func (l *UserLogic) SendLoginCode(req *types.SmsSendCodeReq) error {
+	codeRpcReq := &pb.SendCodeReq{Biz: "login", Phone: req.Phone}
+	_, grpcErr := l.codeRpc.SendCode(l.ctx, codeRpcReq)
+	if grpcErr != nil {
+		return codeerr.ParseGrpcErr(grpcErr)
+	}
+	return nil
+}
+
+func (l *UserLogic) createTokenByUser(user *model.User) (string, error) {
+	claim := make(map[string]interface{})
+	claim["id"] = strconv.Itoa(user.Id)
+	token, err := common.GetJwtToken(l.jwtSecret, l.jwtExpire, claim)
+	return token, err
 }

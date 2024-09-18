@@ -4,8 +4,8 @@ import (
 	"codexie.com/w-book-user/internal/model"
 	"codexie.com/w-book-user/internal/repo/cache"
 	"codexie.com/w-book-user/internal/repo/dao"
-	"codexie.com/w-book-user/pkg/common/code"
 	"codexie.com/w-book-user/pkg/common/codeerr"
+	"codexie.com/w-book-user/pkg/common/sql"
 	"context"
 	"github.com/zeromicro/go-zero/core/logx"
 	"gorm.io/gorm"
@@ -38,14 +38,14 @@ func (d *UserRepository) Create(ctx context.Context, user *model.User) error {
 }
 
 func (d *UserRepository) FindUserByEmail(ctx context.Context, email string) (*model.User, error) {
-	users, err := d.userDao.Find(ctx, &model.User{Email: email})
+	user, err := d.userDao.FindOne(ctx, &model.User{Email: sql.StringToNullString(email)})
 	if err != nil && err != gorm.ErrRecordNotFound {
 		return nil, err
 	}
-	if len(users) > 0 {
-		return &users[0], nil
+	if err == gorm.ErrRecordNotFound {
+		return nil, codeerr.WithCode(codeerr.UserEmailNotExistCode, "can't find any user by email %s", email)
 	}
-	return nil, codeerr.WithCode(code.UserEmailNotExistCode, "can't find any user by email %s", email)
+	return user, nil
 }
 
 func (d *UserRepository) FindUserById(ctx context.Context, id int) (*model.User, error) {
@@ -54,16 +54,34 @@ func (d *UserRepository) FindUserById(ctx context.Context, id int) (*model.User,
 		return user, nil
 	}
 
-	users, err := d.userDao.Find(ctx, &model.User{Id: id})
+	user, err = d.userDao.FindOne(ctx, &model.User{Id: id})
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			return nil, codeerr.WithCode(code.UserIdNotExistCode, "can't find any user by id %d", id)
+			return nil, codeerr.WithCode(codeerr.UserIdNotExistCode, "can't find any user by id %d", id)
 		}
 		return nil, err
 	}
 
-	if err := d.userCache.Set(ctx, &users[0]); err != nil {
-		logx.Errorf("fail to set user cache,%v", user)
+	if err = d.userCache.Set(ctx, user); err != nil {
+		logx.Errorf("fail to set user [%v] cache,cause:%s", user, err)
 	}
-	return &users[0], nil
+	return user, nil
+}
+
+func (d *UserRepository) FindOrCreate(ctx context.Context, phone string) (*model.User, error) {
+	//根据phone查找用户
+	user, err := d.userDao.FindOne(ctx, &model.User{Email: sql.StringToNullString(phone)})
+	if err != nil && err != gorm.ErrRecordNotFound {
+		return nil, err
+	}
+	if err == nil {
+		return user, nil
+	}
+	//不存在则创建用户
+	err = d.userDao.Create(ctx, &model.User{Phone: sql.StringToNullString(phone)})
+	if err != nil && err != dao.ErrUserEmailDuplicate {
+		return nil, err
+	}
+	//若唯一键冲突说明用户已经被创建，查找用户并返回
+	return d.userDao.FindOne(ctx, &model.User{Phone: sql.StringToNullString(phone)})
 }

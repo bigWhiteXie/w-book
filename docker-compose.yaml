@@ -1,0 +1,29 @@
+version: '3'
+services:
+  zoo1:
+    image: confluentinc/cp-zookeeper:7.3.2
+    hostname: zoo1
+    container_name: zoo1
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_SERVER_ID: 1
+      ZOOKEEPER_SERVERS: zoo1:2888:3888
+
+  Etcd:
+    container_name: etcd3
+    image: bitnami/etcd:3.5.6
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+    environment:
+      - ALLOW_NONE_AUTHENTICATION=yes
+    privileged: true
+    volumes:
+      - /data/etcd/data:/bitnami/etcd/data
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      - 2379:2379
+      - 2380:2380

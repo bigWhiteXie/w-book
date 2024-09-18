@@ -7,7 +7,7 @@ import (
 	"sync"
 )
 
-var codes = map[int]Coder{}
+var codesMap = map[int]Coder{}
 var codeMux = &sync.Mutex{}
 
 type Coder interface {
@@ -65,24 +65,24 @@ func MustRegister(code int, httpStatus int, msg string) {
 	codeMux.Lock()
 	defer codeMux.Unlock()
 
-	if _, ok := codes[code]; ok {
+	if _, ok := codesMap[code]; ok {
 		panic(fmt.Sprintf("code: %d already exist", code))
 	}
 
-	codes[code] = &ErrCode{C: code, HTTP: httpStatus, Ext: msg}
+	codesMap[code] = &ErrCode{C: code, HTTP: httpStatus, Ext: msg}
 }
 
-// ParseCoder parse any error into *withCode.
+// ParseCoder parse any error into *WithCodeErr.
 // nil error will return nil direct.
 // None withStack error will be parsed as ErrUnknown.
 func ParseCoder(err error) Coder {
 	if err == nil {
 		return nil
 	}
-	var codeErr *withCode
+	var codeErr *WithCodeErr
 
 	if ok := errors.As(err, &codeErr); ok {
-		if coder, ok := codes[codeErr.code]; ok {
+		if coder, ok := codesMap[int(codeErr.Code)]; ok {
 			return coder
 		}
 	}
@@ -92,8 +92,8 @@ func ParseCoder(err error) Coder {
 
 // IsCode reports whether any error in codeerr's chain contains the given error code.
 func IsCode(err error, code int) bool {
-	if v, ok := err.(*withCode); ok {
-		if v.code == code {
+	if v, ok := err.(*WithCodeErr); ok {
+		if int(v.Code) == code {
 			return true
 		}
 	}
@@ -101,5 +101,5 @@ func IsCode(err error, code int) bool {
 }
 
 func init() {
-	codes[unknownCoder.Code()] = unknownCoder
+	codesMap[unknownCoder.Code()] = unknownCoder
 }

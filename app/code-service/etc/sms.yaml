@@ -1,20 +1,9 @@
-Name: user-service
-Host: 0.0.0.0
-Port: 20800
-Timeout: 100000
-
-CodeRpcConf:
-  Etcd:
-    Hosts:
-      - 192.168.126.100:2479
-    Key: code.rpc
-Auth:
-  AccessSecret: w-book-authentication-sadgeadSDSA
-  AccessExpire: 3600
-
-IpRate:
-  Rate: 10
-  Capacity: 20
+Name: code.rpc
+ListenOn: 0.0.0.0:20810
+Etcd:
+  Hosts:
+  - 127.0.0.1:2479
+  Key: code.rpc
 
 MySQLConf:
   Enable: true
@@ -35,6 +24,6 @@ MySQLConf:
 
 RedisConf:
   Host: 192.168.126.100:6379
-  PASS: 91offer
+  PASS: ""
 
 

@@ -1,5 +1,0 @@
-github.com/tencentcloud/tencentcloud-sdk-go v3.0.233+incompatible h1:q+D/Y9jla3afgsIihtyhwyl0c2W+eRWNM9ohVwPiiPw=
-github.com/tencentcloud/tencentcloud-sdk-go v3.0.233+incompatible/go.mod h1:0PfYow01SHPMhKY31xa+EFz2RStxIqj6JFAJS+IkCi4=
-github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common v1.0.1004/go.mod h1:r5r4xbfxSaeR04b166HGsBa/R4U3SueirEUpXGuw+Q0=
-github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/sms v1.0.1004 h1:s5AQOz0qKC2ve5aQ2Ai1imWu2td9cHqI4lNCf2G5le8=
-github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/sms v1.0.1004/go.mod h1:3oYn6KHaejEVx4WzQBODttY6+OPVBXNyjahJQz+PPG8=

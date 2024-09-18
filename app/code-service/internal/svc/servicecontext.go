@@ -1,38 +1,35 @@
 package svc
 
 import (
-	"codexie.com/w-book-code/api/pb"
-	"codexie.com/w-book-user/internal/config"
-	"codexie.com/w-book-user/internal/model"
 	"context"
 	"fmt"
+	"time"
+
+	"codexie.com/w-book-code/internal/config"
 	"github.com/redis/go-redis/v9"
+
 	"github.com/zeromicro/go-zero/core/logx"
-	"github.com/zeromicro/go-zero/zrpc"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/schema"
-	"time"
 )
 
 type ServiceContext struct {
-	Config        config.Config
-	DB            *gorm.DB
-	Cache         *redis.Client
-	CodeRpcClient pb.CodeClient
+	Config config.Config
+	DB     *gorm.DB
+	Cache  *redis.Client
 }
 
 func NewServiceContext(c config.Config) *ServiceContext {
-	CreteDbClient(c.MySQLConf)
+	creteDbClient(c.MySQLConf)
 	return &ServiceContext{
-		Config:        c,
-		DB:            CreteDbClient(c.MySQLConf),
-		Cache:         createRedisClient(c.RedisConf),
-		CodeRpcClient: pb.NewCodeClient(zrpc.MustNewClient(c.CodeRpcConf).Conn()),
+		Config: c,
+		DB:     creteDbClient(c.MySQLConf),
+		Cache:  createRedisClient(c.RedisConf),
 	}
 }
 
-func CreteDbClient(mysqlConf config.MySQLConf) *gorm.DB {
+func creteDbClient(mysqlConf config.MySQLConf) *gorm.DB {
 	datasource := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=%s&parseTime=%t&loc=%s",
 		mysqlConf.User,
 		mysqlConf.Password,
@@ -51,14 +48,6 @@ func CreteDbClient(mysqlConf config.MySQLConf) *gorm.DB {
 	})
 	if err != nil {
 		panic(err)
-	}
-
-	// auto sync table structure, no need to create table
-	if mysqlConf.AutoMigrate {
-		if err = InitTables(db); err != nil {
-			logx.Errorf("automigrate table failed, codeerr: %v", err)
-			panic(err)
-		}
 	}
 
 	logx.Info("init mysql client instance success.")
@@ -90,12 +79,4 @@ func createRedisClient(redisConf config.RedisConf) *redis.Client {
 	}
 	logx.Infof("连接成功: %s", pong)
 	return myRedis
-}
-
-func InitTables(db *gorm.DB) error {
-	if err := db.AutoMigrate(&model.User{}); err != nil {
-		return err
-	}
-
-	return nil
 }

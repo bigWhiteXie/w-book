@@ -5,6 +5,10 @@ type LoginReq struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
+type SmsLoginReq struct {
+	Phone string `json:"phone"`
+	Code  string `json:"code"`
+}
 
 type LoginInfo struct {
 	Token string `json:"token"`
@@ -18,4 +22,8 @@ type SignReq struct {
 type UserInfoReq struct {
 	Password string `json:"password"`
 	Email    string `json:"email"`
+}
+
+type SmsSendCodeReq struct {
+	Phone string `json:"phone"`
 }
