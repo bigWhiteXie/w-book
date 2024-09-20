@@ -1,18 +1,19 @@
 package svc
 
 import (
+	"context"
+	"fmt"
+	"time"
+
 	"codexie.com/w-book-code/api/pb"
 	"codexie.com/w-book-user/internal/config"
 	"codexie.com/w-book-user/internal/model"
-	"context"
-	"fmt"
 	"github.com/redis/go-redis/v9"
 	"github.com/zeromicro/go-zero/core/logx"
 	"github.com/zeromicro/go-zero/zrpc"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/schema"
-	"time"
 )
 
 type ServiceContext struct {
@@ -23,16 +24,19 @@ type ServiceContext struct {
 }
 
 func NewServiceContext(c config.Config) *ServiceContext {
-	CreteDbClient(c.MySQLConf)
 	return &ServiceContext{
 		Config:        c,
-		DB:            CreteDbClient(c.MySQLConf),
-		Cache:         createRedisClient(c.RedisConf),
-		CodeRpcClient: pb.NewCodeClient(zrpc.MustNewClient(c.CodeRpcConf).Conn()),
+		DB:            CreteDbClient(c),
+		Cache:         CreateRedisClient(c),
+		CodeRpcClient: CreateCodeRpcClient(c),
 	}
 }
 
-func CreteDbClient(mysqlConf config.MySQLConf) *gorm.DB {
+func CreateCodeRpcClient(c config.Config) pb.CodeClient {
+	return pb.NewCodeClient(zrpc.MustNewClient(c.CodeRpcConf).Conn())
+}
+func CreteDbClient(c config.Config) *gorm.DB {
+	mysqlConf := c.MySQLConf
 	datasource := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=%s&parseTime=%t&loc=%s",
 		mysqlConf.User,
 		mysqlConf.Password,
@@ -75,7 +79,8 @@ func CreteDbClient(mysqlConf config.MySQLConf) *gorm.DB {
 	return db
 }
 
-func createRedisClient(redisConf config.RedisConf) *redis.Client {
+func CreateRedisClient(c config.Config) *redis.Client {
+	redisConf := c.RedisConf
 	myRedis := redis.NewClient(&redis.Options{
 		Addr:     redisConf.Host,
 		Password: redisConf.Pass,

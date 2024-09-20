@@ -4,33 +4,34 @@ package handler
 import (
 	"net/http"
 
-	"codexie.com/w-book-user/internal/svc"
+	"codexie.com/w-book-user/internal/config"
 
 	"github.com/zeromicro/go-zero/rest"
 )
 
-func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
+
+func RegisterHandlers(server *rest.Server, c config.Config, userHandler *UserHandler) {
 	server.AddRoutes(
 		[]rest.Route{
 			{
 				Method:  http.MethodPost,
 				Path:    "/user/login",
-				Handler: LoginHandler(serverCtx),
+				Handler: userHandler.LoginHandler,
 			},
 			{
 				Method:  http.MethodPost,
 				Path:    "/user/sign",
-				Handler: SignHandler(serverCtx),
+				Handler: userHandler.SignHandler,
 			},
 			{
 				Method:  http.MethodPost,
 				Path:    "/user/login_sms",
-				Handler: SmsLoginHandler(serverCtx),
+				Handler: userHandler.SmsLoginHandler,
 			},
 			{
 				Method:  http.MethodPost,
 				Path:    "/user/login_sms/code",
-				Handler: SendLoginCodeHandler(serverCtx),
+				Handler: userHandler.SendLoginCodeHandler,
 			},
 		},
 		rest.WithPrefix("/v1"),
@@ -42,17 +43,20 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 			{
 				Method:  http.MethodGet,
 				Path:    "/user/profile",
-				Handler: ProfileHandler(serverCtx),
+				Handler: userHandler.ProfileHandler,
 			},
 			{
 				Method:  http.MethodPost,
 				Path:    "/user/edit",
-				Handler: EditHandler(serverCtx),
+				Handler: userHandler.EditHandler,
 			},
 		},
 
 		rest.WithPrefix("/v1"),
 		rest.WithMaxBytes(1048576),
-		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
+		rest.WithJwt(c.Auth.AccessSecret),
 	)
 }
+
+
+

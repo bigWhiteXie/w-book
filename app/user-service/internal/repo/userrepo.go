@@ -1,24 +1,34 @@
 package repo
 
 import (
+	"context"
+	"strconv"
+
 	"codexie.com/w-book-user/internal/model"
 	"codexie.com/w-book-user/internal/repo/cache"
 	"codexie.com/w-book-user/internal/repo/dao"
 	"codexie.com/w-book-user/pkg/common/codeerr"
 	"codexie.com/w-book-user/pkg/common/sql"
-	"context"
 	"github.com/zeromicro/go-zero/core/logx"
 	"gorm.io/gorm"
-	"strconv"
 )
+
+// mockgen -source=internal/repo/userrepo.go -destination mocks/repo/userrepository_mock.go
+type IUserRepository interface {
+	TX(fun func(txRepo *UserRepository) error) error
+	Create(ctx context.Context, user *model.User) error
+	FindUserByEmail(ctx context.Context, email string) (*model.User, error)
+	FindUserById(ctx context.Context, id int) (*model.User, error)
+	FindOrCreate(ctx context.Context, phone string) (*model.User, error)
+}
 
 type UserRepository struct {
 	userDao   *dao.UserDao
-	userCache *cache.UserCache
+	userCache cache.UserCache
 	isTx      bool
 }
 
-func NewUserRepository(userDao *dao.UserDao, cache *cache.UserCache) *UserRepository {
+func NewUserRepository(userDao *dao.UserDao, cache cache.UserCache) IUserRepository {
 	return &UserRepository{userDao: userDao, userCache: cache}
 }
 
@@ -27,7 +37,7 @@ func (d *UserRepository) TX(fun func(txRepo *UserRepository) error) error {
 		return fun(d)
 	}
 	return d.userDao.TX(func(txDao *dao.UserDao) error {
-		userRepo := NewUserRepository(txDao, d.userCache)
+		userRepo := NewUserRepository(txDao, d.userCache).(*UserRepository)
 		userRepo.isTx = true
 		return fun(userRepo)
 	})

@@ -29,7 +29,7 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// 定义 Greet 服务
+// mockgen -source=api/pb/sms_grpc.pb.go -destination mocks/api/pb/smsgrpc_mock.go
 type CodeClient interface {
 	SendCode(ctx context.Context, in *SendCodeReq, opts ...grpc.CallOption) (*SendCodeResp, error)
 	VerifyCode(ctx context.Context, in *VerifyCodeReq, opts ...grpc.CallOption) (*VerifyCodeResp, error)

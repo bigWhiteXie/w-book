@@ -1,21 +1,22 @@
 package dao
 
 import (
+	"context"
+	"fmt"
+	"testing"
+
 	"codexie.com/w-book-user/internal/config"
 	"codexie.com/w-book-user/internal/model"
 	"codexie.com/w-book-user/internal/svc"
 	"codexie.com/w-book-user/pkg/common/sql"
-	"context"
-	"fmt"
 	"github.com/zeromicro/go-zero/core/conf"
 	"gorm.io/gorm"
-	"testing"
 )
 
 func initDb() *gorm.DB {
 	var c config.Config
 	conf.MustLoad("/usr/local/go_project/w-book/app/user-service/etc/user.yaml", &c)
-	return svc.CreteDbClient(c.MySQLConf)
+	return svc.CreteDbClient(c)
 }
 
 func TestFindOne(t *testing.T) {

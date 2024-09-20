@@ -63,16 +63,6 @@ func ParseGrpcErr(err error) *WithCodeErr {
 	return &WithCodeErr{Code: SystemErrCpde, Msg: st.Message()}
 }
 
-func (e *WithCodeErr) StackTrace() errors.StackTrace {
-	// Get full stack trace
-	stack := errors.WithStack(e).(interface {
-		StackTrace() errors.StackTrace
-	}).StackTrace()
-
-	// Remove the top frame (which corresponds to the `WithCodeErrErr` call)
-	return stack[1:] // Skip the first stack frame
-}
-
 func ToGrpcErr(e error) error {
 	st := status.New(codes.Internal, e.Error())
 	codeErr := &WithCodeErr{}
@@ -96,6 +86,16 @@ func HandleErr(ctx context.Context, err error) *response.Response {
 	logx.WithContext(ctx).Errorf("%+v", err)
 	coder := ParseCoder(err)
 	return response.Fail(coder.Code(), coder.String())
+}
+
+func (e *WithCodeErr) StackTrace() errors.StackTrace {
+	// Get full stack trace
+	stack := errors.WithStack(e).(interface {
+		StackTrace() errors.StackTrace
+	}).StackTrace()
+
+	// Remove the top frame (which corresponds to the `WithCodeErrErr` call)
+	return stack[1:] // Skip the first stack frame
 }
 
 func (w *WithCodeErr) Error() string { return w.Msg }

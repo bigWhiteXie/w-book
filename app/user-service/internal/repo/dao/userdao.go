@@ -1,12 +1,13 @@
 package dao
 
 import (
-	"codexie.com/w-book-user/internal/model"
 	"context"
 	"errors"
+	"time"
+
+	"codexie.com/w-book-user/internal/model"
 	"github.com/go-sql-driver/mysql"
 	"gorm.io/gorm"
-	"time"
 )
 
 var (
@@ -14,6 +15,7 @@ var (
 )
 
 type UserDao struct {
+	// go get github.com/DATA-DOG/go-sqlmock
 	db *gorm.DB
 }
 
