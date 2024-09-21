@@ -1,9 +1,10 @@
 package main
 
 import (
-	"codexie.com/w-book-code/pkg/sms"
 	"flag"
 	"fmt"
+
+	"codexie.com/w-book-code/pkg/sms"
 
 	"codexie.com/w-book-code/api/pb"
 	"codexie.com/w-book-code/internal/config"
@@ -17,7 +18,7 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
-var configFile = flag.String("f", "etc/sms.yaml", "the config file")
+var configFile = flag.String("f", "/usr/local/go_project/w-book/app/code-service/etc/sms.yaml", "the config file")
 
 func main() {
 	flag.Parse()

@@ -26,4 +26,15 @@ RedisConf:
   Host: 192.168.126.100:6379
   PASS: ""
 
+SmsConf:
+  TC:
+    Name: "TC"
+    Weight: 2
+    SecretKey: "sadd"
+    SecretId: "sadsadas"
+    AppId: "sada"
+    SignName: "sadasdsa"
+  Memory:
+    Name: "TC"
+    Weight: 8
 

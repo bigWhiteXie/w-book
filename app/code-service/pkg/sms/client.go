@@ -1,14 +1,14 @@
 package sms
 
 import (
-	"codexie.com/w-book-user/pkg/common/codeerr"
 	"context"
-	"github.com/redis/go-redis/v9"
 	"time"
+
+	"codexie.com/w-book-user/pkg/common/codeerr"
+	"github.com/redis/go-redis/v9"
 )
 
-var clientMap map[string]SmsClient
-var defaultClientName = "mem"
+var smsService *SmsService
 
 var cache *redis.Client
 var maxTime int64 = 10
@@ -18,10 +18,7 @@ type SmsClient interface {
 }
 
 func InitSmsClient(conf SmsConf, client *redis.Client) {
-	clientMap = make(map[string]SmsClient, 2)
-	clientMap["tc"] = NewTCSmsClient(conf.TC)
-	clientMap["mem"] = NewMemoryClient()
-
+	smsService = NewSmsService(conf.TC, conf.Memory)
 	cache = client
 }
 
@@ -29,10 +26,8 @@ func SendSms(ctx context.Context, phone string, args map[string]string) error {
 	if err := VerifyCnt(ctx, phone); err != nil {
 		return err
 	}
-	if client, ok := clientMap[defaultClientName]; ok {
-		return client.SendSms(ctx, phone, args)
-	}
-	return nil
+
+	return smsService.SendSms(ctx, phone, args)
 }
 
 func VerifyCnt(ctx context.Context, phone string) error {
@@ -45,6 +40,7 @@ func VerifyCnt(ctx context.Context, phone string) error {
 		return codeerr.WithCode(codeerr.SmsFrequentERR, "%s send sms arrived %d", phone, cnt)
 	}
 
+	// 首次发送短信设置过期时间
 	if cnt == 1 {
 		cache.Expire(ctx, key, 30*time.Minute)
 	}

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"codexie.com/w-book-code/pkg/sms"
 	"codexie.com/w-book-user/pkg/limiter"
 	"github.com/zeromicro/go-zero/rest"
 	"github.com/zeromicro/go-zero/zrpc"
@@ -16,6 +17,7 @@ type Config struct {
 	MySQLConf   MySQLConf
 	RedisConf   RedisConf
 	IpRate      limiter.IpLimitConfig
+	SmsConf     sms.SmsConf
 }
 
 type MySQLConf struct {
