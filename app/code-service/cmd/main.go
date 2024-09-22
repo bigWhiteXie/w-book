@@ -4,6 +4,11 @@ import (
 	"flag"
 	"fmt"
 
+	"codexie.com/w-book-code/internal/kafka/consumer"
+	"codexie.com/w-book-code/internal/repo"
+	"codexie.com/w-book-code/internal/repo/cache"
+	"codexie.com/w-book-code/internal/repo/dao"
+
 	"codexie.com/w-book-code/pkg/sms"
 
 	"codexie.com/w-book-code/api/pb"
@@ -27,6 +32,7 @@ func main() {
 	conf.MustLoad(*configFile, &c)
 	ctx := svc.NewServiceContext(c)
 	sms.InitSmsClient(c.SmsConf, ctx.Cache)
+	smsConsumer := consumer.NewSmsConsumer(c.KafkaConf.Topic, ctx.ConsumerGroup, repo.NewCodeRepo(cache.NewRedisCache(ctx.Cache), dao.NewCodeDao(ctx.DB)))
 	s := zrpc.MustNewServer(c.RpcServerConf, func(grpcServer *grpc.Server) {
 		pb.RegisterSMSServer(grpcServer, server.NewSMSServer(ctx))
 
@@ -34,8 +40,12 @@ func main() {
 			reflection.Register(grpcServer)
 		}
 	})
+	defer smsConsumer.Stop()
 	defer s.Stop()
 
 	fmt.Printf("Starting rpc server at %s...\n", c.ListenOn)
+	go func() {
+		smsConsumer.StartConsumer()
+	}()
 	s.Start()
 }

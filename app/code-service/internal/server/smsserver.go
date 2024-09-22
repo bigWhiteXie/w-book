@@ -4,9 +4,13 @@
 package server
 
 import (
-	"codexie.com/w-book-code/api/pb"
-	"codexie.com/w-book-code/internal/repo"
 	"context"
+
+	"codexie.com/w-book-code/api/pb"
+	"codexie.com/w-book-code/internal/kafka/producer"
+	"codexie.com/w-book-code/internal/repo"
+	"codexie.com/w-book-code/internal/repo/cache"
+	"codexie.com/w-book-code/internal/repo/dao"
 
 	"codexie.com/w-book-code/internal/logic"
 	"codexie.com/w-book-code/internal/svc"
@@ -21,7 +25,7 @@ type SMSServer struct {
 func NewSMSServer(svcCtx *svc.ServiceContext) *SMSServer {
 	return &SMSServer{
 		svcCtx:    svcCtx,
-		codeLogic: logic.NewCodeLogic(repo.NewRedisCache(svcCtx.Cache)),
+		codeLogic: logic.NewCodeLogic(repo.NewCodeRepo(cache.NewRedisCache(svcCtx.Cache), dao.NewCodeDao(svcCtx.DB)), producer.NewKafkaProducer(svcCtx.KafkaProvider)),
 	}
 }
 

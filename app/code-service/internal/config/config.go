@@ -11,6 +11,7 @@ type Config struct {
 	SmsConf   sms.SmsConf `json:",optional"`
 	MySQLConf MySQLConf
 	RedisConf RedisConf
+	KafkaConf KafkaConf
 }
 
 type MySQLConf struct {
@@ -34,6 +35,11 @@ type RedisConf struct {
 	Type string `json:",default=node,options=node|cluster"`
 	Pass string `json:",optional"`
 	Tls  bool   `json:",optional"`
+}
+
+type KafkaConf struct {
+	Brokers []string `json:"brokers"`
+	Topic   string
 }
 
 // gorm config

@@ -2,8 +2,12 @@ package sms
 
 import (
 	"context"
+	"errors"
 	"math/rand"
 	"time"
+
+	"codexie.com/w-book-user/pkg/common/codeerr"
+	"github.com/zeromicro/go-zero/core/logx"
 )
 
 var (
@@ -14,7 +18,7 @@ type SmsProvider struct {
 	Name      string //服务商
 	Weight    int    // 权重
 	Status    int    // 0 不可用 | 1 可用 | 2 暂时可用
-	client    SmsClient
+	Client    SmsClient
 	FailCount int
 	FailLimit int
 }
@@ -32,7 +36,7 @@ func NewSmsService(tcConfig Tencent, memoryConf Memeory) *SmsService {
 		Name:      tcConfig.Name,
 		Weight:    tcConfig.Weight,
 		Status:    1,
-		client:    tcClient,
+		Client:    tcClient,
 		FailCount: 0,
 		FailLimit: 3,
 	}
@@ -40,7 +44,7 @@ func NewSmsService(tcConfig Tencent, memoryConf Memeory) *SmsService {
 		Name:      memoryConf.Name,
 		Weight:    memoryConf.Weight,
 		Status:    1,
-		client:    memClient,
+		Client:    memClient,
 		FailCount: 0,
 		FailLimit: 3,
 	}
@@ -51,27 +55,29 @@ func NewSmsService(tcConfig Tencent, memoryConf Memeory) *SmsService {
 }
 
 func (s *SmsService) SendSms(ctx context.Context, phone string, args map[string]string) error {
-	provider := s.selectProvider()
-	startTime := time.Now()
-	err := provider.Client.SendSms(ctx, phone, args)
-	responseTime := time.Since(startTime)
-	if err != nil || responseTime >= 3*time.Second {
-		s.markProviderUnavailable(provider, 60*time.Second, err != nil)
-		if err != nil {
-			// TODO 添加到数据库中，等待补偿任务
-			logx.Errorf("短信发送失败，异步重试")
-			return SmsFailErr
-		} else {
-			logx.Errorf("短信发送失败，响应时间超过3秒，请检查短信服务商")
+	for {
+		provider := s.selectProvider()
+		if provider == nil {
+			return codeerr.WithCode(codeerr.SmsNotAvaliableErr, "sms provider is nil")
 		}
+		startTime := time.Now()
+		err := provider.Client.SendSms(ctx, phone, args)
+		responseTime := time.Since(startTime)
+		if err != nil || responseTime >= 3*time.Second {
+			s.markProviderUnavailable(provider, 60*time.Second, err != nil)
+			if err != nil {
+				logx.Errorf("[%s] 短信发送失败,cause:%v", provider.Name, err)
+			} else {
+				logx.Errorf("[%s]短信发送失败,响应时间超过3秒,请检查短信服务商", provider.Name)
+			}
+			continue
+		}
+		// 重置provider状态
+		provider.Status = 1
+		provider.FailCount = 0
+		logx.Infof("短信发送成功，耗时：%v", responseTime)
 		return nil
 	}
-	// 重置provider状态
-	provider.Status = 1
-	provider.FailCount = 0
-	logx.Infof("短信发送成功，耗时：%v", responseTime)
-
-	return nil
 }
 func (s *SmsService) selectProvider() *SmsProvider {
 	totalWeight := 0
@@ -79,6 +85,10 @@ func (s *SmsService) selectProvider() *SmsProvider {
 		if p.Status == 1 {
 			totalWeight += p.Weight
 		}
+	}
+	// 此时没有可用的服务商
+	if totalWeight == 0 {
+		return nil
 	}
 
 	randNum := rand.Intn(totalWeight)

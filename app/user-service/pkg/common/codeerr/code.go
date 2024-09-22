@@ -19,7 +19,10 @@ const (
 )
 
 const (
-	SmsFrequentERR = 300001
+	SmsFrequentERR     = 300001
+	SmsRecordSaveErr   = 300002
+	SmsNotFoundErr     = 300003
+	SmsNotAvaliableErr = 300004
 )
 
 func init() {
@@ -37,5 +40,7 @@ func init() {
 	MustRegister(CodeNotExistErr, 200, "验证码不存在")
 
 	MustRegister(SmsFrequentERR, 200, "短信发送次数超过限制")
-
+	MustRegister(SmsRecordSaveErr, 200, "短信发送失败")
+	MustRegister(SmsNotFoundErr, 200, "短信不存在")
+	MustRegister(SmsNotAvaliableErr, 200, "所有短信服务商均不可用，请检查网络和服务商余量")
 }

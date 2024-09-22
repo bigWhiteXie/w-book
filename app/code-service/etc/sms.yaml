@@ -11,7 +11,7 @@ MySQLConf:
   Password: j3391111
   Host: 192.168.126.100
   Port: 3306
-  Database: w-book-user
+  Database: w-book-sms
   CharSet: utf8
   ParseTime: true
   TimeZOne: Local
@@ -28,13 +28,18 @@ RedisConf:
 
 SmsConf:
   TC:
-    Name: "TC"
+    Name: TC
     Weight: 2
     SecretKey: "sadd"
     SecretId: "sadsadas"
     AppId: "sada"
     SignName: "sadasdsa"
   Memory:
-    Name: "TC"
+    Name: Memory
     Weight: 8
+
+KafkaConf:
+  brokers:
+  - 192.168.126.100:9092
+  Topic: sms-topic
 

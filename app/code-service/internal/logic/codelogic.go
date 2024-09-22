@@ -1,26 +1,33 @@
 package logic
 
 import (
-	"codexie.com/w-book-code/internal/repo"
-	"codexie.com/w-book-code/pkg/sms"
-	"codexie.com/w-book-user/pkg/common/codeerr"
 	"context"
 	"fmt"
 	"math/rand"
+	"strconv"
 	"time"
+
+	"codexie.com/w-book-code/internal/kafka/producer"
+	"codexie.com/w-book-code/internal/model"
+	"codexie.com/w-book-code/internal/repo"
+	"codexie.com/w-book-user/pkg/common/codeerr"
 
 	"codexie.com/w-book-code/api/pb"
 	"github.com/zeromicro/go-zero/core/logx"
 )
 
+var topic = "sms-topic"
+
 type CodeLogic struct {
-	codeRepo repo.CodeCache
+	codeRepo      repo.CodeRepo
+	kafkaProvider *producer.KafkaProducer
 	logx.Logger
 }
 
-func NewCodeLogic(cache repo.CodeCache) *CodeLogic {
+func NewCodeLogic(repo repo.CodeRepo, provider *producer.KafkaProducer) *CodeLogic {
 	return &CodeLogic{
-		codeRepo: cache,
+		codeRepo:      repo,
+		kafkaProvider: provider,
 	}
 }
 
@@ -36,11 +43,17 @@ func (l *CodeLogic) SendCode(ctx context.Context, in *pb.SendCodeReq) (*pb.SendC
 		return nil, codeerr.ToGrpcErr(err)
 	}
 
-	if err = sms.SendSms(ctx, in.Phone, map[string]string{"code": randomCode}); err != nil {
-		logx.Errorf("[send sms] %v", err)
-		return nil, codeerr.ToGrpcErr(err)
-
+	//将短信内容记录到数据库中
+	record := model.NewSmsRecord(in.Phone, map[string]string{"code": randomCode})
+	if err = l.codeRepo.SaveSmsRecord(ctx, record); err != nil {
+		logx.Errorf("[send code] %v", err)
+		return nil, err
 	}
+
+	l.kafkaProvider.Send(ctx, topic, strconv.Itoa(record.ID), func(err error) {
+		logx.Errorf("fail to send msg to kafka, cause:%s", err)
+	})
+
 	return &pb.SendCodeResp{Result: pb.Success()}, nil
 }
 

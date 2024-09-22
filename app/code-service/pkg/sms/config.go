@@ -6,8 +6,8 @@ type SmsConf struct {
 }
 
 type SmsCommonConfig struct {
-	Name   string `json`
-	Weight int    `json`
+	Name   string `json:","`
+	Weight int    `json:","`
 }
 
 type Memeory struct {
@@ -16,8 +16,8 @@ type Memeory struct {
 type Tencent struct {
 	SmsCommonConfig
 
-	SecretKey string `json`
-	SecretId  string `json`
+	SecretKey string `json:","`
+	SecretId  string `json:","`
 	Endpoint  string `json:",optional"`
 	AppId     string `json:",omitempty"`
 	SignName  string `json:",omitempty"`

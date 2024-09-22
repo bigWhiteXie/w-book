@@ -1,9 +1,10 @@
-package repo
+package cache
 
 import (
 	"codexie.com/w-book-user/pkg/common/codeerr"
 	"context"
 	"github.com/redis/go-redis/v9"
+	"gorm.io/gorm"
 )
 
 var (
@@ -14,6 +15,7 @@ var (
 
 type RedisCache struct {
 	redisClient *redis.Client
+	db          *gorm.DB
 }
 
 func NewRedisCache(client *redis.Client) *RedisCache {
