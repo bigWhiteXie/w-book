@@ -13,6 +13,7 @@ var smsService *SmsService
 var cache *redis.Client
 var maxTime int64 = 10
 
+// mockgen -source=pkg/sms/client.go -destination mocks/pkg/sms/sms_mock.go
 type SmsClient interface {
 	SendSms(ctx context.Context, phone string, args map[string]string) error
 }
