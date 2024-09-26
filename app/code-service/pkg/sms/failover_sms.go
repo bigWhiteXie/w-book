@@ -6,6 +6,10 @@ import (
 	"time"
 )
 
+var (
+	SmsFailErr = errors.New("短信发送失败")
+)
+
 type SmsProvider struct {
 	Name      string //服务商
 	Weight    int    // 权重
@@ -49,14 +53,23 @@ func NewSmsService(tcConfig Tencent, memoryConf Memeory) *SmsService {
 func (s *SmsService) SendSms(ctx context.Context, phone string, args map[string]string) error {
 	provider := s.selectProvider()
 	startTime := time.Now()
-	err := provider.client.SendSms(ctx, phone, args)
+	err := provider.Client.SendSms(ctx, phone, args)
 	responseTime := time.Since(startTime)
 	if err != nil || responseTime >= 3*time.Second {
 		s.markProviderUnavailable(provider, 60*time.Second, err != nil)
 		if err != nil {
 			// TODO 添加到数据库中，等待补偿任务
+			logx.Errorf("短信发送失败，异步重试")
+			return SmsFailErr
+		} else {
+			logx.Errorf("短信发送失败，响应时间超过3秒，请检查短信服务商")
 		}
+		return nil
 	}
+	// 重置provider状态
+	provider.Status = 1
+	provider.FailCount = 0
+	logx.Infof("短信发送成功，耗时：%v", responseTime)
 
 	return nil
 }
