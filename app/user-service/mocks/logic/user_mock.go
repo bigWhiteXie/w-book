@@ -51,10 +51,10 @@ func (mr *MockIUserLogicMockRecorder) Edit(ctx, req interface{}) *gomock.Call {
 }
 
 // Login mocks base method.
-func (m *MockIUserLogic) Login(ctx context.Context, req *types.LoginReq) (*types.LoginInfo, error) {
+func (m *MockIUserLogic) Login(ctx context.Context, req *types.LoginReq) (*model.User, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Login", ctx, req)
-	ret0, _ := ret[0].(*types.LoginInfo)
+	ret0, _ := ret[0].(*model.User)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -109,10 +109,10 @@ func (mr *MockIUserLogicMockRecorder) Sign(ctx, req interface{}) *gomock.Call {
 }
 
 // SmsLogin mocks base method.
-func (m *MockIUserLogic) SmsLogin(ctx context.Context, smsLoginReq *types.SmsLoginReq) (*types.LoginInfo, error) {
+func (m *MockIUserLogic) SmsLogin(ctx context.Context, smsLoginReq *types.SmsLoginReq) (*model.User, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SmsLogin", ctx, smsLoginReq)
-	ret0, _ := ret[0].(*types.LoginInfo)
+	ret0, _ := ret[0].(*model.User)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

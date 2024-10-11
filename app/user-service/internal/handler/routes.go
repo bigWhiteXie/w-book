@@ -20,6 +20,11 @@ func RegisterHandlers(server *rest.Server, c config.Config, userHandler *UserHan
 			},
 			{
 				Method:  http.MethodPost,
+				Path:    "/user/refresh",
+				Handler: userHandler.RefreshHandler,
+			},
+			{
+				Method:  http.MethodPost,
 				Path:    "/user/sign",
 				Handler: userHandler.SignHandler,
 			},
@@ -50,12 +55,17 @@ func RegisterHandlers(server *rest.Server, c config.Config, userHandler *UserHan
 				Path:    "/user/edit",
 				Handler: userHandler.EditHandler,
 			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/user/logout",
+				Handler: userHandler.LogoutHandler,
+			},
 		},
 
 		rest.WithPrefix("/v1"),
 		rest.WithMaxBytes(1048576),
-		rest.WithJwt(c.Auth.AccessSecret),
 	)
+	
 }
 
 

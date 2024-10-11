@@ -9,7 +9,7 @@ import (
 	"codexie.com/w-book-user/pkg/common/codeerr"
 )
 
-type CodeRepo interface {
+type SmsRepo interface {
 	StoreCode(ctx context.Context, key, val, script string) error
 	VerifyCode(ctx context.Context, key, val, script string) error
 	SaveSmsRecord(ctx context.Context, record *model.SmsSendRecord) error
@@ -17,37 +17,37 @@ type CodeRepo interface {
 	UpdateById(ctx context.Context, record *model.SmsSendRecord) error
 }
 
-type CodeRepoImpl struct {
+type SmsRepoImpl struct {
 	codeCache cache.CodeCache
 	codeDao   *dao.CodeDao
 }
 
-func NewCodeRepo(codeCache cache.CodeCache, codeDao *dao.CodeDao) *CodeRepoImpl {
-	return &CodeRepoImpl{
+func NewSmsRepo(codeCache cache.CodeCache, codeDao *dao.CodeDao) *SmsRepoImpl {
+	return &SmsRepoImpl{
 		codeCache: codeCache,
 		codeDao:   codeDao,
 	}
 }
 
-func (repo *CodeRepoImpl) StoreCode(ctx context.Context, key, val, script string) error {
+func (repo *SmsRepoImpl) StoreCode(ctx context.Context, key, val, script string) error {
 	return repo.codeCache.StoreCode(ctx, key, val, script)
 }
 
-func (repo *CodeRepoImpl) VerifyCode(ctx context.Context, key, val, script string) error {
+func (repo *SmsRepoImpl) VerifyCode(ctx context.Context, key, val, script string) error {
 	return repo.codeCache.VerifyCode(ctx, key, val, script)
 }
 
-func (repo *CodeRepoImpl) SaveSmsRecord(ctx context.Context, record *model.SmsSendRecord) error {
+func (repo *SmsRepoImpl) SaveSmsRecord(ctx context.Context, record *model.SmsSendRecord) error {
 	if err := repo.codeDao.Save(ctx, record); err != nil {
 		return codeerr.WithCode(codeerr.CodeNotExistErr, "fail to save %v", record)
 	}
 	return nil
 }
 
-func (repo *CodeRepoImpl) FindById(ctx context.Context, idstr string) (*model.SmsSendRecord, error) {
+func (repo *SmsRepoImpl) FindById(ctx context.Context, idstr string) (*model.SmsSendRecord, error) {
 	return repo.codeDao.FindById(ctx, idstr)
 }
 
-func (repo *CodeRepoImpl) UpdateById(ctx context.Context, record *model.SmsSendRecord) error {
+func (repo *SmsRepoImpl) UpdateById(ctx context.Context, record *model.SmsSendRecord) error {
 	return repo.codeDao.Update(ctx, record)
 }

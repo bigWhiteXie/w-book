@@ -1,8 +1,9 @@
 package cache
 
 import (
-	"codexie.com/w-book-user/pkg/common/codeerr"
 	"context"
+
+	"codexie.com/w-book-user/pkg/common/codeerr"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
@@ -29,9 +30,9 @@ func (c *RedisCache) StoreCode(ctx context.Context, key, val, script string) err
 	}
 	if result != sendSuccess {
 		if result == systemErr {
-			return codeerr.WithCode(codeerr.CodeSystemERR, "%s exist but no expire time", key)
+			return codeerr.WithCode(codeerr.CodeSystemERR, "验证码key存在但没过期时间", key)
 		} else {
-			return codeerr.WithCode(codeerr.CodeFrequentErr, "%s send too frequently", key)
+			return codeerr.WithCode(codeerr.CodeFrequentErr, "验证码发送太频繁", key)
 		}
 	}
 	return nil
@@ -45,11 +46,11 @@ func (c *RedisCache) VerifyCode(ctx context.Context, key, val, script string) er
 
 	switch result {
 	case -1:
-		return codeerr.WithCode(codeerr.CodeNotExistErr, "%s not exist", key)
+		return codeerr.WithCode(codeerr.CodeNotExistErr, "验证码不存在")
 	case -2:
-		return codeerr.WithCode(codeerr.CodeVerifyExcceddErr, "%s verify too much", key)
+		return codeerr.WithCode(codeerr.CodeVerifyExcceddErr, "验证码校验次数过多")
 	case -3:
-		return codeerr.WithCode(codeerr.CodeVerifyFailERR, "%s verify not match", key)
+		return codeerr.WithCode(codeerr.CodeVerifyFailERR, "验证码不匹配")
 	default:
 		return nil
 	}

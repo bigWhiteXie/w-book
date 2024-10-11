@@ -39,12 +39,11 @@ type WithCodeErr struct {
 func WithCode(code int, format string, args ...interface{}) error {
 	msg := fmt.Sprintf(format, args...)
 	return errors.Wrap(&WithCodeErr{
-		Msg:  msg,
 		Code: int32(code),
 	}, msg)
 }
 
-func ParseGrpcErr(err error) *WithCodeErr {
+func ParseGrpcErr(err error) error {
 	st, ok := status.FromError(err)
 	if !ok {
 		return &WithCodeErr{Code: CodeSystemERR, Msg: err.Error()}
@@ -55,12 +54,12 @@ func ParseGrpcErr(err error) *WithCodeErr {
 			switch d.(type) {
 			case *WithCodeErr:
 				e := d.(*WithCodeErr)
-				return e
+				return errors.Wrap(e,e.Msg)
 			}
 
 		}
 	}
-	return &WithCodeErr{Code: SystemErrCpde, Msg: st.Message()}
+	return WithCode(SystemErrCpde, st.Message())
 }
 
 func ToGrpcErr(e error) error {

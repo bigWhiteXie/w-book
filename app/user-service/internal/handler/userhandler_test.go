@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"codexie.com/w-book-user/internal/logic"
+	"codexie.com/w-book-user/internal/model"
 	"codexie.com/w-book-user/internal/types"
 	mock_logic "codexie.com/w-book-user/mocks/logic"
 	"github.com/golang/mock/gomock"
@@ -61,7 +62,7 @@ func TestUserHandler_LoginHandler(t *testing.T) {
 			name: "正常登录",
 			mock: func(ctrl *gomock.Controller) logic.IUserLogic {
 				userLogic := mock_logic.NewMockIUserLogic(ctrl)
-				userLogic.EXPECT().Login(gomock.Any(), gomock.Any()).Return(&types.LoginInfo{Token: "1111"}, nil)
+				userLogic.EXPECT().Login(gomock.Any(), gomock.Any()).Return(&model.User{}, nil)
 				return userLogic
 			},
 		},

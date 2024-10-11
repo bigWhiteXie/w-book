@@ -3,10 +3,11 @@ package consumer
 import (
 	"context"
 	"encoding/json"
-	"github.com/panjf2000/ants/v2"
 	"math"
 	"sync"
 	"time"
+
+	"github.com/panjf2000/ants/v2"
 
 	"codexie.com/w-book-code/internal/repo"
 	"codexie.com/w-book-code/pkg/sms"
@@ -18,12 +19,12 @@ type SmsConsumerGroup struct {
 	topic        string
 	client       sarama.ConsumerGroup
 	interuptChan chan struct{}
-	codeRepo     repo.CodeRepo
+	codeRepo     repo.SmsRepo
 	once         sync.Once
 	pool         *ants.Pool
 }
 
-func NewSmsConsumer(topic string, client sarama.ConsumerGroup, codeRepo repo.CodeRepo) *SmsConsumerGroup {
+func NewSmsConsumer(topic string, client sarama.ConsumerGroup, codeRepo repo.SmsRepo) *SmsConsumerGroup {
 	pool, _ := ants.NewPool(256, ants.WithExpiryDuration(1*time.Second), ants.WithNonblocking(false), ants.WithMaxBlockingTasks(math.MaxInt64))
 	return &SmsConsumerGroup{
 		topic:        topic,
@@ -88,7 +89,7 @@ func (h SmsConsumerGroup) ConsumeClaim(sess sarama.ConsumerGroupSession, claim s
 			data := make(map[string]string)
 			// 将 JSON 反序列化为 map
 			json.Unmarshal([]byte(record.Content), &data)
-			if err := sms.SendSms(ctx, record.Phone, data); err == nil {
+			if err := sms.MustSendSms(ctx, record.Phone, data); err == nil {
 				record.Status = 1
 			} else {
 				record.Status = 4

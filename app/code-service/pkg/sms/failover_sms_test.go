@@ -150,7 +150,7 @@ func TestSmsService_SendSms(t *testing.T) {
 			var err error
 			for i := range tt.num {
 				logx.Infof("第%d次发送", i)
-				err = s.SendSms(tt.args.ctx, tt.args.phone, tt.args.args)
+				err = s.MustSendSms(tt.args.ctx, tt.args.phone, tt.args.args)
 			}
 			if (err != nil) != tt.wantErr {
 				t.Errorf("SmsService.SendSms() error = %v, wantErr %v", err, tt.wantErr)

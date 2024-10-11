@@ -11,6 +11,7 @@ import (
 	"codexie.com/w-book-user/internal/repo/cache"
 	"codexie.com/w-book-user/internal/repo/dao"
 	"codexie.com/w-book-user/internal/svc"
+	"codexie.com/w-book-user/pkg/ijwt"
 	"codexie.com/w-book-user/pkg/limiter"
 	"codexie.com/w-book-user/pkg/middleware"
 
@@ -37,6 +38,7 @@ func main() {
 func NewServer(c config.Config, userHandler *handler.UserHandler) *rest.Server {
 	server := rest.MustNewServer(c.RestConf, rest.WithCors())
 	server.Use(middleware.NewLimiterMiddleware(limiter.NewRateLimiter(c.IpRate)).Handle)
+	server.Use(middleware.NewJwtMiddleware().Handle)
 	handler.RegisterHandlers(server, c, userHandler)
 	return server
 }
@@ -46,6 +48,7 @@ func NewApp(c config.Config) (*rest.Server, error) {
 	userDao := dao.NewUserDao(db)
 	client := svc.CreateRedisClient(c)
 	userCache := cache.NewRedisUserCache(client)
+	ijwt.InitJwtHandler(client)
 	iUserRepository := repo.NewUserRepository(userDao, userCache)
 	codeClient := svc.CreateCodeRpcClient(c)
 	iUserLogic := logic.NewUserLogic(c, iUserRepository, codeClient)

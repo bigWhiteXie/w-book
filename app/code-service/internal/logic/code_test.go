@@ -19,19 +19,22 @@ func initSvc() *svc.ServiceContext {
 	var c config.Config
 	conf.MustLoad("/usr/local/go_project/w-book/app/code-service/etc/sms.yaml", &c)
 	ctx := svc.NewServiceContext(c)
-	sms.InitSmsClient(c.SmsConf, ctx.Cache)
+	smsRepo := repo.NewSmsRepo(cache.NewRedisCache(ctx.Cache), dao.NewCodeDao(ctx.DB))
+	producer := producer.NewKafkaProducer(ctx.KafkaProvider)
+
+	sms.InitSmsClient(c.SmsConf, ctx.Cache, smsRepo, producer)
 	return ctx
 }
 
 func TestSendCode(t *testing.T) {
 	svc := initSvc()
-	codeLogic := NewCodeLogic(repo.NewCodeRepo(cache.NewRedisCache(svc.Cache), dao.NewCodeDao(svc.DB)), producer.NewKafkaProducer(svc.KafkaProvider))
+	codeLogic := NewCodeLogic(repo.NewSmsRepo(cache.NewRedisCache(svc.Cache), dao.NewCodeDao(svc.DB)), producer.NewKafkaProducer(svc.KafkaProvider))
 	codeLogic.SendCode(context.Background(), &pb.SendCodeReq{Phone: "16602624578", Biz: "login"})
 }
 
 func TestVerifyCode(t *testing.T) {
 	svc := initSvc()
-	codeLogic := NewCodeLogic(repo.NewCodeRepo(cache.NewRedisCache(svc.Cache), dao.NewCodeDao(svc.DB)), producer.NewKafkaProducer(svc.KafkaProvider))
+	codeLogic := NewCodeLogic(repo.NewSmsRepo(cache.NewRedisCache(svc.Cache), dao.NewCodeDao(svc.DB)), producer.NewKafkaProducer(svc.KafkaProvider))
 	codeLogic.VerifyCode(context.Background(), &pb.VerifyCodeReq{Phone: "16602624578", Biz: "login", Code: "160521"})
 	codeLogic.VerifyCode(context.Background(), &pb.VerifyCodeReq{Phone: "16602624578", Biz: "login", Code: "980963"})
 }

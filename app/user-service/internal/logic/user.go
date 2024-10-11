@@ -45,19 +45,16 @@ func (l *UserLogic) Sign(ctx context.Context, req *types.SignReq) error {
 	return nil
 }
 
-func (l *UserLogic) Login(ctx context.Context, req *types.LoginReq) (resp *types.LoginInfo, err error) {
+func (l *UserLogic) Login(ctx context.Context, req *types.LoginReq) (resp *model.User, err error) {
 	var user *model.User
 	if user, err = l.userRepo.FindUserByEmail(ctx, req.Email); err != nil {
-		return nil, err
+		return nil, codeerr.WithCode(codeerr.UserEmailNotExistCode, "[Login] 邮箱 %s 不存在", req.Email)
 	}
 	if err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
-		return nil, err
+		return nil, codeerr.WithCode(codeerr.UserPwdNotMatchCode, "[Login] 用户id %s 密码错误", user.Id)
 	}
-	token, err := l.createTokenByUser(user)
-	if err != nil {
-		return nil, err
-	}
-	return &types.LoginInfo{Token: token}, nil
+
+	return user, nil
 }
 
 func (l *UserLogic) Edit(ctx context.Context, req *types.UserInfoReq) error {
@@ -74,7 +71,7 @@ func (l *UserLogic) Profile(ctx context.Context) (user *model.User, err error) {
 	return user, nil
 }
 
-func (l *UserLogic) SmsLogin(ctx context.Context, smsLoginReq *types.SmsLoginReq) (resp *types.LoginInfo, err error) {
+func (l *UserLogic) SmsLogin(ctx context.Context, smsLoginReq *types.SmsLoginReq) (resp *model.User, err error) {
 	// grpc校验验证码
 	codeRpcReq := &pb.VerifyCodeReq{Code: smsLoginReq.Code, Biz: "login", Phone: smsLoginReq.Phone}
 	_, grpcErr := l.codeRpc.VerifyCode(ctx, codeRpcReq)
@@ -86,12 +83,8 @@ func (l *UserLogic) SmsLogin(ctx context.Context, smsLoginReq *types.SmsLoginReq
 	if err != nil {
 		return nil, err
 	}
-	token, err := l.createTokenByUser(user)
-	// 构造token并返回
-	if err != nil {
-		return nil, err
-	}
-	return &types.LoginInfo{Token: token}, nil
+
+	return user, nil
 }
 
 func (l *UserLogic) SendLoginCode(ctx context.Context, req *types.SmsSendCodeReq) error {

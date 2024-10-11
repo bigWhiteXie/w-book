@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"math/rand"
+	"sync/atomic"
 	"time"
 
 	"codexie.com/w-book-user/pkg/common/codeerr"
@@ -14,17 +15,21 @@ var (
 	SmsFailErr = errors.New("短信发送失败")
 )
 
+var count uint64 = 0
+
 type SmsProvider struct {
-	Name      string //服务商
-	Weight    int    // 权重
-	Status    int    // 0 不可用 | 1 可用 | 2 暂时可用
-	Client    SmsClient
-	FailCount int
-	FailLimit int
+	Name         string //服务商
+	Weight       int    // 权重
+	Status       int    // 0 不可用 | 1 可用 | 2 暂时可用
+	Client       SmsClient
+	FailCount    int
+	FailLimit    int
+	LastFailTime time.Time
 }
 
 type SmsService struct {
-	smsProviders map[string]*SmsProvider
+	smsProviders  map[string]*SmsProvider
+	RespTimeQueue [10]time.Duration
 }
 
 func NewSmsService(tcConfig Tencent, memoryConf Memeory) *SmsService {
@@ -53,36 +58,49 @@ func NewSmsService(tcConfig Tencent, memoryConf Memeory) *SmsService {
 		smsProviders: providers,
 	}
 }
-
 func (s *SmsService) SendSms(ctx context.Context, phone string, args map[string]string) error {
+	provider := s.selectProvider()
+	if provider == nil {
+		return codeerr.WithCode(codeerr.SmsNotAvaliableErr, "sms provider is nil")
+	}
+
+	startTime := time.Now()
+	err := provider.Client.SendSms(ctx, phone, args)
+	responseTime := time.Since(startTime)
+	idx := (atomic.AddUint64(&count, 1)) % 10
+	s.RespTimeQueue[int(idx)] = responseTime
+	if err != nil || responseTime >= 3*time.Second {
+		s.markProviderUnavailable(provider, 60*time.Second, err != nil)
+		if err != nil {
+			logx.Errorf("[%s] 短信发送失败,cause:%v", provider.Name, err)
+			return err
+		} else {
+			logx.Errorf("[%s]短信发送失败,响应时间超过3秒,请检查短信服务商", provider.Name)
+			return nil
+		}
+	}
+	// 重置provider状态
+	provider.Status = 1
+	provider.FailCount = 0
+	logx.Infof("短信发送成功，耗时：%v", responseTime)
+	return nil
+}
+
+func (s *SmsService) MustSendSms(ctx context.Context, phone string, args map[string]string) error {
 	for {
-		provider := s.selectProvider()
-		if provider == nil {
-			return codeerr.WithCode(codeerr.SmsNotAvaliableErr, "sms provider is nil")
+		codeErr := codeerr.WithCodeErr{}
+		if err := s.SendSms(ctx, phone, args); errors.As(err, codeErr) && codeErr.Code == codeerr.SmsNotAvaliableErr {
+			return &codeErr
 		}
-		startTime := time.Now()
-		err := provider.Client.SendSms(ctx, phone, args)
-		responseTime := time.Since(startTime)
-		if err != nil || responseTime >= 3*time.Second {
-			s.markProviderUnavailable(provider, 60*time.Second, err != nil)
-			if err != nil {
-				logx.Errorf("[%s] 短信发送失败,cause:%v", provider.Name, err)
-			} else {
-				logx.Errorf("[%s]短信发送失败,响应时间超过3秒,请检查短信服务商", provider.Name)
-			}
-			continue
-		}
-		// 重置provider状态
-		provider.Status = 1
-		provider.FailCount = 0
-		logx.Infof("短信发送成功，耗时：%v", responseTime)
-		return nil
 	}
 }
 func (s *SmsService) selectProvider() *SmsProvider {
 	totalWeight := 0
 	for _, p := range s.smsProviders {
-		if p.Status == 1 {
+		if p.Status != 0 {
+			totalWeight += p.Weight
+		} else if time.Since(p.LastFailTime) >= 60*time.Second {
+			p.Status = 2
 			totalWeight += p.Weight
 		}
 	}
@@ -93,7 +111,7 @@ func (s *SmsService) selectProvider() *SmsProvider {
 
 	randNum := rand.Intn(totalWeight)
 	for _, p := range s.smsProviders {
-		if p.Status == 1 {
+		if p.Status != 0 {
 			randNum -= p.Weight
 			if randNum < 0 {
 				return p
@@ -108,10 +126,6 @@ func (s *SmsService) markProviderUnavailable(provider *SmsProvider, cooldownTime
 	provider.FailCount++
 	if fastFail || provider.FailCount >= provider.FailLimit || provider.Status == 2 {
 		provider.Status = 0
-		go func(p *SmsProvider) {
-			time.Sleep(cooldownTime)
-			p.Status = 2
-			provider.FailCount = 0
-		}(provider)
+		provider.LastFailTime = time.Now()
 	}
 }

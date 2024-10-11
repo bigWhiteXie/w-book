@@ -2,11 +2,13 @@ package handler
 
 import (
 	"net/http"
+	"strconv"
 
 	"codexie.com/w-book-user/internal/logic"
 	"codexie.com/w-book-user/internal/types"
 	"codexie.com/w-book-user/pkg/common/codeerr"
 	"codexie.com/w-book-user/pkg/common/response"
+	"codexie.com/w-book-user/pkg/ijwt"
 	"github.com/zeromicro/go-zero/rest/httpx"
 )
 
@@ -50,10 +52,55 @@ func (u *UserHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	loginInfo, err := u.userLogic.Login(r.Context(), &req)
+
 	if err != nil {
 		resp = codeerr.HandleErr(r.Context(), err)
 	} else {
-		resp = response.Ok(loginInfo)
+		ijwt.SetLoginJWTToken(w, r, loginInfo.Id)
+		resp = response.Ok(nil)
+	}
+	httpx.OkJsonCtx(r.Context(), w, resp)
+}
+
+func (u *UserHandler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
+	var resp *response.Response
+
+	err := ijwt.ClearToken(r.Context().Value("sid").(string))
+
+	if err != nil {
+		resp = codeerr.HandleErr(r.Context(), err)
+	} else {
+		resp = response.Ok(nil)
+	}
+	httpx.OkJsonCtx(r.Context(), w, resp)
+}
+
+func (u *UserHandler) RefreshHandler(w http.ResponseWriter, r *http.Request) {
+	var resp *response.Response
+
+	tokenString := r.Header.Get("Authorization")
+	//校验token并将token的信息注入到r.context
+	r, err := ijwt.CheckTokenValid(r, tokenString, ijwt.RefreshKey)
+	if err != nil {
+		resp = codeerr.HandleErr(r.Context(), err)
+		httpx.OkJson(w, resp)
+		return
+	}
+
+	err = ijwt.ClearToken(r.Context().Value("sid").(string))
+	if err != nil {
+		resp = codeerr.HandleErr(r.Context(), err)
+		httpx.OkJson(w, resp)
+		return
+	}
+	//设置新的token
+	id := r.Context().Value("id").(string)
+	uid, _ := strconv.Atoi(id)
+	err = ijwt.SetLoginJWTToken(w, r, uid)
+	if err != nil {
+		resp = codeerr.HandleErr(r.Context(), err)
+	} else {
+		resp = response.Ok(nil)
 	}
 	httpx.OkJsonCtx(r.Context(), w, resp)
 }
@@ -103,7 +150,8 @@ func (u *UserHandler) SmsLoginHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		resp = codeerr.HandleErr(r.Context(), err)
 	} else {
-		resp = response.Ok(loginInfo)
+		ijwt.SetLoginJWTToken(w, r, loginInfo.Id)
+		resp = response.Ok(nil)
 	}
 	httpx.OkJsonCtx(r.Context(), w, resp)
 }
