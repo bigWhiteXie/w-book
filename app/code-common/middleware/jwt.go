@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	"codexie.com/w-book-user/pkg/ijwt"
+	"codexie.com/w-book-common/ijwt"
 	"github.com/zeromicro/go-zero/core/logx"
 )
 

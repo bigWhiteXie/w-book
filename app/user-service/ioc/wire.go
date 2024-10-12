@@ -1,7 +1,7 @@
 //go:build wireinject
 // +build wireinject
 
-package main
+package ioc
 
 import (
 	"codexie.com/w-book-user/internal/config"

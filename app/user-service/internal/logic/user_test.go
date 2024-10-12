@@ -7,13 +7,14 @@ import (
 
 	"codexie.com/w-book-code/api/pb"
 	mock_pb "codexie.com/w-book-code/mocks/api/pb"
+	"codexie.com/w-book-common/common/codeerr"
+	"codexie.com/w-book-common/common/sql"
 	"codexie.com/w-book-user/internal/config"
 	"codexie.com/w-book-user/internal/model"
 	"codexie.com/w-book-user/internal/repo"
 	"codexie.com/w-book-user/internal/types"
 	mock_repo "codexie.com/w-book-user/mocks/repo"
-	"codexie.com/w-book-user/pkg/common/codeerr"
-	"codexie.com/w-book-user/pkg/common/sql"
+
 	"github.com/golang/mock/gomock"
 	"github.com/zeromicro/go-zero/core/logx"
 	"golang.org/x/crypto/bcrypt"

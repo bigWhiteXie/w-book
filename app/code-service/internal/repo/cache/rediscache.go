@@ -3,7 +3,7 @@ package cache
 import (
 	"context"
 
-	"codexie.com/w-book-user/pkg/common/codeerr"
+	"codexie.com/w-book-common/common/codeerr"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )

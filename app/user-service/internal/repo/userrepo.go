@@ -4,11 +4,12 @@ import (
 	"context"
 	"strconv"
 
+	"codexie.com/w-book-common/common/codeerr"
+	"codexie.com/w-book-common/common/sql"
 	"codexie.com/w-book-user/internal/model"
 	"codexie.com/w-book-user/internal/repo/cache"
 	"codexie.com/w-book-user/internal/repo/dao"
-	"codexie.com/w-book-user/pkg/common/codeerr"
-	"codexie.com/w-book-user/pkg/common/sql"
+
 	"github.com/zeromicro/go-zero/core/logx"
 	"gorm.io/gorm"
 )

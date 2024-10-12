@@ -8,7 +8,7 @@ import (
 	"codexie.com/w-book-code/internal/kafka/producer"
 	"codexie.com/w-book-code/internal/model"
 	"codexie.com/w-book-code/internal/repo"
-	"codexie.com/w-book-user/pkg/common/codeerr"
+	"codexie.com/w-book-common/common/codeerr"
 	"github.com/redis/go-redis/v9"
 	"github.com/zeromicro/go-zero/core/logx"
 )

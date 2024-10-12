@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"testing"
 
+	"codexie.com/w-book-common/common/sql"
 	"codexie.com/w-book-user/internal/config"
 	"codexie.com/w-book-user/internal/model"
 	"codexie.com/w-book-user/internal/svc"
-	"codexie.com/w-book-user/pkg/common/sql"
+
 	"github.com/zeromicro/go-zero/core/conf"
 	"gorm.io/gorm"
 )

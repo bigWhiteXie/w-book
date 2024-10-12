@@ -6,13 +6,14 @@ import (
 	"strconv"
 
 	"codexie.com/w-book-code/api/pb"
+	"codexie.com/w-book-common/common"
+	"codexie.com/w-book-common/common/codeerr"
+	"codexie.com/w-book-common/common/sql"
 	"codexie.com/w-book-user/internal/config"
 	"codexie.com/w-book-user/internal/model"
 	"codexie.com/w-book-user/internal/repo"
 	"codexie.com/w-book-user/internal/types"
-	"codexie.com/w-book-user/pkg/common"
-	"codexie.com/w-book-user/pkg/common/codeerr"
-	"codexie.com/w-book-user/pkg/common/sql"
+
 	"github.com/zeromicro/go-zero/core/logx"
 	"golang.org/x/crypto/bcrypt"
 )

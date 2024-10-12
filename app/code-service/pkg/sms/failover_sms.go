@@ -7,7 +7,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"codexie.com/w-book-user/pkg/common/codeerr"
+	"codexie.com/w-book-common/common/codeerr"
 	"github.com/zeromicro/go-zero/core/logx"
 )
 

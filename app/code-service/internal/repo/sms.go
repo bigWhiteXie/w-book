@@ -6,7 +6,7 @@ import (
 	"codexie.com/w-book-code/internal/model"
 	"codexie.com/w-book-code/internal/repo/cache"
 	"codexie.com/w-book-code/internal/repo/dao"
-	"codexie.com/w-book-user/pkg/common/codeerr"
+	"codexie.com/w-book-common/common/codeerr"
 )
 
 type SmsRepo interface {

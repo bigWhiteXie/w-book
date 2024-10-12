@@ -1,10 +1,11 @@
 package middleware
 
 import (
-	"codexie.com/w-book-user/pkg/limiter"
-	"github.com/zeromicro/go-zero/core/logx"
 	"net/http"
 	"strings"
+
+	"codexie.com/w-book-common/limiter"
+	"github.com/zeromicro/go-zero/core/logx"
 )
 
 type IpLimiterMiddleware struct {

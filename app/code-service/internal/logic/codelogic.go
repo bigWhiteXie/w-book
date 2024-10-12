@@ -9,7 +9,7 @@ import (
 	"codexie.com/w-book-code/internal/kafka/producer"
 	"codexie.com/w-book-code/internal/repo"
 	"codexie.com/w-book-code/pkg/sms"
-	"codexie.com/w-book-user/pkg/common/codeerr"
+	"codexie.com/w-book-common/common/codeerr"
 
 	"codexie.com/w-book-code/api/pb"
 	"github.com/zeromicro/go-zero/core/logx"

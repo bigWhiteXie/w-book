@@ -6,8 +6,9 @@ import (
 	"testing"
 
 	"codexie.com/w-book-code/api/pb"
+	"codexie.com/w-book-common/common/codeerr"
 	"codexie.com/w-book-user/internal/config"
-	"codexie.com/w-book-user/pkg/common/codeerr"
+
 	"github.com/zeromicro/go-zero/core/conf"
 	"github.com/zeromicro/go-zero/zrpc"
 )

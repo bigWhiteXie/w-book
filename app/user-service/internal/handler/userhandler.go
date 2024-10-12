@@ -4,11 +4,12 @@ import (
 	"net/http"
 	"strconv"
 
+	"codexie.com/w-book-common/common/codeerr"
+	"codexie.com/w-book-common/common/response"
+	"codexie.com/w-book-common/ijwt"
 	"codexie.com/w-book-user/internal/logic"
 	"codexie.com/w-book-user/internal/types"
-	"codexie.com/w-book-user/pkg/common/codeerr"
-	"codexie.com/w-book-user/pkg/common/response"
-	"codexie.com/w-book-user/pkg/ijwt"
+
 	"github.com/zeromicro/go-zero/rest/httpx"
 )
 

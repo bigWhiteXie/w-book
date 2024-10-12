@@ -1,7 +1,7 @@
 package config
 
 import (
-	"codexie.com/w-book-user/pkg/limiter"
+	"codexie.com/w-book-common/limiter"
 	"github.com/zeromicro/go-zero/rest"
 	"github.com/zeromicro/go-zero/zrpc"
 )
@@ -12,10 +12,11 @@ type Config struct {
 		AccessSecret string
 		AccessExpire int64
 	}
-	CodeRpcConf zrpc.RpcClientConf
-	MySQLConf   MySQLConf
-	RedisConf   RedisConf
-	IpRate      limiter.IpLimitConfig
+	BucketRateConf limiter.TokenBucketRateConf
+	CodeRpcConf    zrpc.RpcClientConf
+	MySQLConf      MySQLConf
+	RedisConf      RedisConf
+	IpRate         limiter.IpLimitConfig
 }
 
 type MySQLConf struct {

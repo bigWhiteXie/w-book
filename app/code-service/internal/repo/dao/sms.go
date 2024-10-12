@@ -5,7 +5,8 @@ import (
 	"strconv"
 
 	"codexie.com/w-book-code/internal/model"
-	"codexie.com/w-book-user/pkg/common/codeerr"
+	"codexie.com/w-book-common/common/codeerr"
+
 	"gorm.io/gorm"
 )
 

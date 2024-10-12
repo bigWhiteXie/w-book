@@ -15,6 +15,10 @@ Auth:
 IpRate:
   Rate: 10
   Capacity: 20
+BucketRateConf:
+  Capacity: 10
+  TokensPerSecond: 2
+  Biz: system
 
 MySQLConf:
   Enable: true

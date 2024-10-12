@@ -6,8 +6,9 @@ import (
 	"reflect"
 	"testing"
 
+	"codexie.com/w-book-common/common/sql"
 	"codexie.com/w-book-user/internal/model"
-	"codexie.com/w-book-user/pkg/common/sql"
+
 	"github.com/DATA-DOG/go-sqlmock"
 	dmysql "github.com/go-sql-driver/mysql"
 	"github.com/golang/mock/gomock"
