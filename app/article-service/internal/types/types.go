@@ -4,9 +4,9 @@
 package types
 
 type EditArticleReq struct {
-	Titile    string `json:"title"`
+	Title    string `json:"title"`
 	Content   string `json:"content"`
-	ArticleId string `json:"articleId"`
+	Id int64 `json:"articleId"`
 }
 
 type EditArticleResp struct {

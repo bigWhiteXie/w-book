@@ -26,7 +26,8 @@ func NewServiceContext(c config.Config) *ServiceContext {
 	}
 }
 
-func creteDbClient(mysqlConf config.MySQLConf) *gorm.DB {
+func CreteDbClient(c config.Config) *gorm.DB {
+	mysqlConf := c.MySQLConf
 	datasource := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=%s&parseTime=%t&loc=%s",
 		mysqlConf.User,
 		mysqlConf.Password,
@@ -61,7 +62,7 @@ func creteDbClient(mysqlConf config.MySQLConf) *gorm.DB {
 	return db
 }
 
-func createRedisClient(redisConf config.RedisConf) *redis.Client {
+func CreateRedisClient(redisConf config.RedisConf) *redis.Client {
 	myRedis := redis.NewClient(&redis.Options{
 		Addr:     redisConf.Host,
 		Password: redisConf.Pass,
@@ -80,6 +81,9 @@ func createRedisClient(redisConf config.RedisConf) *redis.Client {
 
 func InitTables(db *gorm.DB) error {
 	if err := db.AutoMigrate(&dao.Article{}); err != nil {
+		return err
+	}
+	if err := db.AutoMigrate(&dao.PublishedArticle{}); err != nil {
 		return err
 	}
 	return nil

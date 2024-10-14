@@ -60,7 +60,7 @@ func ParseGrpcErr(err error) error {
 
 		}
 	}
-	return WithCode(SystemErrCpde, st.Message())
+	return WithCode(SystemErrCode, st.Message())
 }
 
 func ToGrpcErr(e error) error {

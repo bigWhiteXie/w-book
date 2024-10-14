@@ -1,7 +1,8 @@
 package codeerr
 
 const (
-	SystemErrCpde = 000001
+	SystemErrCode = 000001
+	UserErrCode   = 000002
 )
 const (
 	UserEmailDuplicateCode = 100001
@@ -25,8 +26,12 @@ const (
 	SmsNotAvaliableErr = 300004
 )
 
+const (
+	ArtEditOtherERR = 400001
+)
+
 func init() {
-	MustRegister(SystemErrCpde, 200, "系统内部错误")
+	MustRegister(SystemErrCode, 200, "系统内部错误")
 
 	MustRegister(UserEmailDuplicateCode, 200, "该邮箱已经存在")
 	MustRegister(UserEmailNotExistCode, 200, "该邮箱未注册")
@@ -43,4 +48,7 @@ func init() {
 	MustRegister(SmsRecordSaveErr, 200, "短信发送失败")
 	MustRegister(SmsNotFoundErr, 200, "短信不存在")
 	MustRegister(SmsNotAvaliableErr, 200, "所有短信服务商均不可用，请检查网络和服务商余量")
+
+	MustRegister(UserErrCode, 200, "用户操作越界")
+
 }
