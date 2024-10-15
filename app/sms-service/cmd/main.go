@@ -24,7 +24,7 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
-var configFile = flag.String("f", "/usr/local/go_project/w-book/app/code-service/etc/sms.yaml", "the config file")
+var configFile = flag.String("f", "/usr/local/go_project/w-book/app/sms-service/etc/sms.yaml", "the config file")
 
 func main() {
 	flag.Parse()

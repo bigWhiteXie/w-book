@@ -23,18 +23,18 @@ func TestSmsService_SendSms(t *testing.T) {
 	tests := []struct {
 		name    string
 		fields  fields
-		mock    func(ctrl *gomock.Controller) *SmsService
+		mock    func(ctrl *gomock.Controller) *SmsManager
 		args    args
 		wantErr bool
 		num     int
 	}{
 		{
 			name: "正常发送",
-			mock: func(ctrl *gomock.Controller) *SmsService {
+			mock: func(ctrl *gomock.Controller) *SmsManager {
 				c1 := mock_sms.NewMockSmsClient(ctrl)
 				c1.EXPECT().SendSms(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 
-				s := &SmsService{
+				s := &SmsManager{
 					smsProviders: map[string]*SmsProvider{
 						"c1": {
 							Name:      "c1",
@@ -59,12 +59,12 @@ func TestSmsService_SendSms(t *testing.T) {
 		},
 		{
 			name: "失败切换服务商",
-			mock: func(ctrl *gomock.Controller) *SmsService {
+			mock: func(ctrl *gomock.Controller) *SmsManager {
 				c1 := mock_sms.NewMockSmsClient(ctrl)
 				c1.EXPECT().SendSms(gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("error"))
 				c2 := mock_sms.NewMockSmsClient(ctrl)
 				c2.EXPECT().SendSms(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
-				s := &SmsService{
+				s := &SmsManager{
 					smsProviders: map[string]*SmsProvider{
 						"c1": {
 							Name:      "c1",
@@ -96,7 +96,7 @@ func TestSmsService_SendSms(t *testing.T) {
 		},
 		{
 			name: "超时3次切换服务商",
-			mock: func(ctrl *gomock.Controller) *SmsService {
+			mock: func(ctrl *gomock.Controller) *SmsManager {
 				c1 := mock_sms.NewMockSmsClient(ctrl)
 				c1.EXPECT().SendSms(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, phone string, args map[string]string) error {
 					time.Sleep(4 * time.Second)
@@ -112,7 +112,7 @@ func TestSmsService_SendSms(t *testing.T) {
 				})
 				c2 := mock_sms.NewMockSmsClient(ctrl)
 				c2.EXPECT().SendSms(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
-				s := &SmsService{
+				s := &SmsManager{
 					smsProviders: map[string]*SmsProvider{
 						"c1": {
 							Name:      "c1",

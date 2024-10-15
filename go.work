@@ -3,7 +3,7 @@ go 1.22.1
 use (
 	./app/user-service
 	./app/article-service
-	./app/code-service
+	./app/sms-service
 	./app/code-common
 )
 

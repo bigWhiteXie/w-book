@@ -15,7 +15,7 @@ import (
 
 var topic = "sms-topic"
 
-var smsService *SmsService
+var smsService *SmsManager
 var smsRepo repo.SmsRepo
 var provider *producer.KafkaProducer
 var cache *redis.Client
@@ -27,7 +27,7 @@ type SmsClient interface {
 }
 
 func InitSmsClient(conf SmsConf, client *redis.Client, repo repo.SmsRepo, kafkaProvider *producer.KafkaProducer) {
-	smsService = NewSmsService(conf.TC, conf.Memory)
+	smsService = NewSmsManager(conf.TC, conf.Memory)
 	smsRepo = repo
 	provider = kafkaProvider
 	cache = client

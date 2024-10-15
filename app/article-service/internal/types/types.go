@@ -6,7 +6,7 @@ package types
 type EditArticleReq struct {
 	Title    string `json:"title"`
 	Content   string `json:"content"`
-	Id int64 `json:"articleId"`
+	Id int64 `json:"id"`
 }
 
 type EditArticleResp struct {

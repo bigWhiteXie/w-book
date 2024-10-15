@@ -27,12 +27,12 @@ type SmsProvider struct {
 	LastFailTime time.Time
 }
 
-type SmsService struct {
+type SmsManager struct {
 	smsProviders  map[string]*SmsProvider
 	RespTimeQueue [10]time.Duration
 }
 
-func NewSmsService(tcConfig Tencent, memoryConf Memeory) *SmsService {
+func NewSmsManager(tcConfig Tencent, memoryConf Memeory) *SmsManager {
 	providers := make(map[string]*SmsProvider)
 	tcClient := NewTCSmsClient(tcConfig)
 	memClient := NewMemoryClient()
@@ -54,21 +54,24 @@ func NewSmsService(tcConfig Tencent, memoryConf Memeory) *SmsService {
 		FailLimit: 3,
 	}
 
-	return &SmsService{
+	return &SmsManager{
 		smsProviders: providers,
 	}
 }
-func (s *SmsService) SendSms(ctx context.Context, phone string, args map[string]string) error {
+func (s *SmsManager) SendSms(ctx context.Context, phone string, args map[string]string) error {
 	provider := s.selectProvider()
 	if provider == nil {
-		return codeerr.WithCode(codeerr.SmsNotAvaliableErr, "sms provider is nil")
+		return codeerr.WithCode(codeerr.SmsNotAvaliableErr, "no avaliable sms provider")
 	}
 
 	startTime := time.Now()
 	err := provider.Client.SendSms(ctx, phone, args)
 	responseTime := time.Since(startTime)
-	idx := (atomic.AddUint64(&count, 1)) % 10
-	s.RespTimeQueue[int(idx)] = responseTime
+	if err == nil {
+		idx := (atomic.AddUint64(&count, 1)) % 10
+		s.RespTimeQueue[int(idx)] = responseTime
+	}
+
 	if err != nil || responseTime >= 3*time.Second {
 		s.markProviderUnavailable(provider, 60*time.Second, err != nil)
 		if err != nil {
@@ -86,7 +89,7 @@ func (s *SmsService) SendSms(ctx context.Context, phone string, args map[string]
 	return nil
 }
 
-func (s *SmsService) MustSendSms(ctx context.Context, phone string, args map[string]string) error {
+func (s *SmsManager) MustSendSms(ctx context.Context, phone string, args map[string]string) error {
 	for {
 		codeErr := codeerr.WithCodeErr{}
 		if err := s.SendSms(ctx, phone, args); errors.As(err, codeErr) && codeErr.Code == codeerr.SmsNotAvaliableErr {
@@ -94,7 +97,7 @@ func (s *SmsService) MustSendSms(ctx context.Context, phone string, args map[str
 		}
 	}
 }
-func (s *SmsService) selectProvider() *SmsProvider {
+func (s *SmsManager) selectProvider() *SmsProvider {
 	totalWeight := 0
 	for _, p := range s.smsProviders {
 		if p.Status != 0 {
@@ -122,7 +125,7 @@ func (s *SmsService) selectProvider() *SmsProvider {
 }
 
 // 当发送失败时调用该方法，会自动将连续失败N次的供应商标记为失败，并在cooldownTime后重新标记为可用
-func (s *SmsService) markProviderUnavailable(provider *SmsProvider, cooldownTime time.Duration, fastFail bool) {
+func (s *SmsManager) markProviderUnavailable(provider *SmsProvider, cooldownTime time.Duration, fastFail bool) {
 	provider.FailCount++
 	if fastFail || provider.FailCount >= provider.FailLimit || provider.Status == 2 {
 		provider.Status = 0

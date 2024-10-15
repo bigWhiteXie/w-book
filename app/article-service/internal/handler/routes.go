@@ -15,6 +15,11 @@ func RegisterHandlers(server *rest.Server, articleHandler *ArticleHandler) {
 				Path:    "/article/edit",
 				Handler: articleHandler.EditArticle,
 			},
+			{
+				Method:  http.MethodPost,
+				Path:    "/article/publish",
+				Handler: articleHandler.publish,
+			},
 		},
 		rest.WithPrefix("/v1"),
 		rest.WithTimeout(3000*time.Millisecond),
