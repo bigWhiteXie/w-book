@@ -1,0 +1,25 @@
+syntax = "v1"
+// goctl api go -api .\article.api -dir ../
+type (
+	EditArticleReq {
+		titile    string `json:"title"`
+		Content   string `json:"content"`
+		ArticleId string `json:"articleId"`
+	}
+	EditArticleResp {
+		Code int32  `json:"code"`
+		Msg  string `json:"msg"`
+	}
+)
+
+@server (
+	prefix:   /v1
+	group:    article
+	timeout:  3s
+	maxBytes: 1048576000
+)
+service article {
+	@handler edit
+	post /article/edit (EditArticleReq) returns (EditArticleResp)
+}
+
