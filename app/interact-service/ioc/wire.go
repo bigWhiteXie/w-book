@@ -4,14 +4,14 @@
 package ioc
 
 import (
-	"codexie.com/w-book-article/internal/config"
-	"codexie.com/w-book-article/internal/dao/cache"
-	dao "codexie.com/w-book-article/internal/dao/db"
-	"codexie.com/w-book-article/internal/handler"
-	"codexie.com/w-book-article/internal/logic"
-	"codexie.com/w-book-article/internal/repo"
+	"codexie.com/w-book-interact/internal/config"
+	"codexie.com/w-book-interact/internal/dao/cache"
+	dao "codexie.com/w-book-interact/internal/dao/db"
+	"codexie.com/w-book-interact/internal/handler"
+	"codexie.com/w-book-interact/internal/logic"
+	"codexie.com/w-book-interact/internal/repo"
 
-	"codexie.com/w-book-article/internal/svc"
+	"codexie.com/w-book-interact/internal/svc"
 	"github.com/google/wire"
 	"github.com/zeromicro/go-zero/rest"
 )

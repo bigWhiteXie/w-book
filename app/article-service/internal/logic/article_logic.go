@@ -40,7 +40,7 @@ func (l *ArticleLogic) Publish(ctx context.Context, req *types.EditArticleReq) (
 			Id: int64(id),
 		},
 	}
-	//保存到制作库
+	//保存到制作库,并刷新缓存
 	artId, err := l.authorRepo.Save(ctx, artDomain)
 	if err != nil {
 		return 0, err
@@ -49,4 +49,16 @@ func (l *ArticleLogic) Publish(ctx context.Context, req *types.EditArticleReq) (
 	artDomain.Id = artId
 	artDomain.Status = domain.ArticlePublishedStatus
 	return l.readerRepo.Save(ctx, artDomain)
+}
+
+func (l *ArticleLogic) Page(ctx context.Context, req *types.ArticlePageReq) ([]*domain.Article, error) {
+	id := int64(ctx.Value("id").(int))
+	return l.authorRepo.SelectPage(ctx, id, req.Page, req.Size)
+}
+
+func (l *ArticleLogic) ViewArticle(ctx context.Context, req *types.ArticleViewReq) (*domain.Article, error) {
+	if req.IsPublished {
+		return l.readerRepo.FindById(ctx, req.Id)
+	}
+	return l.authorRepo.FindArticleById(ctx, req.Id)
 }

@@ -1,7 +1,8 @@
-package dao
+package db
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -15,13 +16,21 @@ var (
 )
 
 type PublishedArticle struct {
-	Id       int64 `gorm:"primaryKey"`
-	Title    string
-	Content  string `gorm:"type:blob"`
-	AuthorId int64  `gorm:"index:idx_uid_uptime"`
-	Status   uint8  `gorm:""`
-	Ctime    int64
-	Utime    int64 `gorm:"index:idx_uid_uptime"`
+	Id       int64  `json:"",gorm:"primaryKey"`
+	Title    string `json:""`
+	Content  string `json:"",gorm:"type:blob"`
+	AuthorId int64  `json:"",gorm:"index:idx_uid_uptime"`
+	Status   uint8  `json:"",gorm:""`
+	Ctime    int64  `json:"",`
+	Utime    int64  `json:"",gorm:"index:idx_uid_uptime"`
+}
+
+func (a *PublishedArticle) MarshalBinary() ([]byte, error) {
+	return json.Marshal(a)
+}
+
+func (a *PublishedArticle) UnmarshalBinary(data []byte) error {
+	return json.Unmarshal(data, a)
 }
 
 type ReaderDao struct {
@@ -64,7 +73,7 @@ func (d *ReaderDao) Save(ctx context.Context, artEntity *PublishedArticle) error
 			Columns:   []clause.Column{{Name: "id"}},                                   // 以 ID 作为冲突判断
 			DoUpdates: clause.AssignmentColumns([]string{"title", "content", "utime"}), // 更新字段
 		},
-	).Where("author_id=?", artEntity.AuthorId).Create(&artEntity).Error
+	).Create(&artEntity).Error
 	return err
 }
 

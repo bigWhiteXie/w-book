@@ -1,13 +1,36 @@
 package domain
 
+import "encoding/json"
+
 type Article struct {
-	Id      int64
-	Title   string
-	Content string
-	Status  ArticleStatus
-	Author  Author
-	Utime   int64
-	Ctime   int64
+	Id      int64         `json:"id"`
+	Title   string        `json:"title"`
+	Content string        `json:"content"`
+	Status  ArticleStatus `json:"status"`
+	Author  Author        `json:"author"`
+	Utime   int64         `json:"utime"`
+	Ctime   int64         `json:"ctime"`
+}
+
+func (a *Article) MarshalBinary() ([]byte, error) {
+	return json.Marshal(a)
+}
+
+func (a *Article) UnmarshalBinary(data []byte) error {
+	return json.Unmarshal(data, a)
+}
+
+type ArticleArray []*Article
+
+// 序列化
+func (m ArticleArray) MarshalBinary() (data []byte, err error) {
+	return json.Marshal(m)
+}
+
+// 反序列化
+func (m ArticleArray) UnmarshalBinary(data []byte) error {
+	return json.Unmarshal(data, m)
+
 }
 
 type ArticleStatus uint8
@@ -36,6 +59,6 @@ const (
 )
 
 type Author struct {
-	Id   int64
-	Name string
+	Id   int64  `json:"author_id"`
+	Name string `json:"name"`
 }

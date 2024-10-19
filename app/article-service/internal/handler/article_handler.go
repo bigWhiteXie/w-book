@@ -42,7 +42,7 @@ func (h *ArticleHandler) EditArticle(w http.ResponseWriter, r *http.Request) {
 	httpx.OkJsonCtx(r.Context(), w, resp)
 }
 
-func (h *ArticleHandler) publish(w http.ResponseWriter, r *http.Request) {
+func (h *ArticleHandler) Publish(w http.ResponseWriter, r *http.Request) {
 	var (
 		req  types.EditArticleReq
 		resp *response.Response
@@ -57,6 +57,44 @@ func (h *ArticleHandler) publish(w http.ResponseWriter, r *http.Request) {
 		resp = codeerr.HandleErr(r.Context(), err)
 	} else {
 		resp = response.Ok(id)
+	}
+	httpx.OkJsonCtx(r.Context(), w, resp)
+}
+
+func (h *ArticleHandler) FindPage(w http.ResponseWriter, r *http.Request) {
+	var (
+		req  types.ArticlePageReq
+		resp *response.Response
+	)
+	if err := httpx.Parse(r, &req); err != nil {
+		httpx.ErrorCtx(r.Context(), w, err)
+		return
+	}
+
+	artList, err := h.articleLogic.Page(r.Context(), &req)
+	if err != nil {
+		resp = codeerr.HandleErr(r.Context(), err)
+	} else {
+		resp = response.Ok(artList)
+	}
+	httpx.OkJsonCtx(r.Context(), w, resp)
+}
+
+func (h *ArticleHandler) ViewArticle(w http.ResponseWriter, r *http.Request) {
+	var (
+		req  types.ArticleViewReq
+		resp *response.Response
+	)
+	if err := httpx.Parse(r, &req); err != nil {
+		httpx.ErrorCtx(r.Context(), w, err)
+		return
+	}
+
+	article, err := h.articleLogic.ViewArticle(r.Context(), &req)
+	if err != nil {
+		resp = codeerr.HandleErr(r.Context(), err)
+	} else {
+		resp = response.Ok(article)
 	}
 	httpx.OkJsonCtx(r.Context(), w, resp)
 }

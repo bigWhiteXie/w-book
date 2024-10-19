@@ -7,13 +7,13 @@
 package ioc
 
 import (
-	"codexie.com/w-book-article/internal/config"
-	"codexie.com/w-book-article/internal/dao/cache"
-	"codexie.com/w-book-article/internal/dao/db"
-	"codexie.com/w-book-article/internal/handler"
-	"codexie.com/w-book-article/internal/logic"
-	"codexie.com/w-book-article/internal/repo"
-	"codexie.com/w-book-article/internal/svc"
+	"codexie.com/w-book-interact/internal/config"
+	"codexie.com/w-book-interact/internal/dao/cache"
+	"codexie.com/w-book-interact/internal/dao/db"
+	"codexie.com/w-book-interact/internal/handler"
+	"codexie.com/w-book-interact/internal/logic"
+	"codexie.com/w-book-interact/internal/repo"
+	"codexie.com/w-book-interact/internal/svc"
 	"github.com/google/wire"
 	"github.com/zeromicro/go-zero/rest"
 )
@@ -23,14 +23,14 @@ import (
 func NewApp(c config.Config) (*rest.Server, error) {
 	serviceContext := svc.NewServiceContext(c)
 	gormDB := svc.CreteDbClient(c)
-	authorDao := db.NewAuthorDao(gormDB)
+	authorDao := db.NewInteractDao(gormDB)
 	client := svc.CreateRedisClient(c)
-	articleCache := cache.NewArticleRedis(client)
-	iAuthorRepository := repo.NewAuthorRepository(authorDao, articleCache)
-	readerDao := db.NewReaderDao(gormDB)
+	articleCache := cache.NewInteractRedis(client)
+	iAuthorRepository := repo.NewLikeInfoRepository(authorDao, articleCache)
+	readerDao := db.NewLikeInfoDao(gormDB)
 	iReaderRepository := repo.NewReaderRepository(readerDao, articleCache)
 	articleLogic := logic.NewArticleLogic(iAuthorRepository, iReaderRepository)
-	articleHandler := handler.NewArticleHandler(serviceContext, articleLogic)
+	articleHandler := handler.NewInteractHandler(serviceContext, articleLogic)
 	server := NewServer(c, articleHandler)
 	return server, nil
 }
@@ -39,14 +39,14 @@ func NewApp(c config.Config) (*rest.Server, error) {
 
 var ServerSet = wire.NewSet(NewServer)
 
-var HandlerSet = wire.NewSet(handler.NewArticleHandler)
+var HandlerSet = wire.NewSet(handler.NewInteractHandler)
 
 var LogicSet = wire.NewSet(logic.NewArticleLogic)
 
 var SvcSet = wire.NewSet(svc.NewServiceContext)
 
-var RepoSet = wire.NewSet(repo.NewAuthorRepository, repo.NewReaderRepository)
+var RepoSet = wire.NewSet(repo.NewLikeInfoRepository, repo.NewReaderRepository)
 
-var DaoSet = wire.NewSet(db.NewAuthorDao, db.NewReaderDao, cache.NewArticleRedis)
+var DaoSet = wire.NewSet(db.NewInteractDao, db.NewLikeInfoDao, cache.NewInteractRedis)
 
 var DbSet = wire.NewSet(svc.CreteDbClient, svc.CreateRedisClient)

@@ -3,10 +3,10 @@
 
 package types
 
-type EditArticleReq struct {
-	Title    string `json:"title"`
-	Content   string `json:"content"`
-	Id int64 `json:"id"`
+type LikeResourceReq struct {
+	Biz        string `json:"biz"`
+	BizId      int64  `json:"biz_id"`
+	Liked      uint8  `json:"liked"`
 }
 
 type EditArticleResp struct {

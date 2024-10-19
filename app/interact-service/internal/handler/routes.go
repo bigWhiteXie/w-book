@@ -7,7 +7,7 @@ import (
 	"github.com/zeromicro/go-zero/rest"
 )
 
-func RegisterHandlers(server *rest.Server, articleHandler *ArticleHandler) {
+func RegisterHandlers(server *rest.Server, articleHandler *InteractHandler) {
 	server.AddRoutes(
 		[]rest.Route{
 			{
@@ -18,7 +18,7 @@ func RegisterHandlers(server *rest.Server, articleHandler *ArticleHandler) {
 			{
 				Method:  http.MethodPost,
 				Path:    "/article/publish",
-				Handler: articleHandler.Publish,
+				Handler: articleHandler.publish,
 			},
 			{
 				Method:  http.MethodGet,

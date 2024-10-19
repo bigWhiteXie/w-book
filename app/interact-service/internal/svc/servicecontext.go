@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"codexie.com/w-book-article/internal/config"
-	dao "codexie.com/w-book-article/internal/dao/db"
+	"codexie.com/w-book-interact/internal/config"
+	dao "codexie.com/w-book-interact/internal/dao/db"
 	"github.com/redis/go-redis/v9"
 	"github.com/zeromicro/go-zero/core/logx"
 	"gorm.io/driver/mysql"
@@ -81,10 +81,10 @@ func CreateRedisClient(c config.Config) *redis.Client {
 }
 
 func InitTables(db *gorm.DB) error {
-	if err := db.AutoMigrate(&dao.Article{}); err != nil {
+	if err := db.AutoMigrate(&dao.Interaction{}); err != nil {
 		return err
 	}
-	if err := db.AutoMigrate(&dao.PublishedArticle{}); err != nil {
+	if err := db.AutoMigrate(&dao.LikeInfo{}); err != nil {
 		return err
 	}
 	return nil
