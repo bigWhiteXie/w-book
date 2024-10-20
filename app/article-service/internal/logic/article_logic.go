@@ -31,7 +31,7 @@ func (l *ArticleLogic) Edit(ctx context.Context, req *types.EditArticleReq) (int
 }
 
 func (l *ArticleLogic) Publish(ctx context.Context, req *types.EditArticleReq) (int64, error) {
-	id := ctx.Value("id").(int)
+	id := ctx.Value("id").(int64)
 	artDomain := &domain.Article{
 		Id:      req.Id,
 		Title:   req.Title,
@@ -48,7 +48,13 @@ func (l *ArticleLogic) Publish(ctx context.Context, req *types.EditArticleReq) (
 
 	artDomain.Id = artId
 	artDomain.Status = domain.ArticlePublishedStatus
-	return l.readerRepo.Save(ctx, artDomain)
+	for i := 0; i < 3; i++ {
+		if id, err = l.readerRepo.Save(ctx, artDomain); err == nil {
+			return id, err
+		}
+	}
+
+	return 0, err
 }
 
 func (l *ArticleLogic) Page(ctx context.Context, req *types.ArticlePageReq) ([]*domain.Article, error) {

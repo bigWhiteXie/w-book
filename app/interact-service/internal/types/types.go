@@ -8,13 +8,13 @@ import "codexie.com/w-book-interact/internal/domain"
 type LikeResourceReq struct {
 	Biz        string `json:"biz"`
 	BizId      int64  `json:"biz_id"`
-	Liked      uint8  `json:"liked"`
+	Action      uint8  `json:"action,optional"`
 }
 
 type CollectionReq struct {
 	Id        int64 `json:"id,optional"`
 	Name        string `json:"name"`
-	Action      uint8  `json:"action"`
+	Action      uint8  `json:"action,optional"`
 	
 }
 
@@ -23,7 +23,7 @@ type CollectResourceReq struct {
 	Biz        string `json:"biz"`
 	BizId      int64  `json:"biz_id"`
 	Cid      int64  `json:"cid"`
-	Action      uint8  `json:"action"`
+	Action      uint8  `json:"action,optional"`
 }
 
 func (req *CollectResourceReq) ToDomain(uid int64) *domain.CollectionItem {

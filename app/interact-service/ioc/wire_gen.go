@@ -22,16 +22,17 @@ import (
 
 func NewApp(c config.Config) (*rest.Server, error) {
 	serviceContext := svc.NewServiceContext(c)
-	gormDB := svc.CreteDbClient(c)
-	authorDao := db.NewInteractDao(gormDB)
 	client := svc.CreateRedisClient(c)
-	articleCache := cache.NewInteractRedis(client)
-	iAuthorRepository := repo.NewLikeInfoRepository(authorDao, articleCache)
-	readerDao := db.NewLikeInfoDao(gormDB)
-	iReaderRepository := repo.NewInteractRepository(readerDao, articleCache)
-	articleLogic := logic.NewInteractLogic(iAuthorRepository, iReaderRepository)
-	articleHandler := handler.NewInteractHandler(serviceContext, articleLogic)
-	server := NewServer(c, articleHandler)
+	interactCache := cache.NewInteractRedis(client)
+	gormDB := svc.CreteDbClient(c)
+	iLikeInfoRepository := repo.NewLikeInfoRepository(interactCache, gormDB)
+	interactDao := db.NewInteractDao(gormDB)
+	iInteractRepo := repo.NewInteractRepository(interactDao, interactCache)
+	collectionDao := db.NewCollectionDao(gormDB)
+	iCollectRepository := repo.NewCollectRepository(interactCache, collectionDao)
+	interactLogic := logic.NewInteractLogic(iLikeInfoRepository, iInteractRepo, iCollectRepository)
+	interactHandler := handler.NewInteractHandler(serviceContext, interactLogic)
+	server := NewServer(c, interactHandler)
 	return server, nil
 }
 
@@ -45,8 +46,8 @@ var LogicSet = wire.NewSet(logic.NewInteractLogic)
 
 var SvcSet = wire.NewSet(svc.NewServiceContext)
 
-var RepoSet = wire.NewSet(repo.NewLikeInfoRepository, repo.NewInteractRepository)
+var RepoSet = wire.NewSet(repo.NewCollectRepository, repo.NewInteractRepository, repo.NewLikeInfoRepository)
 
-var DaoSet = wire.NewSet(db.NewInteractDao, db.NewLikeInfoDao, cache.NewInteractRedis)
+var DaoSet = wire.NewSet(db.NewCollectionDao, db.NewInteractDao, db.NewLikeInfoDao, cache.NewInteractRedis)
 
 var DbSet = wire.NewSet(svc.CreteDbClient, svc.CreateRedisClient)

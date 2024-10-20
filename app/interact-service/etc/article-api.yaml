@@ -1,6 +1,6 @@
-Name: article
+Name: interaction
 Host: 0.0.0.0
-Port: 20810
+Port: 20820
 
 MySQLConf:
   Enable: true
@@ -8,7 +8,7 @@ MySQLConf:
   Password: j3391111
   Host: 192.168.126.100
   Port: 3306
-  Database: w-book-article
+  Database: w-book-interaction
   CharSet: utf8
   ParseTime: true
   TimeZOne: Local

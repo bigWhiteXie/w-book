@@ -18,15 +18,15 @@ import (
 
 var ServerSet = wire.NewSet(NewServer)
 
-var HandlerSet = wire.NewSet(handler.NewArticleHandler)
+var HandlerSet = wire.NewSet(handler.NewInteractHandler)
 
-var LogicSet = wire.NewSet(logic.NewArticleLogic)
+var LogicSet = wire.NewSet(logic.NewInteractLogic)
 
 var SvcSet = wire.NewSet(svc.NewServiceContext)
 
-var RepoSet = wire.NewSet(repo.NewAuthorRepository, repo.NewReaderRepository)
+var RepoSet = wire.NewSet(repo.NewCollectRepository, repo.NewInteractRepository, repo.NewLikeInfoRepository)
 
-var DaoSet = wire.NewSet(dao.NewAuthorDao, dao.NewReaderDao, cache.NewArticleRedis)
+var DaoSet = wire.NewSet(dao.NewCollectionDao, dao.NewInteractDao, dao.NewLikeInfoDao, cache.NewInteractRedis)
 
 var DbSet = wire.NewSet(svc.CreteDbClient, svc.CreateRedisClient)
 

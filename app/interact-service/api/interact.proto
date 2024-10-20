@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+// proto 包名
+package api;
+// goctl rpc protoc sms.proto --go_out=./pb --go-grpc_out=./pb --zrpc_out=. --client=true
+// 生成 golang 代码后的包名
+option go_package = "codexie.com/w-book-interact";
+
+// 查询交互计数请求
+message QueryInteractionReq {
+    string Biz = 1;   //业务类型
+    int64 BizId = 2;  //id
+}
+
+// 增加阅读量请求
+message AddReadCntReq {
+  string Biz = 1;   //业务类型
+  int64 BizId = 2;  //id
+}
+
+// 通用响应体
+message InteractionResult {
+    int64 ReadCnt = 1;
+    int64 CollectCnt = 2;
+    int64 LikeCnt = 3;
+}
+
+message CommonResult {
+  string Msg = 1;
+}
+
+
+// 定义 Greet 服务
+service Interaction {
+  rpc QueryInteractionInfo(QueryInteractionReq) returns (InteractionResult);
+  rpc IncreReadCnt(AddReadCntReq) returns(CommonResult);
+}

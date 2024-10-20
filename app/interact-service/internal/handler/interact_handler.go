@@ -41,3 +41,43 @@ func (h *InteractHandler) LikeResource(w http.ResponseWriter, r *http.Request) {
 	}
 	httpx.OkJsonCtx(r.Context(), w, resp)
 }
+
+func (h *InteractHandler) OperateCollection(w http.ResponseWriter, r *http.Request) {
+	var (
+		req  types.CollectionReq
+		resp *response.Response
+	)
+	if err := httpx.Parse(r, &req); err != nil {
+		httpx.ErrorCtx(r.Context(), w, err)
+		return
+	}
+
+	err := h.interactLogic.AddOrDelCollection(r.Context(), &req)
+	if err != nil {
+		resp = codeerr.HandleErr(r.Context(), err)
+	} else {
+		resp = response.Ok(nil)
+	}
+
+	httpx.OkJsonCtx(r.Context(), w, resp)
+}
+
+func (h *InteractHandler) OperateCollectionItem(w http.ResponseWriter, r *http.Request) {
+	var (
+		req  types.CollectResourceReq
+		resp *response.Response
+	)
+	if err := httpx.Parse(r, &req); err != nil {
+		httpx.ErrorCtx(r.Context(), w, err)
+		return
+	}
+
+	err := h.interactLogic.Collect(r.Context(), &req)
+	if err != nil {
+		resp = codeerr.HandleErr(r.Context(), err)
+	} else {
+		resp = response.Ok(nil)
+	}
+
+	httpx.OkJsonCtx(r.Context(), w, resp)
+}

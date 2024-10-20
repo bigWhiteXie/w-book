@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/pkg/errors"
@@ -77,6 +78,9 @@ func (d *InteractDao) DecreLike(ctx context.Context, biz string, bizId int64) er
 		return result.Error
 	}
 
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("uid[%d]点赞不存在的数据", ctx.Value("id"))
+	}
 	return nil
 }
 
