@@ -29,7 +29,7 @@ func (artRepo *ReaderRepository) Save(ctx context.Context, article *domain.Artic
 		Title:    article.Title,
 		Content:  article.Content,
 		AuthorId: article.Author.Id,
-		Status:   article.Status,
+		Status:   uint8(article.Status),
 		Ctime:    now,
 		Utime:    now,
 	}
@@ -44,5 +44,17 @@ func (artRepo *ReaderRepository) FindById(ctx context.Context, id int64) (*domai
 	if err != nil {
 		return nil, err
 	}
-	return domain.FromPublishedArticle(article), nil
+	return FromPublishedArticle(article), nil
+}
+
+func FromPublishedArticle(article *dao.PublishedArticle) *domain.Article {
+	return &domain.Article{
+		Id:      article.Id,
+		Title:   article.Title,
+		Content: article.Content,
+		Status:  domain.ArticleStatusFromUint8(article.Status),
+		Author: domain.Author{
+			Id: article.AuthorId,
+		},
+	}
 }

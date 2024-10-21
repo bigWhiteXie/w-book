@@ -14,6 +14,7 @@ type Article struct {
 	Title    string
 	Content  string `gorm:"type:blob"`
 	AuthorId int64  `gorm:"index:idx_uid_uptime"`
+	Status   uint8
 	Ctime    int64
 	Utime    int64 `gorm:"index:idx_uid_uptime"`
 }

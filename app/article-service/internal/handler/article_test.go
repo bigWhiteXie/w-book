@@ -226,7 +226,7 @@ func (s *ArticleHandlerSuite) TestPublish() {
 					Title:    "my title",
 					Content:  "my content",
 					AuthorId: int64(123),
-					Status:   dao.ArticleStatusPublished,
+					Status:   uint8(domain.ArticlePublishedStatus),
 				}, art)
 				var pubArt dao.PublishedArticle
 				err = s.db.Where("id=?", 1).First(&pubArt).Error
@@ -240,7 +240,7 @@ func (s *ArticleHandlerSuite) TestPublish() {
 					Title:    "my title",
 					Content:  "my content",
 					AuthorId: int64(123),
-					Status:   domain.ArticleStatusPublished,
+					Status:   uint8(domain.ArticlePublishedStatus),
 				}, pubArt)
 			},
 			req: Article{
@@ -293,7 +293,7 @@ func (s *ArticleHandlerSuite) TestPublish() {
 					Title:    "new title",
 					Content:  "new content",
 					AuthorId: int64(123),
-					Status:   domain.ArticleStatusPublished,
+					Status:   uint8(domain.ArticlePublishedStatus),
 				}, pubArt)
 			},
 			req: Article{

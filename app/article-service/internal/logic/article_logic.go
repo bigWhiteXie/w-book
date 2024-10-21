@@ -3,7 +3,6 @@ package logic
 import (
 	"context"
 
-	"codexie.com/w-book-article/internal/dao"
 	"codexie.com/w-book-article/internal/domain"
 	"codexie.com/w-book-article/internal/repo"
 	"codexie.com/w-book-article/internal/types"
@@ -48,6 +47,6 @@ func (l *ArticleLogic) Publish(ctx context.Context, req *types.EditArticleReq) (
 	}
 
 	artDomain.Id = artId
-	artDomain.Status = dao.ArticleStatusPublished
+	artDomain.Status = domain.ArticlePublishedStatus
 	return l.readerRepo.Save(ctx, artDomain)
 }

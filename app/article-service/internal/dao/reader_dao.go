@@ -19,7 +19,7 @@ type PublishedArticle struct {
 	Title    string
 	Content  string `gorm:"type:blob"`
 	AuthorId int64  `gorm:"index:idx_uid_uptime"`
-	Status   int    `gorm:""`
+	Status   uint8  `gorm:""`
 	Ctime    int64
 	Utime    int64 `gorm:"index:idx_uid_uptime"`
 }
@@ -56,37 +56,6 @@ func (d *ReaderDao) Create(ctx context.Context, artEntity *PublishedArticle) err
 	artEntity.Ctime = now
 	artEntity.Utime = now
 	return d.db.Create(artEntity).Error
-}
-
-func (d *ReaderDao) SaveV2(ctx context.Context, artEntity *PublishedArticle) error {
-	return d.db.Transaction(func(tx *gorm.DB) error {
-		article := &PublishedArticle{}
-		err := tx.Set("gorm:query_option", "FOR UPDATE").First(article, artEntity.Id).Error
-		if err == gorm.ErrRecordNotFound {
-			now := time.Now().UnixMilli()
-			artEntity.Ctime = now
-			artEntity.Utime = now
-			return tx.Create(artEntity).Error
-		}
-		if err != nil {
-			return err
-		}
-		res := tx.Model(&PublishedArticle{}).Where(
-			"id=? and author_id=?", artEntity.Id, artEntity.AuthorId,
-		).Updates(map[string]interface{}{
-			"title":   artEntity.Title,
-			"content": artEntity.Content,
-			"utime":   time.Now().UnixMilli(),
-			"status":  ArticleStatusPublished,
-		})
-		if res.Error != nil {
-			return res.Error
-		}
-		if res.RowsAffected == 0 {
-			return errors.New(fmt.Sprintf("用户[%d] 修改非自己的发布文章%d", artEntity.AuthorId, artEntity.Id))
-		}
-		return nil
-	})
 }
 
 func (d *ReaderDao) Save(ctx context.Context, artEntity *PublishedArticle) error {
