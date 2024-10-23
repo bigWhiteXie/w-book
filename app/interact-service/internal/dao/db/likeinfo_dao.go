@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/pkg/errors"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -14,13 +15,13 @@ var (
 )
 
 type LikeInfo struct {
-	Id     int64  `json:"",gorm:"primaryKey"`
-	Biz    string `json:"type:varchar(128); uniqueIndex:biz_type_id"`
-	BizId  int64  `json:"",gorm:"uniqueIndex:biz_type_id"`
-	Uid    int64  `json:"",gorm:""`
-	Status uint8  `json:"",gorm:""`
-	Ctime  int64  `json:"",`
-	Utime  int64  `json:""`
+	Id     int64  `json:"" gorm:"primaryKey"`
+	Biz    string `json:"" gorm:"type:varchar(122); uniqueIndex:biz_uid_idx"`
+	BizId  int64  `json:"" gorm:"uniqueIndex:biz_uid_idx"`
+	Uid    int64  `json:"" gorm:""`
+	Status uint8  `json:"" gorm:""`
+	Ctime  int64  `json:""`
+	Utime  int64  `json:"" gorm:"uniqueIndex:biz_uid_idx`
 }
 
 func (a *LikeInfo) MarshalBinary() ([]byte, error) {
@@ -64,4 +65,13 @@ func (d *LikeInfoDao) UpdateLikeInfo(ctx context.Context, uid int64, biz string,
 		return res.Error
 	}
 	return nil
+}
+
+func (d *LikeInfoDao) FindLikeInfo(ctx context.Context, uid int64, biz string, bizId int64) (*LikeInfo, error) {
+	likeInfo := &LikeInfo{}
+	res := d.db.Where("biz=? and biz_id=? and uid=?", biz, bizId, uid).First(likeInfo)
+	if res.Error != nil {
+		return nil, errors.Wrap(res.Error, "[DAO] 查找点赞信息失败")
+	}
+	return likeInfo, nil
 }

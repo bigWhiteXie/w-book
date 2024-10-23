@@ -5,10 +5,10 @@ import (
 	"strconv"
 	"time"
 
-	"codexie.com/w-book-code/internal/kafka/producer"
 	"codexie.com/w-book-code/internal/model"
 	"codexie.com/w-book-code/internal/repo"
 	"codexie.com/w-book-common/common/codeerr"
+	"codexie.com/w-book-common/producer"
 	"github.com/redis/go-redis/v9"
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -17,7 +17,7 @@ var topic = "sms-topic"
 
 var smsService *SmsManager
 var smsRepo repo.SmsRepo
-var provider *producer.KafkaProducer
+var provider producer.Producer
 var cache *redis.Client
 var maxTime int64 = 10
 
@@ -26,7 +26,7 @@ type SmsClient interface {
 	SendSms(ctx context.Context, phone string, args map[string]string) error
 }
 
-func InitSmsClient(conf SmsConf, client *redis.Client, repo repo.SmsRepo, kafkaProvider *producer.KafkaProducer) {
+func InitSmsClient(conf SmsConf, client *redis.Client, repo repo.SmsRepo, kafkaProvider producer.Producer) {
 	smsService = NewSmsManager(conf.TC, conf.Memory)
 	smsRepo = repo
 	provider = kafkaProvider
@@ -47,14 +47,14 @@ func SendSms(ctx context.Context, phone string, args map[string]string) error {
 	if IsSyncSend() {
 		if err := smsService.SendSms(ctx, phone, args); err != nil {
 			logx.Errorf("[SendSms] 同步发送验证码失败,cause:%v", err)
-			provider.Send(ctx, topic, strconv.Itoa(record.ID), func(err error) {
+			provider.SendAsync(ctx, topic, strconv.Itoa(record.ID), func(err error) {
 				logx.Errorf("fail to send msg to kafka, cause:%s", err)
 			})
 		}
 		return nil
 	}
 	// 响应时间过长，异步发送短信
-	provider.Send(ctx, topic, strconv.Itoa(record.ID), func(err error) {
+	provider.SendAsync(ctx, topic, strconv.Itoa(record.ID), func(err error) {
 		logx.Errorf("fail to send msg to kafka, cause:%s", err)
 	})
 

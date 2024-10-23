@@ -7,6 +7,7 @@ import (
 	"codexie.com/w-book-interact/internal/config"
 	"codexie.com/w-book-interact/internal/dao/cache"
 	dao "codexie.com/w-book-interact/internal/dao/db"
+	"codexie.com/w-book-interact/internal/event"
 	"codexie.com/w-book-interact/internal/handler"
 	"codexie.com/w-book-interact/internal/logic"
 	"codexie.com/w-book-interact/internal/repo"
@@ -26,9 +27,11 @@ var SvcSet = wire.NewSet(svc.NewServiceContext)
 
 var RepoSet = wire.NewSet(repo.NewCollectRepository, repo.NewInteractRepository, repo.NewLikeInfoRepository)
 
-var DaoSet = wire.NewSet(dao.NewCollectionDao, dao.NewInteractDao, dao.NewLikeInfoDao, cache.NewInteractRedis)
+var DaoSet = wire.NewSet(dao.NewCollectionDao, dao.NewInteractDao, dao.NewLikeInfoDao, dao.NewRecordDao, cache.NewInteractRedis)
 
 var DbSet = wire.NewSet(svc.CreteDbClient, svc.CreateRedisClient)
+
+var ListenerSet = wire.NewSet(event.NewReadEventListener, event.NewCreateEventListener)
 
 func NewApp(c config.Config) (*rest.Server, error) {
 	panic(wire.Build(
@@ -39,5 +42,6 @@ func NewApp(c config.Config) (*rest.Server, error) {
 		RepoSet,
 		DaoSet,
 		DbSet,
+		ListenerSet,
 	))
 }

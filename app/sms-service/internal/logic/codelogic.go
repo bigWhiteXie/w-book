@@ -6,10 +6,10 @@ import (
 	"math/rand"
 	"time"
 
-	"codexie.com/w-book-code/internal/kafka/producer"
 	"codexie.com/w-book-code/internal/repo"
 	"codexie.com/w-book-code/pkg/sms"
 	"codexie.com/w-book-common/common/codeerr"
+	"codexie.com/w-book-common/producer"
 
 	"codexie.com/w-book-code/api/pb"
 	"github.com/zeromicro/go-zero/core/logx"
@@ -17,11 +17,11 @@ import (
 
 type CodeLogic struct {
 	codeRepo      repo.SmsRepo
-	kafkaProvider *producer.KafkaProducer
+	kafkaProvider producer.Producer
 	logx.Logger
 }
 
-func NewCodeLogic(repo repo.SmsRepo, provider *producer.KafkaProducer) *CodeLogic {
+func NewCodeLogic(repo repo.SmsRepo, provider producer.Producer) *CodeLogic {
 	return &CodeLogic{
 		codeRepo:      repo,
 		kafkaProvider: provider,

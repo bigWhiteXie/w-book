@@ -5,14 +5,17 @@ import (
 	"context"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 	"time"
 
 	"codexie.com/w-book-interact/internal/config"
 	"codexie.com/w-book-interact/internal/dao/cache"
 	"codexie.com/w-book-interact/internal/dao/db"
+	"codexie.com/w-book-interact/internal/domain"
 	"codexie.com/w-book-interact/internal/logic"
 	"codexie.com/w-book-interact/internal/repo"
 	"codexie.com/w-book-interact/internal/svc"
@@ -38,7 +41,7 @@ type InteractHandlerSuite struct {
 }
 
 func (s *InteractHandlerSuite) SetupSuite() {
-	var configFile = flag.String("f", "/usr/local/go_project/w-book/app/article-service/etc/article.yaml", "the config file")
+	var configFile = flag.String("f", "/usr/local/go_project/w-book/app/interact-service/etc/interact-api.yaml", "the config file")
 	var c config.Config
 	conf.MustLoad(*configFile, &c)
 
@@ -49,24 +52,28 @@ func (s *InteractHandlerSuite) SetupSuite() {
 	gormDB := svc.CreteDbClient(c)
 	iLikeInfoRepository := repo.NewLikeInfoRepository(interactCache, gormDB)
 	interactDao := db.NewInteractDao(gormDB)
-	iInteractRepo := repo.NewInteractRepository(interactDao, interactCache)
+	recordDao := db.NewRecordDao(gormDB)
+
+	iInteractRepo := repo.NewInteractRepository(interactDao, recordDao, interactCache)
 	collectionDao := db.NewCollectionDao(gormDB)
 	iCollectRepository := repo.NewCollectRepository(interactCache, collectionDao)
 	interactLogic := logic.NewInteractLogic(iLikeInfoRepository, iInteractRepo, iCollectRepository)
 	interactHandler := NewInteractHandler(serviceContext, interactLogic)
+	s.db = gormDB
+	s.cache = client
 	server.AddRoute(rest.Route{
 		Method:  http.MethodPost,
-		Path:    "/v1/interact/like",
+		Path:    "/v1/resource/like",
 		Handler: interactHandler.LikeResource,
-	})
+	}, rest.WithTimeout(1000*time.Second))
 	server.AddRoute(rest.Route{
 		Method:  http.MethodPost,
-		Path:    "/v1/interact/collection",
+		Path:    "/v1/resource/collection",
 		Handler: interactHandler.OperateCollection,
-	})
+	}, rest.WithTimeout(1000*time.Second))
 	server.AddRoute(rest.Route{
 		Method:  http.MethodPost,
-		Path:    "/v1/interact/collect",
+		Path:    "/v1/resource/collect",
 		Handler: interactHandler.OperateCollectionItem,
 	}, rest.WithTimeout(1000*time.Second))
 
@@ -94,7 +101,7 @@ func (s *InteractHandlerSuite) TearDownTest() {
 
 func (s *InteractHandlerSuite) TestLike() {
 	t := s.T()
-	testCases := []testCase[float64, *types.LikeResourceReq]{
+	testCases := []testCase[int, *types.LikeResourceReq]{
 		{
 			name: "点赞未缓存数据",
 			before: func(t *testing.T) {
@@ -104,19 +111,14 @@ func (s *InteractHandlerSuite) TestLike() {
 				// check db
 				var like db.LikeInfo
 				var interact db.Interaction
-				err := s.db.Where("author_id=?", 123).First(&art).Error
+				err := s.db.Where("id=?", 1).First(&like).Error
 				assert.NoError(t, err)
-				assert.True(t, art.Id > 0)
-				assert.True(t, art.Utime > 0)
-				assert.True(t, art.Ctime > 0)
-				art.Ctime = 0
-				art.Utime = 0
-				assert.Equal(t, db.Article{
-					Id:       1,
-					Title:    "my article",
-					Content:  "my article content",
-					AuthorId: int64(123),
-				}, art)
+				assert.True(t, like.Uid == 123)
+				assert.True(t, like.Status == 1)
+				assert.True(t, like.Ctime > 0)
+
+				s.db.Where("biz=? and biz_id=?", "article", 1).First(&interact)
+				assert.True(t, interact.LikeCnt == 1)
 			},
 			req: &types.LikeResourceReq{
 				Biz:    "article",
@@ -124,87 +126,77 @@ func (s *InteractHandlerSuite) TestLike() {
 				Action: 1,
 			},
 			wantCode: http.StatusOK,
-			wantRes: Result[float64]{
+			wantRes: Result[int]{
 				Code: 200,
 				Msg:  "ok",
-				Data: 1,
 			},
 		},
 		{
-			name: "点赞已缓存数据",
+			name: "取消点赞",
 			before: func(t *testing.T) {
-				s.db.Create(&db.Article{
-					Id:       2,
-					Title:    "my article",
-					Content:  "my article content",
-					AuthorId: 123,
-					Ctime:    123,
-					Utime:    123,
-				})
 			},
 			after: func(t *testing.T) {
 				// check db
-				var art db.Article
-				err := s.db.Where("id=?", 2).First(&art).Error
+				var like db.LikeInfo
+				var interact db.Interaction
+				err := s.db.Where("id=?", 1).First(&like).Error
 				assert.NoError(t, err)
-				assert.True(t, art.Utime > 123)
-				art.Ctime = 0
-				art.Utime = 0
-				assert.Equal(t, db.Article{
-					Id:       2,
-					Title:    "new article",
-					Content:  "new article content",
-					AuthorId: int64(123),
-				}, art)
+				assert.True(t, like.Uid == 123)
+				assert.True(t, like.Status == 0)
+				assert.True(t, like.Ctime > 0)
+
+				s.db.Where("biz=? and biz_id=?", "article", 1).First(&interact)
+				assert.True(t, interact.LikeCnt == 0)
 			},
-			req: Article{
-				Id:      2,
-				Title:   "new article",
-				Content: "new article content",
+			req: &types.LikeResourceReq{
+				Biz:    "article",
+				BizId:  1,
+				Action: 0,
 			},
 			wantCode: http.StatusOK,
-			wantRes: Result[float64]{
+			wantRes: Result[int]{
 				Code: 200,
 				Msg:  "ok",
-				Data: 2,
 			},
 		},
 		{
-			name: "取消点赞未缓存数据",
+			name: "点赞缓存数据",
 			before: func(t *testing.T) {
-				s.db.Create(&db.Article{
-					Id:       3,
-					Title:    "my article",
-					Content:  "my article content",
-					AuthorId: 456,
-					Ctime:    123,
-					Utime:    456,
-				})
+				cntMap := map[string]string{
+					domain.Like:    "0",
+					domain.Collect: "0",
+					domain.Read:    "0",
+				}
+				key := fmt.Sprintf("cnt:%s:%d", "article", 1)
+				err := s.cache.HSet(context.Background(), key, cntMap).Err()
+				assert.True(t, err == nil)
 			},
 			after: func(t *testing.T) {
 				// check db
-				var art db.Article
-				err := s.db.Where("id=?", 3).First(&art).Error
+				var like db.LikeInfo
+				var interact db.Interaction
+				key := fmt.Sprintf("cnt:%s:%d", "article", 1)
+				cntMap, _ := s.cache.HGetAll(context.Background(), key).Result()
+				likeCnt, _ := strconv.Atoi(cntMap[domain.Like])
+				assert.True(t, likeCnt == 1)
+
+				err := s.db.Where("id=?", 1).First(&like).Error
 				assert.NoError(t, err)
-				assert.Equal(t, db.Article{
-					Id:       3,
-					Title:    "my article",
-					Content:  "my article content",
-					AuthorId: int64(456),
-					Ctime:    int64(123),
-					Utime:    int64(456),
-				}, art)
+				assert.True(t, like.Uid == 123)
+				assert.True(t, like.Status == 1)
+				assert.True(t, like.Ctime > 0)
+				s.db.Where("biz=? and biz_id=?", "article", 1).First(&interact)
+				assert.True(t, interact.LikeCnt == 1)
 			},
-			req: Article{
-				Id:      3,
-				Title:   "new article",
-				Content: "new article content",
+			req: &types.LikeResourceReq{
+				Biz:    "article",
+				BizId:  1,
+				Action: 1,
 			},
 			wantCode: http.StatusOK,
-			wantRes: Result[float64]{
-				Code: 500,
-				Msg:  "系统异常",
-				Data: 0,
+			wantRes: Result[int]{
+				Code: 200,
+				Msg:  "ok",
 			},
 		},
 	}
@@ -215,13 +207,13 @@ func (s *InteractHandlerSuite) TestLike() {
 			defer tc.after(t)
 			body, err := json.Marshal(tc.req)
 			assert.NoError(t, err)
-			request, err := http.NewRequestWithContext(context.Background(), http.MethodPost, "/v1/article/edit", bytes.NewReader(body))
+			request, err := http.NewRequestWithContext(context.Background(), http.MethodPost, "/v1/resource/like", bytes.NewReader(body))
 			request.Header.Set("Content-Type", "application/json")
 			assert.NoError(t, err)
 			recorder := httptest.NewRecorder()
 			s.server.ServeHTTP(recorder, request)
 			assert.Equal(t, tc.wantCode, recorder.Code)
-			var res Result[float64]
+			var res Result[int]
 			err = json.NewDecoder(recorder.Body).Decode(&res)
 			assert.NoError(t, err)
 			assert.Equal(t, tc.wantRes, res)

@@ -2,7 +2,21 @@ package domain
 
 import "encoding/json"
 
+const (
+	Biz                = "article"
+	ReadTopic          = "read-evt-topic"
+	ArticleCreateTopic = "create-evt-topic"
+)
+
+type ReadEvent struct {
+	Biz   string `json:""`
+	BizId int64  `json:""`
+	Uid   int64  `json:""`
+}
+
 type Article struct {
+	StatInfo
+
 	Id      int64         `json:"id"`
 	Title   string        `json:"title"`
 	Content string        `json:"content"`
@@ -10,6 +24,12 @@ type Article struct {
 	Author  Author        `json:"author"`
 	Utime   int64         `json:"utime"`
 	Ctime   int64         `json:"ctime"`
+}
+
+type StatInfo struct {
+	ReadCnt    int64 `json:"read_cnt"`
+	LikeCnt    int64 `json:"like_cnt"`
+	CollectCnt int64 `json:"collect_cnt"`
 }
 
 func (a *Article) MarshalBinary() ([]byte, error) {

@@ -30,6 +30,10 @@ var DaoSet = wire.NewSet(dao.NewAuthorDao, dao.NewReaderDao, cache.NewArticleRed
 
 var DbSet = wire.NewSet(svc.CreteDbClient, svc.CreateRedisClient)
 
+var MessageSet = wire.NewSet(svc.CreateKafkaProducer)
+
+var RpcSet = wire.NewSet(svc.CreateCodeRpcClient)
+
 func NewApp(c config.Config) (*rest.Server, error) {
 	panic(wire.Build(
 		ServerSet,
@@ -39,5 +43,7 @@ func NewApp(c config.Config) (*rest.Server, error) {
 		RepoSet,
 		DaoSet,
 		DbSet,
+		MessageSet,
+		RpcSet,
 	))
 }

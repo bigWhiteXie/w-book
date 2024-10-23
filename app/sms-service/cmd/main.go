@@ -5,10 +5,10 @@ import (
 	"fmt"
 
 	"codexie.com/w-book-code/internal/kafka/consumer"
-	"codexie.com/w-book-code/internal/kafka/producer"
 	"codexie.com/w-book-code/internal/repo"
 	"codexie.com/w-book-code/internal/repo/cache"
 	"codexie.com/w-book-code/internal/repo/dao"
+	"codexie.com/w-book-common/producer"
 
 	"codexie.com/w-book-code/pkg/sms"
 
@@ -35,7 +35,6 @@ func main() {
 
 	smsRepo := repo.NewSmsRepo(cache.NewRedisCache(ctx.Cache), dao.NewCodeDao(ctx.DB))
 	producer := producer.NewKafkaProducer(ctx.KafkaProvider)
-
 	sms.InitSmsClient(c.SmsConf, ctx.Cache, smsRepo, producer)
 	smsConsumer := consumer.NewSmsConsumer(c.KafkaConf.Topic, ctx.ConsumerGroup, smsRepo)
 

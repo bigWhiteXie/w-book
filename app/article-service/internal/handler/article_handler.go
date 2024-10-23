@@ -85,7 +85,7 @@ func (h *ArticleHandler) ViewArticle(w http.ResponseWriter, r *http.Request) {
 		req  types.ArticleViewReq
 		resp *response.Response
 	)
-	if err := httpx.Parse(r, &req); err != nil {
+	if err := httpx.ParseForm(r, &req); err != nil {
 		httpx.ErrorCtx(r.Context(), w, err)
 		return
 	}

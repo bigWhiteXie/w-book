@@ -10,6 +10,7 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
+	"github.com/zeromicro/go-zero/core/logx"
 )
 
 var (
@@ -46,7 +47,7 @@ func SetLoginJWTToken(w http.ResponseWriter, r *http.Request, uid int) error {
 	}
 	claims := &UserClaims{
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(1 * time.Minute)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
 		},
 		Uid:        uid,
 		Ssid:       sid.String(),
@@ -99,7 +100,7 @@ func CheckTokenValid(r *http.Request, tokenString string, secret []byte) (*http.
 		claim *UserClaims
 		err   error
 	)
-	if claim, err = ParseJWTToken(tokenString, secret); err != nil || claim.UserAgrent != r.Header.Get("User-Agent") {
+	if claim, err = ParseJWTToken(tokenString, secret); err != nil {
 		if err == nil {
 			return r, UserAgentErr
 		} else {
@@ -116,9 +117,9 @@ func CheckTokenValid(r *http.Request, tokenString string, secret []byte) (*http.
 	} else if res == 1 {
 		return r, SidLogoutErr
 	}
-	ctx := context.WithValue(r.Context(), "id", claim.ID)
+	ctx := context.WithValue(r.Context(), "id", claim.Uid)
 	ctx = context.WithValue(ctx, "sid", claim.Ssid)
-
+	logx.Infof("[JWT] 解析token得到用户id:%s", claim.Uid)
 	return r.WithContext(ctx), nil
 }
 

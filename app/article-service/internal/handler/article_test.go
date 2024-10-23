@@ -46,7 +46,8 @@ func (s *ArticleHandlerSuite) SetupSuite() {
 	serviceContext := svc.NewServiceContext(c)
 	s.db = svc.CreteDbClient(c)
 	s.cache = svc.CreateRedisClient(c)
-	articleLogic := logic.NewArticleLogic(repo.NewAuthorRepository(db.NewAuthorDao(s.db), cache.NewArticleRedis(s.cache)), repo.NewReaderRepository(db.NewReaderDao(s.db), cache.NewArticleRedis(s.cache)))
+	rpcClient := svc.CreateCodeRpcClient(c)
+	articleLogic := logic.NewArticleLogic(repo.NewAuthorRepository(db.NewAuthorDao(s.db), cache.NewArticleRedis(s.cache)), repo.NewReaderRepository(db.NewReaderDao(s.db), cache.NewArticleRedis(s.cache)), rpcClient, svc.CreateKafkaProducer(c))
 	articleHandler := NewArticleHandler(serviceContext, articleLogic)
 	server.AddRoute(rest.Route{
 		Method:  http.MethodPost,

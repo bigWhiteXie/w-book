@@ -7,8 +7,12 @@ import (
 
 	"codexie.com/w-book-article/internal/config"
 	dao "codexie.com/w-book-article/internal/dao/db"
+	"codexie.com/w-book-common/producer"
+	"codexie.com/w-book-interact/api/pb/interact"
+	"github.com/IBM/sarama"
 	"github.com/redis/go-redis/v9"
 	"github.com/zeromicro/go-zero/core/logx"
+	"github.com/zeromicro/go-zero/zrpc"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/schema"
@@ -21,9 +25,14 @@ type ServiceContext struct {
 }
 
 func NewServiceContext(c config.Config) *ServiceContext {
+
 	return &ServiceContext{
 		Config: c,
 	}
+}
+
+func CreateCodeRpcClient(c config.Config) interact.InteractionClient {
+	return interact.NewInteractionClient(zrpc.MustNewClient(c.InteractRpcConf).Conn())
 }
 
 func CreteDbClient(c config.Config) *gorm.DB {
@@ -78,6 +87,17 @@ func CreateRedisClient(c config.Config) *redis.Client {
 	}
 	logx.Infof("redis连接成功: %s", pong)
 	return myRedis
+}
+
+func CreateKafkaProducer(c config.Config) producer.Producer {
+	saramaConf := sarama.NewConfig()
+	saramaConf.Producer.Return.Successes = true
+	saramaConf.Version = sarama.V2_1_0_0
+	kafkaProducer, err := sarama.NewSyncProducer(c.KafkaConf.Brokers, saramaConf)
+	if err != nil {
+		panic(err)
+	}
+	return producer.NewKafkaProducer(kafkaProducer)
 }
 
 func InitTables(db *gorm.DB) error {

@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"codexie.com/w-book-common/ijwt"
+	"github.com/redis/go-redis/v9"
 	"github.com/zeromicro/go-zero/core/logx"
 )
 
@@ -13,8 +14,9 @@ type JwtMiddleware struct {
 }
 
 // NewCorsMiddleware 新建跨域请求处理中间件
-func NewJwtMiddleware() *JwtMiddleware {
+func NewJwtMiddleware(redisClient *redis.Client) *JwtMiddleware {
 	path := []string{"/v1/user/login", "/v1/user/refresh", "/v1/user/sign", "/v1/user/login_sms", "/v1/user/login_sms/code"}
+	ijwt.InitJwtHandler(redisClient)
 	return &JwtMiddleware{AllowPath: path}
 }
 
@@ -28,8 +30,12 @@ func (m *JwtMiddleware) Handle(next http.HandlerFunc) http.HandlerFunc {
 
 		//校验jwt
 		tokenString := r.Header.Get("Authorization")
+		if strings.HasPrefix(tokenString, "Bearer ") {
+			// 如果包含，则去掉 "Bearer " 前缀
+			tokenString = strings.TrimPrefix(tokenString, "Bearer ")
+		}
 		r, err := ijwt.CheckTokenValid(r, tokenString, ijwt.TokenKey)
-		if err != ijwt.TokenValidErr && err != ijwt.SidLogoutErr {
+		if err == nil {
 			next(w, r)
 		} else {
 			logx.WithContext(r.Context()).Errorf("token认证失败，cause:%s", err)

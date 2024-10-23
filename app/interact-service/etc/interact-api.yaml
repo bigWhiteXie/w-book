@@ -1,6 +1,14 @@
 Name: interaction
 Host: 0.0.0.0
-Port: 20820
+Port: 20840
+
+Grpc:
+  Name: interact.rpc
+  ListenOn: 0.0.0.0:20830
+  Etcd:
+    Hosts:
+    - 127.0.0.1:2479
+    Key: interact.rpc
 
 MySQLConf:
   Enable: true
@@ -22,3 +30,7 @@ MySQLConf:
 RedisConf:
   Host: 192.168.126.100:6379
   PASS: ""
+
+KafkaConf:
+  brokers:
+  - 192.168.126.100:9092

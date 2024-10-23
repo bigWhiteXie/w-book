@@ -132,5 +132,6 @@ func ToEntity(art *domain.Article) *db.Article {
 		Title:    art.Title,
 		Content:  art.Content,
 		AuthorId: art.Author.Id,
+		Status:   uint8(art.Status),
 	}
 }

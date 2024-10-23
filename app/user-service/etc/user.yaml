@@ -16,8 +16,8 @@ IpRate:
   Rate: 10
   Capacity: 20
 BucketRateConf:
-  Capacity: 10
-  TokensPerSecond: 2
+  Capacity: 100
+  TokensPerSecond: 50
   Biz: system
 
 MySQLConf:

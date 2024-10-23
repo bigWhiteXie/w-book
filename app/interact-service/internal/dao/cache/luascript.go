@@ -10,7 +10,8 @@ local exist = redis.call("EXISTS", key)
 if exist == 1 then
     redis.call("HINCRBY", key, cntKey, delta)
     return 1
-fi
-return 0
+else
+    return 0
+end
 `
 }

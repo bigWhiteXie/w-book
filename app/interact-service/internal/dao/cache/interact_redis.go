@@ -45,6 +45,10 @@ func (c *InteractRedis) GetStatCnt(ctx context.Context, key string) (*domain.Sta
 	if err != nil {
 		return nil, err
 	}
+
+	if len(cntMap) == 0 {
+		return nil, nil
+	}
 	arr := strings.Split(key, ":")
 	bizId, _ := strconv.Atoi(arr[2])
 	likeCnt, _ := strconv.Atoi(cntMap[domain.Like])
@@ -62,10 +66,10 @@ func (c *InteractRedis) GetStatCnt(ctx context.Context, key string) (*domain.Sta
 
 // 缓存资源计数信息
 func (c *InteractRedis) CacheStatCnt(ctx context.Context, key string, info *domain.StatCnt) error {
-	cntMap := map[string]int64{
-		domain.Like:    info.LikeCnt,
-		domain.Collect: info.CollectCnt,
-		domain.Read:    info.ReadCnt,
+	cntMap := map[string]string{
+		domain.Like:    strconv.Itoa(int(info.LikeCnt)),
+		domain.Collect: strconv.Itoa(int(info.CollectCnt)),
+		domain.Read:    strconv.Itoa(int(info.ReadCnt)),
 	}
 	if err := c.redisClient.HSet(ctx, key, cntMap).Err(); err != nil {
 		return err

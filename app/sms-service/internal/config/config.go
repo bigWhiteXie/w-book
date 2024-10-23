@@ -39,7 +39,7 @@ type RedisConf struct {
 
 type KafkaConf struct {
 	Brokers []string `json:"brokers"`
-	Topic   string
+	Topic   string   `json:"topic"`
 }
 
 // gorm config

@@ -7,8 +7,8 @@ import (
 	"context"
 
 	"codexie.com/w-book-code/api/pb"
-	"codexie.com/w-book-code/internal/kafka/producer"
 	"codexie.com/w-book-code/internal/repo"
+	"codexie.com/w-book-common/producer"
 
 	"codexie.com/w-book-code/internal/logic"
 	"codexie.com/w-book-code/internal/svc"
@@ -20,10 +20,10 @@ type SMSServer struct {
 	codeLogic *logic.CodeLogic
 }
 
-func NewSMSServer(svcCtx *svc.ServiceContext, smsRepo repo.SmsRepo, kafkaProvider *producer.KafkaProducer) *SMSServer {
+func NewSMSServer(svcCtx *svc.ServiceContext, smsRepo repo.SmsRepo, producer producer.Producer) *SMSServer {
 	return &SMSServer{
 		svcCtx:    svcCtx,
-		codeLogic: logic.NewCodeLogic(smsRepo,kafkaProvider),
+		codeLogic: logic.NewCodeLogic(smsRepo,producer),
 	}
 }
 

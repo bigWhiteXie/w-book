@@ -1,6 +1,12 @@
 Name: article
 Host: 0.0.0.0
-Port: 20810
+Port: 20820
+
+InteractRpcConf:
+  Etcd:
+    Hosts:
+      - 192.168.126.100:2479
+    Key: interact.rpc
 
 MySQLConf:
   Enable: true
@@ -22,3 +28,7 @@ MySQLConf:
 RedisConf:
   Host: 192.168.126.100:6379
   PASS: ""
+
+KafkaConf:
+  brokers:
+  - 192.168.126.100:9092

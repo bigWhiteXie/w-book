@@ -10,6 +10,7 @@ import (
 	"codexie.com/w-book-interact/internal/config"
 	"codexie.com/w-book-interact/internal/dao/cache"
 	"codexie.com/w-book-interact/internal/dao/db"
+	"codexie.com/w-book-interact/internal/event"
 	"codexie.com/w-book-interact/internal/handler"
 	"codexie.com/w-book-interact/internal/logic"
 	"codexie.com/w-book-interact/internal/repo"
@@ -27,12 +28,15 @@ func NewApp(c config.Config) (*rest.Server, error) {
 	gormDB := svc.CreteDbClient(c)
 	iLikeInfoRepository := repo.NewLikeInfoRepository(interactCache, gormDB)
 	interactDao := db.NewInteractDao(gormDB)
-	iInteractRepo := repo.NewInteractRepository(interactDao, interactCache)
+	recordDao := db.NewRecordDao(gormDB)
+	iInteractRepo := repo.NewInteractRepository(interactDao, recordDao, interactCache)
 	collectionDao := db.NewCollectionDao(gormDB)
 	iCollectRepository := repo.NewCollectRepository(interactCache, collectionDao)
 	interactLogic := logic.NewInteractLogic(iLikeInfoRepository, iInteractRepo, iCollectRepository)
 	interactHandler := handler.NewInteractHandler(serviceContext, interactLogic)
-	server := NewServer(c, interactHandler)
+	readEventListener := event.NewReadEventListener(c, iInteractRepo)
+	createEventListener := event.NewCreateEventListener(c, iInteractRepo)
+	server := NewServer(c, interactHandler, client, readEventListener, createEventListener)
 	return server, nil
 }
 
@@ -48,6 +52,8 @@ var SvcSet = wire.NewSet(svc.NewServiceContext)
 
 var RepoSet = wire.NewSet(repo.NewCollectRepository, repo.NewInteractRepository, repo.NewLikeInfoRepository)
 
-var DaoSet = wire.NewSet(db.NewCollectionDao, db.NewInteractDao, db.NewLikeInfoDao, cache.NewInteractRedis)
+var DaoSet = wire.NewSet(db.NewCollectionDao, db.NewInteractDao, db.NewLikeInfoDao, db.NewRecordDao, cache.NewInteractRedis)
 
 var DbSet = wire.NewSet(svc.CreteDbClient, svc.CreateRedisClient)
+
+var ListenerSet = wire.NewSet(event.NewReadEventListener, event.NewCreateEventListener)

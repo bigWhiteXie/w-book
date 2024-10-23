@@ -15,7 +15,7 @@ func NewServer(c config.Config, userHandler *handler.UserHandler, client *redis.
 	server.Use(middleware.NewLimiterMiddleware(limiter.NewRateLimiter(c.IpRate)).Handle)
 	server.Use(middleware.NewBucketLimiterMiddleware(bucketLimiter).Handle)
 
-	server.Use(middleware.NewJwtMiddleware().Handle)
+	server.Use(middleware.NewJwtMiddleware(client).Handle)
 	handler.RegisterHandlers(server, c, userHandler)
 
 	return server

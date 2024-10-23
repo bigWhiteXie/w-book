@@ -6,12 +6,12 @@ import (
 
 	"codexie.com/w-book-code/api/pb"
 	"codexie.com/w-book-code/internal/config"
-	"codexie.com/w-book-code/internal/kafka/producer"
 	"codexie.com/w-book-code/internal/repo"
 	"codexie.com/w-book-code/internal/repo/cache"
 	"codexie.com/w-book-code/internal/repo/dao"
 	"codexie.com/w-book-code/internal/svc"
 	"codexie.com/w-book-code/pkg/sms"
+	"codexie.com/w-book-common/producer"
 	"github.com/zeromicro/go-zero/core/conf"
 )
 

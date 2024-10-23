@@ -21,23 +21,27 @@ func NewInteractLogic(authorRepo repo.ILikeInfoRepository, readerRepo repo.IInte
 
 // 点赞/取消点赞资源
 func (l *InteractLogic) Like(ctx context.Context, req *types.LikeResourceReq) error {
-	uid := ctx.Value("id").(int64)
-	err := l.likeRepo.Like(ctx, uid, req.Biz, req.BizId, req.Action == 1)
+	uid := int64(ctx.Value("id").(int))
+	err := l.likeRepo.Like(ctx, uid, req.Biz, int64(req.BizId), req.Action == 1)
 
 	return err
 }
 
 // 收藏/取消收藏资源
 func (l *InteractLogic) Collect(ctx context.Context, req *types.CollectResourceReq) error {
-	uid := ctx.Value("id").(int64)
+	uid := int64(ctx.Value("id").(int))
 	err := l.colRepo.AddCollectionItem(ctx, req.ToDomain(uid))
 
 	return err
 }
 
+func (l *InteractLogic) AddRead(ctx context.Context, biz string, bizId int64) error {
+	return l.interactRepo.AddReadCnt(ctx, biz, bizId)
+}
+
 // 添加/删除收藏夹
 func (l *InteractLogic) AddOrDelCollection(ctx context.Context, req *types.CollectionReq) error {
-	uid := ctx.Value("id").(int64)
+	uid := int64(ctx.Value("id").(int))
 	col := &domain.Collection{
 		Id:   req.Id,
 		Name: req.Name,
@@ -60,7 +64,7 @@ func (l *InteractLogic) AddOrDelCollection(ctx context.Context, req *types.Colle
 func (l *InteractLogic) QueryStatInfo(ctx context.Context, req *types.LikeResourceReq) (*domain.StatCnt, error) {
 	statInfo := &domain.StatCnt{
 		Biz:   req.Biz,
-		BizId: req.BizId,
+		BizId: int64(req.BizId),
 	}
 	cntData, err := l.interactRepo.FindCntData(ctx, statInfo)
 

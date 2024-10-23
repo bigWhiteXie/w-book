@@ -4,9 +4,9 @@
 package types
 
 type EditArticleReq struct {
-	Title    string `json:"title"`
-	Content   string `json:"content"`
-	Id int64 `json:"id"`
+	Id 		int  `json:"id,optional"`
+	Title   string `json:"title"`
+	Content string `json:"content"`
 }
 
 type EditArticleResp struct {
@@ -21,5 +21,5 @@ type ArticlePageReq struct {
 
 type ArticleViewReq struct {
 	Id    int64 `form:"id"`
-	IsPublished bool `form:isPublished`
+	Published int64 `form:"published"`
 }

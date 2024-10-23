@@ -14,26 +14,26 @@ type LikeResourceReq struct {
 type CollectionReq struct {
 	Id        int64 `json:"id,optional"`
 	Name        string `json:"name"`
-	Action      uint8  `json:"action,optional"`
+	Action      int  `json:"action,optional"`
 	
 }
 
 type CollectResourceReq struct {
-	Id        int64 `json:"id,optional"`
-	Biz        string `json:"biz"`
-	BizId      int64  `json:"biz_id"`
-	Cid      int64  `json:"cid"`
-	Action      uint8  `json:"action,optional"`
+	Id        int `json:"id,optional"`
+	Biz       string `json:"biz"`
+	BizId     int64  `json:"biz_id"`
+	Cid       int64  `json:"cid"`
+	Action    int  `json:"action,optional"`
 }
 
 func (req *CollectResourceReq) ToDomain(uid int64) *domain.CollectionItem {
 	return &domain.CollectionItem{
-		Id: req.Id,
+		Id: int64(req.Id),
 		Uid: uid,
 		Biz: req.Biz,
-		BizId: req.BizId,
-		Cid: req.Cid,
-		Action: req.Action,
+		BizId: int64(req.BizId),
+		Cid: int64(req.Cid),
+		Action: uint8(req.Action),
 	}
 }
 

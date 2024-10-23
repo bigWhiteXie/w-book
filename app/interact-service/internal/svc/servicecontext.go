@@ -93,5 +93,9 @@ func InitTables(db *gorm.DB) error {
 	if err := db.AutoMigrate(&dao.CollectionItem{}); err != nil {
 		return err
 	}
+
+	if err := db.AutoMigrate(&dao.Record{}); err != nil {
+		return err
+	}
 	return nil
 }

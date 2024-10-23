@@ -29,9 +29,11 @@ func NewApp(c config.Config) (*rest.Server, error) {
 	iAuthorRepository := repo.NewAuthorRepository(authorDao, articleCache)
 	readerDao := db.NewReaderDao(gormDB)
 	iReaderRepository := repo.NewReaderRepository(readerDao, articleCache)
-	articleLogic := logic.NewArticleLogic(iAuthorRepository, iReaderRepository)
+	interactionClient := svc.CreateCodeRpcClient(c)
+	producer := svc.CreateKafkaProducer(c)
+	articleLogic := logic.NewArticleLogic(iAuthorRepository, iReaderRepository, interactionClient, producer)
 	articleHandler := handler.NewArticleHandler(serviceContext, articleLogic)
-	server := NewServer(c, articleHandler)
+	server := NewServer(c, articleHandler, client)
 	return server, nil
 }
 
@@ -50,3 +52,7 @@ var RepoSet = wire.NewSet(repo.NewAuthorRepository, repo.NewReaderRepository)
 var DaoSet = wire.NewSet(db.NewAuthorDao, db.NewReaderDao, cache.NewArticleRedis)
 
 var DbSet = wire.NewSet(svc.CreteDbClient, svc.CreateRedisClient)
+
+var MessageSet = wire.NewSet(svc.CreateKafkaProducer)
+
+var RpcSet = wire.NewSet(svc.CreateCodeRpcClient)

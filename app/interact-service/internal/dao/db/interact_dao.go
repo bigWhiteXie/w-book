@@ -11,9 +11,9 @@ import (
 )
 
 type Interaction struct {
-	Id         int64  `json:"",gorm:"primaryKey,autoIncrement"`
-	Biz        string `json:"type:varchar(128); uniqueIndex:biz_type_id"`
-	BizId      int64  `json:"",gorm:"uniqueIndex:biz_type_id"`
+	Id         int64  `json:"" gorm:"primaryKey,autoIncrement"`
+	Biz        string `json:"" gorm:"type:varchar(128); uniqueIndex:biz_type_id"`
+	BizId      int64  `json:"" gorm:"uniqueIndex:biz_type_id"`
 	LikeCnt    int64  `json:""`
 	ReadCnt    int64  `json:""`
 	CollectCnt int64  `json:""`
@@ -31,6 +31,23 @@ func NewInteractDao(db *gorm.DB) *InteractDao {
 	return &InteractDao{db: db}
 }
 
+func (d *InteractDao) CrateCntData(ctx context.Context, biz string, bizId int64) (*Interaction, error) {
+	now := time.Now().UnixMilli()
+	interaction := &Interaction{
+		Biz:     biz,
+		BizId:   bizId,
+		LikeCnt: 0,
+		Utime:   now,
+		Ctime:   now,
+	}
+	result := d.db.Create(interaction)
+
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	return interaction, nil
+}
 func (d *InteractDao) FindInteractByBiz(ctx context.Context, biz string, bizId int64) (*Interaction, error) {
 	model := &Interaction{}
 
@@ -69,13 +86,13 @@ func (d *InteractDao) IncreLike(ctx context.Context, biz string, bizId int64) er
 func (d *InteractDao) DecreLike(ctx context.Context, biz string, bizId int64) error {
 	now := time.Now().UnixMilli()
 
-	result := d.db.Where("biz=? and biz_id=?", biz, bizId).Updates(map[string]any{
-		"like_cnt": gorm.Expr("`like_cnt` - 1"),
+	result := d.db.Model(&Interaction{}).Where("biz=? and biz_id=?", biz, bizId).UpdateColumns(map[string]interface{}{
+		"like_cnt": gorm.Expr("like_cnt - ?", 1),
 		"utime":    now,
 	})
 
 	if result.Error != nil {
-		return result.Error
+		return errors.Wrap(result.Error, "数据库操作错误")
 	}
 
 	if result.RowsAffected == 0 {
@@ -136,7 +153,7 @@ func (d *InteractDao) IncreRead(ctx context.Context, biz string, bizId int64) er
 	result := d.db.Clauses(
 		clause.OnConflict{
 			DoUpdates: clause.Assignments(map[string]any{
-				"read_cnt": gorm.Expr("`read_cnt`+1"),
+				"read_cnt": gorm.Expr("`read_cnt`+ 1"),
 				"utime":    now,
 			}), // 更新字段
 		},
@@ -147,6 +164,19 @@ func (d *InteractDao) IncreRead(ctx context.Context, biz string, bizId int64) er
 	}
 
 	return nil
+}
+
+func (d *InteractDao) BatchIncreRead(ctx context.Context, bizs []string, bizIds []int64) error {
+	return d.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		dao := NewInteractDao(tx)
+		for i := 0; i < len(bizs); i++ {
+			err := dao.IncreRead(ctx, bizs[i], bizIds[i])
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 func (d *InteractDao) DecreReadCnt(ctx context.Context, biz string, bizId int64) error {

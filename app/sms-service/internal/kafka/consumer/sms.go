@@ -16,38 +16,38 @@ import (
 )
 
 type SmsConsumerGroup struct {
-	topic        string
-	client       sarama.ConsumerGroup
-	interuptChan chan struct{}
-	codeRepo     repo.SmsRepo
-	once         sync.Once
-	pool         *ants.Pool
+	topic    string
+	client   sarama.ConsumerGroup
+	codeRepo repo.SmsRepo
+	cancel   context.CancelFunc
+	once     sync.Once
+	pool     *ants.Pool
 }
 
+// 用户针对需求对consumerGroup做好配置
+// 短信服务依赖该consumerGroup启动消费者
 func NewSmsConsumer(topic string, client sarama.ConsumerGroup, codeRepo repo.SmsRepo) *SmsConsumerGroup {
 	pool, _ := ants.NewPool(256, ants.WithExpiryDuration(1*time.Second), ants.WithNonblocking(false), ants.WithMaxBlockingTasks(math.MaxInt64))
 	return &SmsConsumerGroup{
-		topic:        topic,
-		client:       client,
-		codeRepo:     codeRepo,
-		interuptChan: make(chan struct{}, 1),
-		pool:         pool,
+		topic:    topic,
+		client:   client,
+		codeRepo: codeRepo,
+		pool:     pool,
 	}
 }
 
 func (s *SmsConsumerGroup) StartConsumer() {
 	defer s.client.Close()
 
-	ctx, cancel := context.WithCancel(context.Background())
-
 	for {
+		ctx, cancel := context.WithCancel(context.Background())
+		s.cancel = cancel
 		err := s.client.Consume(ctx, []string{s.topic}, s)
 		if err != nil {
 			logx.Errorf("[sms kafka] fail to kafka msg,cause:%s", err)
 		}
 		select {
-		case <-s.interuptChan:
-			cancel()
+		case <-ctx.Done():
 			logx.Info("[sms-kafka] close gracefully")
 			s.pool.Release()
 			return
@@ -58,7 +58,7 @@ func (s *SmsConsumerGroup) StartConsumer() {
 
 func (s *SmsConsumerGroup) Stop() {
 	s.once.Do(func() {
-		close(s.interuptChan)
+		s.cancel()
 	})
 }
 func (SmsConsumerGroup) Setup(_ sarama.ConsumerGroupSession) error   { return nil }
@@ -96,7 +96,7 @@ func (h SmsConsumerGroup) ConsumeClaim(sess sarama.ConsumerGroupSession, claim s
 			}
 			h.codeRepo.UpdateById(ctx, record)
 
-			// 标记，sarama会自动进行提交，默认间隔1秒
+			// 标记消息为已消费，sarama会自动进行提交，默认间隔1秒
 			sess.MarkMessage(msg, "")
 		})
 	}
