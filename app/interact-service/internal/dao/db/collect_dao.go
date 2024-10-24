@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/zeromicro/go-zero/core/logx"
 	"gorm.io/gorm"
 )
@@ -19,13 +20,13 @@ type Collection struct {
 }
 
 type CollectionItem struct {
-	Id    int64  `json:"",gorm:"primaryKey"`
+	Id    int64  `json:"" gorm:"primaryKey"`
 	Uid   int64  `json:""`
-	Cid   int64  `json:"",gorm:"index:cid_ctime_idx"`
-	Biz   string `json:""`
-	BizId int64  `json:""`
+	Biz   string `json:"" gorm:"uniqueIndex:biz_cid_idx"`
+	BizId int64  `json:"" gorm:"uniqueIndex:biz_cid_idx"`
+	Cid   int64  `json:"" gorm:"index:cid_ctime_idx;uniqueIndex:biz_cid_idx"`
 	Name  string `json:""`
-	Ctime int64  `json:"",gorm:"index:cid_ctime_idx"`
+	Ctime int64  `json:"" gorm:"index:cid_ctime_idx"`
 	Utime int64  `json:""`
 }
 
@@ -69,15 +70,18 @@ func (dao *CollectionDao) AddCollectionItem(ctx context.Context, entity *Collect
 			return fmt.Errorf("用户[%d]往他人收藏夹[%d]中添加数据", entity.Uid, entity.Cid)
 		}
 		entity.Id = 0
+		//设置唯一索引，重复点赞会异常
 		return tx.Create(entity).Error
 	})
-
+	if err != nil {
+		return nil, errors.Wrap(err, "[CollectionDao] AddCollectionItem")
+	}
 	return entity, err
 }
 
 func (dao *CollectionDao) DelCollectionItem(ctx context.Context, entity *CollectionItem) (*CollectionItem, error) {
 	err := dao.db.Transaction(func(tx *gorm.DB) error {
-		res := tx.Model(&Collection{}).Where("uid=? and id=?", entity.Uid, entity.Cid).Updates(map[string]any{
+		res := tx.Model(&Collection{}).Where("uid=? and id=? and count >= 1", entity.Uid, entity.Cid).Updates(map[string]any{
 			"count": gorm.Expr("`count`- 1"),
 			"utime": time.Now().UnixMilli(),
 		})
@@ -87,9 +91,22 @@ func (dao *CollectionDao) DelCollectionItem(ctx context.Context, entity *Collect
 		if res.RowsAffected == 0 {
 			return fmt.Errorf("用户[%d]往他人收藏夹[%d]中删除数据", entity.Uid, entity.Cid)
 		}
-		entity.Id = 0
-		return tx.Where("id=?", entity.Id).Delete(&CollectionItem{}).Error
+		delRes := tx.Where("id=?", entity.Id).Delete(&CollectionItem{})
+		if err := delRes.Error; err != nil {
+			return err
+		}
+
+		if delRes.RowsAffected == 0 {
+			return errors.Errorf("用户[%d]重复删除收藏数据[%d]", entity.Uid, entity.Id)
+		}
+		return nil
 	})
 
 	return entity, err
+}
+
+func (dao *CollectionDao) FindCollection(ctx context.Context, uid, bizId int64, biz string) (*CollectionItem, error) {
+	item := &CollectionItem{}
+	res := dao.db.Where("biz=? and biz_id=? and uid=?", biz, bizId, uid).First(item)
+	return item, res.Error
 }

@@ -17,13 +17,15 @@ type ReadEvent struct {
 type Article struct {
 	StatInfo
 
-	Id      int64         `json:"id"`
-	Title   string        `json:"title"`
-	Content string        `json:"content"`
-	Status  ArticleStatus `json:"status"`
-	Author  Author        `json:"author"`
-	Utime   int64         `json:"utime"`
-	Ctime   int64         `json:"ctime"`
+	Id          int64         `json:"id"`
+	Title       string        `json:"title"`
+	Content     string        `json:"content"`
+	Status      ArticleStatus `json:"status"`
+	Author      Author        `json:"author"`
+	Utime       int64         `json:"utime"`
+	Ctime       int64         `json:"ctime"`
+	IsLiked     bool          `json:""`
+	IsCollected bool          `json:""`
 }
 
 type StatInfo struct {

@@ -12,10 +12,12 @@ import (
 )
 
 type IInteractRepo interface {
-	FindCntData(ctx context.Context, cntInfo *domain.StatCnt) (*domain.StatCnt, error)
+	GetInteraction(ctx context.Context, cntInfo *domain.Interaction) (*domain.Interaction, error)
 	AddReadCnt(ctx context.Context, biz string, bizId int64) error
 	HandleBatchRead(ctx context.Context, eventBatch []domain.ReadEvent) error
 	CreateInteractData(ctx context.Context, readEvt *domain.ReadEvent) error
+	GetTopResourcesByLikes(ctx context.Context, resourceType string, limit int) ([]*domain.Interaction, error)
+	UpdateRedisZSet(ctx context.Context, resourceType string, limit int) error
 }
 
 type InteractRepository struct {
@@ -30,7 +32,34 @@ func NewInteractRepository(readerDao *db.InteractDao, recordDao *db.RecordDao, c
 	return &InteractRepository{interactDao: readerDao, cache: cache, recordDao: recordDao}
 }
 
-func (repo *InteractRepository) FindCntData(ctx context.Context, cntInfo *domain.StatCnt) (*domain.StatCnt, error) {
+func (repo *InteractRepository) UpdateRedisZSet(ctx context.Context, resourceType string, limit int) error {
+	//todo:需要加分布式锁进行控制
+	entities, err := repo.interactDao.GetTopResourcesByLikes("article", limit)
+	if err != nil {
+		return err
+	}
+	return repo.cache.UpdateRedisZSet(ctx, resourceType, entities)
+}
+func (repo *InteractRepository) GetTopResourcesByLikes(ctx context.Context, resourceType string, limit int) ([]*domain.Interaction, error) {
+	models, err := repo.cache.GetTopFromRedisZSet(ctx, resourceType, 100)
+	if len(models) == 0 || err != nil {
+		models, err = repo.interactDao.GetTopResourcesByLikes(resourceType, limit*5)
+		if err != nil {
+			return nil, err
+		}
+		//更新缓存
+		go func() {
+			repo.cache.UpdateRedisZSet(ctx, resourceType, models)
+		}()
+	}
+	domains := make([]*domain.Interaction, len(models))
+	for _, model := range models {
+		domains = append(domains, fromInteraction(&model))
+	}
+
+	return domains, nil
+}
+func (repo *InteractRepository) GetInteraction(ctx context.Context, cntInfo *domain.Interaction) (*domain.Interaction, error) {
 	logger := logx.WithContext(ctx)
 	key := fmt.Sprintf(cntInfoKeyFmt, cntInfo.Biz, cntInfo.BizId)
 	//查询缓存
@@ -60,7 +89,7 @@ func (repo *InteractRepository) FindCntData(ctx context.Context, cntInfo *domain
 	if err != nil {
 		return nil, err
 	}
-	statInfo := result.(*domain.StatCnt)
+	statInfo := result.(*domain.Interaction)
 	return statInfo, err
 }
 
@@ -110,8 +139,8 @@ func (repo *InteractRepository) CreateInteractData(ctx context.Context, readEvt 
 	return repo.cache.CacheStatCnt(ctx, fmt.Sprintf(cntInfoKeyFmt, readEvt.Biz, readEvt.BizId), fromInteraction(entity))
 }
 
-func fromInteraction(entity *db.Interaction) *domain.StatCnt {
-	return &domain.StatCnt{
+func fromInteraction(entity *db.Interaction) *domain.Interaction {
+	return &domain.Interaction{
 		Biz:        entity.Biz,
 		BizId:      entity.Id,
 		LikeCnt:    entity.LikeCnt,

@@ -5,10 +5,11 @@ package types
 
 import "codexie.com/w-book-interact/internal/domain"
 
-type LikeResourceReq struct {
+type OpResourceReq struct {
 	Biz        string `json:"biz"`
 	BizId      int64  `json:"biz_id"`
-	Action      uint8  `json:"action,optional"`
+	Action     uint8  `json:"action,optional"`
+	Uid        int64   `json:"uid,optional"`
 }
 
 type CollectionReq struct {

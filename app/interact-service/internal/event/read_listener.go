@@ -25,7 +25,6 @@ type ReadEventListener struct {
 	topic        string
 	client       sarama.ConsumerGroup
 	interactRepo repo.IInteractRepo
-	cancel       context.CancelFunc
 	once         sync.Once
 }
 
@@ -47,26 +46,20 @@ func NewReadEventListener(config config.Config, interactRepo repo.IInteractRepo)
 }
 
 func (s *ReadEventListener) StartListner() {
-
 	go func() {
-		defer s.client.Close()
 		ctx, cancel := context.WithCancel(context.Background())
-		s.cancel = cancel
+		defer cancel()
+		// group关闭后consume方法会自动退出并释放资源
 		err := s.client.Consume(ctx, []string{domain.ReadEvtTopic}, s)
 		if err != nil {
 			logx.Errorf("[ReadEventListener] fail to kafka msg,cause:%s", err)
-		}
-		select {
-		case <-ctx.Done():
-			logx.Info("[ReadEventListener] close gracefully")
-			return
 		}
 	}()
 }
 
 func (s *ReadEventListener) Stop() {
 	s.once.Do(func() {
-		s.cancel()
+		s.client.Close()
 	})
 }
 func (ReadEventListener) Setup(_ sarama.ConsumerGroupSession) error   { return nil }

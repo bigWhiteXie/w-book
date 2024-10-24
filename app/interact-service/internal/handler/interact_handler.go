@@ -25,7 +25,7 @@ func NewInteractHandler(ctx *svc.ServiceContext, interactLogic *logic.InteractLo
 
 func (h *InteractHandler) LikeResource(w http.ResponseWriter, r *http.Request) {
 	var (
-		req  types.LikeResourceReq
+		req  types.OpResourceReq
 		resp *response.Response
 	)
 	if err := httpx.Parse(r, &req); err != nil {

@@ -33,12 +33,14 @@ type CollectionItem struct {
 	Action uint8  // 0 取消收藏| 1 添加收藏
 }
 
-type StatCnt struct {
-	Biz        string `json:""`
-	BizId      int64  `json:""`
-	LikeCnt    int64  `json:""`
-	ReadCnt    int64  `json:""`
-	CollectCnt int64  `json:""`
+type Interaction struct {
+	Biz         string `json:""`
+	BizId       int64  `json:""`
+	LikeCnt     int64  `json:""`
+	ReadCnt     int64  `json:""`
+	CollectCnt  int64  `json:""`
+	IsLiked     bool   `json:""`
+	IsCollected bool   `json:""`
 }
 
 type ReadEvent struct {
@@ -54,10 +56,10 @@ type Record struct {
 }
 
 // redis缓存需要实现该方法
-func (a *StatCnt) MarshalBinary() ([]byte, error) {
+func (a *Interaction) MarshalBinary() ([]byte, error) {
 	return json.Marshal(a)
 }
 
-func (a *StatCnt) UnmarshalBinary(data []byte) error {
+func (a *Interaction) UnmarshalBinary(data []byte) error {
 	return json.Unmarshal(data, a)
 }

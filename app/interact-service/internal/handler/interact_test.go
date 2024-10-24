@@ -101,7 +101,7 @@ func (s *InteractHandlerSuite) TearDownTest() {
 
 func (s *InteractHandlerSuite) TestLike() {
 	t := s.T()
-	testCases := []testCase[int, *types.LikeResourceReq]{
+	testCases := []testCase[int, *types.OpResourceReq]{
 		{
 			name: "点赞未缓存数据",
 			before: func(t *testing.T) {
@@ -120,7 +120,7 @@ func (s *InteractHandlerSuite) TestLike() {
 				s.db.Where("biz=? and biz_id=?", "article", 1).First(&interact)
 				assert.True(t, interact.LikeCnt == 1)
 			},
-			req: &types.LikeResourceReq{
+			req: &types.OpResourceReq{
 				Biz:    "article",
 				BizId:  1,
 				Action: 1,
@@ -148,7 +148,7 @@ func (s *InteractHandlerSuite) TestLike() {
 				s.db.Where("biz=? and biz_id=?", "article", 1).First(&interact)
 				assert.True(t, interact.LikeCnt == 0)
 			},
-			req: &types.LikeResourceReq{
+			req: &types.OpResourceReq{
 				Biz:    "article",
 				BizId:  1,
 				Action: 0,
@@ -188,7 +188,7 @@ func (s *InteractHandlerSuite) TestLike() {
 				s.db.Where("biz=? and biz_id=?", "article", 1).First(&interact)
 				assert.True(t, interact.LikeCnt == 1)
 			},
-			req: &types.LikeResourceReq{
+			req: &types.OpResourceReq{
 				Biz:    "article",
 				BizId:  1,
 				Action: 1,

@@ -100,7 +100,8 @@ func (l *ArticleLogic) ViewArticle(ctx context.Context, req *types.ArticleViewRe
 		}
 	}()
 	if req.Published > 0 {
-		stat, err := l.interactRpc.QueryInteractionInfo(ctx, &interact.QueryInteractionReq{Biz: domain.Biz, BizId: req.Id})
+		uid := user.GetUidByCtx(ctx)
+		stat, err := l.interactRpc.QueryInteractionInfo(ctx, &interact.QueryInteractionReq{Uid: uid, Biz: domain.Biz, BizId: req.Id})
 		if err != nil {
 			logx.WithContext(ctx).Errorf("[RPC失败] 访问文章统计数量错误,原因:%s", err)
 			return nil, errors.Wrapf(err, "用户%s访问文章计数信息失败", ctx.Value("id"))
@@ -112,6 +113,9 @@ func (l *ArticleLogic) ViewArticle(ctx context.Context, req *types.ArticleViewRe
 		article.CollectCnt = stat.CollectCnt
 		article.LikeCnt = stat.LikeCnt
 		article.ReadCnt = stat.ReadCnt
+		article.IsCollected = stat.IsCollected
+		article.IsLiked = stat.IsLiked
+
 		return article, nil
 	}
 	return l.authorRepo.FindArticleById(ctx, req.Id)

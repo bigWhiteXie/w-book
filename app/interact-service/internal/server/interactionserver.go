@@ -23,18 +23,21 @@ func NewInteractionServer(svcCtx *svc.ServiceContext, interactLogic *logic.Inter
 }
 
 func (s *InteractionServer) QueryInteractionInfo(ctx context.Context, in *interact.QueryInteractionReq) (*interact.InteractionResult, error) {
-	stat, err := s.logic.QueryStatInfo(ctx, &types.LikeResourceReq{
+	stat, err := s.logic.QueryStatInfo(ctx, &types.OpResourceReq{
 		Biz:   in.Biz,
 		BizId: in.BizId,
+		Uid:   in.Uid,
 	})
 
 	if err != nil {
 		return nil, err
 	}
 	return &interact.InteractionResult{
-		ReadCnt:    stat.ReadCnt,
-		LikeCnt:    stat.LikeCnt,
-		CollectCnt: stat.CollectCnt,
+		ReadCnt:     stat.ReadCnt,
+		LikeCnt:     stat.LikeCnt,
+		CollectCnt:  stat.CollectCnt,
+		IsLiked:     stat.IsLiked,
+		IsCollected: stat.IsCollected,
 	}, err
 }
 

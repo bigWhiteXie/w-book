@@ -31,6 +31,12 @@ func NewInteractDao(db *gorm.DB) *InteractDao {
 	return &InteractDao{db: db}
 }
 
+func (d *InteractDao) GetTopResourcesByLikes(resourceType string, limit int) ([]Interaction, error) {
+	var resources []Interaction
+	err := d.db.Where("biz = ?", resourceType).Order("like_cnt DESC").Limit(limit).Find(&resources).Error
+	return resources, err
+}
+
 func (d *InteractDao) CrateCntData(ctx context.Context, biz string, bizId int64) (*Interaction, error) {
 	now := time.Now().UnixMilli()
 	interaction := &Interaction{
