@@ -2,8 +2,9 @@ package cache
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
+	"strconv"
+	"strings"
 	"time"
 
 	"codexie.com/w-book-interact/internal/domain"
@@ -37,20 +38,37 @@ func (c *InteractRedis) IncreCntIfExist(ctx context.Context, key string, cntKind
 
 // 查询资源计数缓存
 func (c *InteractRedis) GetStatCnt(ctx context.Context, key string) (*domain.StatCnt, error) {
-	bytes, err := c.redisClient.Get(ctx, key).Bytes()
-	if err != nil && !errors.Is(err, redis.Nil) {
-		return nil, err
-	}
+	cntMap, err := c.redisClient.HGetAll(ctx, key).Result()
 	if errors.Is(err, redis.Nil) {
 		return nil, nil
 	}
-	var statCnt *domain.StatCnt
-	err = json.Unmarshal(bytes, statCnt)
+	if err != nil {
+		return nil, err
+	}
+	arr := strings.Split(key, ":")
+	bizId, _ := strconv.Atoi(arr[2])
+	likeCnt, _ := strconv.Atoi(cntMap[domain.Like])
+	readCnt, _ := strconv.Atoi(cntMap[domain.Read])
+	colCnt, _ := strconv.Atoi(cntMap[domain.Collect])
 
-	return statCnt, nil
+	return &domain.StatCnt{
+		Biz:        arr[1],
+		BizId:      int64(bizId),
+		LikeCnt:    int64(likeCnt),
+		ReadCnt:    int64(readCnt),
+		CollectCnt: int64(colCnt),
+	}, nil
 }
 
 // 缓存资源计数信息
 func (c *InteractRedis) CacheStatCnt(ctx context.Context, key string, info *domain.StatCnt) error {
-	return c.redisClient.Set(ctx, key, info, 30*time.Minute).Err()
+	cntMap := map[string]int64{
+		domain.Like:    info.LikeCnt,
+		domain.Collect: info.CollectCnt,
+		domain.Read:    info.ReadCnt,
+	}
+	if err := c.redisClient.HSet(ctx, key, cntMap).Err(); err != nil {
+		return err
+	}
+	return c.redisClient.Expire(ctx, key, 30*time.Minute).Err()
 }

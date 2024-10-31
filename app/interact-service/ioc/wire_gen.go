@@ -28,8 +28,8 @@ func NewApp(c config.Config) (*rest.Server, error) {
 	articleCache := cache.NewInteractRedis(client)
 	iAuthorRepository := repo.NewLikeInfoRepository(authorDao, articleCache)
 	readerDao := db.NewLikeInfoDao(gormDB)
-	iReaderRepository := repo.NewReaderRepository(readerDao, articleCache)
-	articleLogic := logic.NewArticleLogic(iAuthorRepository, iReaderRepository)
+	iReaderRepository := repo.NewInteractRepository(readerDao, articleCache)
+	articleLogic := logic.NewInteractLogic(iAuthorRepository, iReaderRepository)
 	articleHandler := handler.NewInteractHandler(serviceContext, articleLogic)
 	server := NewServer(c, articleHandler)
 	return server, nil
@@ -41,11 +41,11 @@ var ServerSet = wire.NewSet(NewServer)
 
 var HandlerSet = wire.NewSet(handler.NewInteractHandler)
 
-var LogicSet = wire.NewSet(logic.NewArticleLogic)
+var LogicSet = wire.NewSet(logic.NewInteractLogic)
 
 var SvcSet = wire.NewSet(svc.NewServiceContext)
 
-var RepoSet = wire.NewSet(repo.NewLikeInfoRepository, repo.NewReaderRepository)
+var RepoSet = wire.NewSet(repo.NewLikeInfoRepository, repo.NewInteractRepository)
 
 var DaoSet = wire.NewSet(db.NewInteractDao, db.NewLikeInfoDao, cache.NewInteractRedis)
 

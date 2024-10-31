@@ -20,7 +20,7 @@ type LikeInfo struct {
 	Uid    int64  `json:"",gorm:""`
 	Status uint8  `json:"",gorm:""`
 	Ctime  int64  `json:"",`
-	Utime  int64  `json:"",gorm:"index:idx_uid_uptime"`
+	Utime  int64  `json:""`
 }
 
 func (a *LikeInfo) MarshalBinary() ([]byte, error) {
@@ -50,6 +50,7 @@ func (d *LikeInfoDao) UpdateLikeInfo(ctx context.Context, uid int64, biz string,
 		Ctime:  now,
 		Utime:  now,
 	}
+	// 尝试插入点赞记录，若冲突则更新status和utime
 	res := d.db.Clauses(
 		clause.OnConflict{
 			DoUpdates: clause.Assignments(map[string]any{

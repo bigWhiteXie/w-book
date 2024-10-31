@@ -3,10 +3,38 @@
 
 package types
 
+import "codexie.com/w-book-interact/internal/domain"
+
 type LikeResourceReq struct {
 	Biz        string `json:"biz"`
 	BizId      int64  `json:"biz_id"`
 	Liked      uint8  `json:"liked"`
+}
+
+type CollectionReq struct {
+	Id        int64 `json:"id,optional"`
+	Name        string `json:"name"`
+	Action      uint8  `json:"action"`
+	
+}
+
+type CollectResourceReq struct {
+	Id        int64 `json:"id,optional"`
+	Biz        string `json:"biz"`
+	BizId      int64  `json:"biz_id"`
+	Cid      int64  `json:"cid"`
+	Action      uint8  `json:"action"`
+}
+
+func (req *CollectResourceReq) ToDomain(uid int64) *domain.CollectionItem {
+	return &domain.CollectionItem{
+		Id: req.Id,
+		Uid: uid,
+		Biz: req.Biz,
+		BizId: req.BizId,
+		Cid: req.Cid,
+		Action: req.Action,
+	}
 }
 
 type EditArticleResp struct {

@@ -7,28 +7,13 @@ import (
 	"github.com/zeromicro/go-zero/rest"
 )
 
-func RegisterHandlers(server *rest.Server, articleHandler *InteractHandler) {
+func RegisterHandlers(server *rest.Server, interactHandler *InteractHandler) {
 	server.AddRoutes(
 		[]rest.Route{
 			{
 				Method:  http.MethodPost,
-				Path:    "/article/edit",
-				Handler: articleHandler.EditArticle,
-			},
-			{
-				Method:  http.MethodPost,
-				Path:    "/article/publish",
-				Handler: articleHandler.publish,
-			},
-			{
-				Method:  http.MethodGet,
-				Path:    "/article/view",
-				Handler: articleHandler.ViewArticle,
-			},
-			{
-				Method:  http.MethodGet,
-				Path:    "/article/list",
-				Handler: articleHandler.FindPage,
+				Path:    "/resource/like",
+				Handler: interactHandler.LikeResource,
 			},
 		},
 		rest.WithPrefix("/v1"),
