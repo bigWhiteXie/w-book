@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"codexie.com/w-book-code/internal/repo"
-	"codexie.com/w-book-code/pkg/sms"
 	"codexie.com/w-book-common/common/codeerr"
 	"codexie.com/w-book-common/producer"
 
@@ -18,12 +17,14 @@ import (
 type CodeLogic struct {
 	codeRepo      repo.SmsRepo
 	kafkaProvider producer.Producer
+	smsService    SmsService
 	logx.Logger
 }
 
-func NewCodeLogic(repo repo.SmsRepo, provider producer.Producer) *CodeLogic {
+func NewCodeLogic(repo repo.SmsRepo, provider producer.Producer, smsService *ASyncSmsLogic) *CodeLogic {
 	return &CodeLogic{
 		codeRepo:      repo,
+		smsService:    smsService,
 		kafkaProvider: provider,
 	}
 }
@@ -42,7 +43,7 @@ func (l *CodeLogic) SendCode(ctx context.Context, in *pb.SendCodeReq) (*pb.SendC
 
 	//调用短信服务发送短信
 	args := map[string]string{"code": randomCode}
-	if err = sms.SendSms(ctx, in.Phone, args); err != nil {
+	if err = l.smsService.SendSms(ctx, in.Phone, args); err != nil {
 		return nil, err
 	}
 

@@ -18,15 +18,18 @@ func NewKafkaProducer(producer sarama.SyncProducer) Producer {
 }
 
 func (p *KafkaProducer) SendSync(ctx context.Context, topic string, msg string, opts ...ProducerOption) error {
+	logger := logx.WithContext(ctx)
+
 	message, err := p.buildMessage(ctx, topic, msg, opts...)
 	if err != nil {
 		return err
 	}
 	partition, offset, err := p.kafkaClient.SendMessage(message)
 	if err != nil {
+		logger.Errorf("[KafkaProducer] 投递消息[%s]失败:%s", msg, err)
 		return err
 	}
-	logx.Infof("[kafka producer] 发送成功, topic:%s, partition:%d, offset: %d", topic, partition, offset)
+	logger.Infof("[kafka producer] 发送成功, topic:%s, partition:%d, offset: %d", topic, partition, offset)
 	return nil
 }
 

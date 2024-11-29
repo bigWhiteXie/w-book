@@ -5,12 +5,14 @@ import (
 	"fmt"
 
 	"codexie.com/w-book-code/internal/kafka/consumer"
+	"codexie.com/w-book-code/internal/logic"
 	"codexie.com/w-book-code/internal/repo"
 	"codexie.com/w-book-code/internal/repo/cache"
 	"codexie.com/w-book-code/internal/repo/dao"
 	"codexie.com/w-book-common/producer"
 
 	"codexie.com/w-book-code/pkg/sms"
+	"codexie.com/w-book-code/pkg/sms/provider"
 
 	"codexie.com/w-book-code/api/pb"
 	"codexie.com/w-book-code/internal/config"
@@ -35,12 +37,12 @@ func main() {
 
 	smsRepo := repo.NewSmsRepo(cache.NewRedisCache(ctx.Cache), dao.NewCodeDao(ctx.DB))
 	producer := producer.NewKafkaProducer(ctx.KafkaProvider)
-	sms.InitSmsClient(c.SmsConf, ctx.Cache, smsRepo, producer)
-	smsConsumer := consumer.NewSmsConsumer(c.KafkaConf.Topic, ctx.ConsumerGroup, smsRepo)
+	providerSmsService := NewSmsSerice(c.SmsConf)
+	asyncSmsLogic := logic.NewASyncSmsLogic(providerSmsService, smsRepo)
+	smsConsumer := consumer.NewSmsConsumer(c.KafkaConf.Topic, ctx.ConsumerGroup, smsRepo, providerSmsService)
 
 	s := zrpc.MustNewServer(c.RpcServerConf, func(grpcServer *grpc.Server) {
-		pb.RegisterSMSServer(grpcServer, server.NewSMSServer(ctx, smsRepo, producer))
-
+		pb.RegisterSMSServer(grpcServer, server.NewSMSServer(ctx, smsRepo, producer, asyncSmsLogic))
 		if c.Mode == service.DevMode || c.Mode == service.TestMode {
 			reflection.Register(grpcServer)
 		}
@@ -53,4 +55,10 @@ func main() {
 		smsConsumer.StartConsumer()
 	}()
 	s.Start()
+}
+
+func NewSmsSerice(conf sms.SmsConf) logic.SmsService {
+	mem := provider.NewMemoryClient(conf.Memory)
+	tc := provider.NewTCSmsClient(conf.TC)
+	return logic.NewProviderSmsLogic(mem, tc)
 }

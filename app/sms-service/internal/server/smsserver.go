@@ -20,10 +20,10 @@ type SMSServer struct {
 	codeLogic *logic.CodeLogic
 }
 
-func NewSMSServer(svcCtx *svc.ServiceContext, smsRepo repo.SmsRepo, producer producer.Producer) *SMSServer {
+func NewSMSServer(svcCtx *svc.ServiceContext, smsRepo repo.SmsRepo, producer producer.Producer, smsService *logic.ASyncSmsLogic) *SMSServer {
 	return &SMSServer{
 		svcCtx:    svcCtx,
-		codeLogic: logic.NewCodeLogic(smsRepo,producer),
+		codeLogic: logic.NewCodeLogic(smsRepo,producer,smsService),
 	}
 }
 
