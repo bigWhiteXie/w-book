@@ -19,12 +19,12 @@ func initCodeLogic() *CodeLogic {
 	var c config.Config
 	conf.MustLoad("/usr/local/go_project/w-book/app/code-service/etc/sms.yaml", &c)
 	svc := svc.NewServiceContext(c)
-	repo := repo.NewSmsRepo(cache.NewRedisCache(svc.Cache), dao.NewCodeDao(svc.DB))
+	repo := repo.NewSmsRepo(cache.NewCodeRedisCache(svc.Cache), dao.NewCodeDao(svc.DB))
 	KafkaProvider := producer.NewKafkaProducer(svc.KafkaProvider)
 	mem := provider.NewMemoryClient(c.SmsConf.Memory)
 	tc := provider.NewTCSmsClient(c.SmsConf.TC)
 	providerSmsService := NewProviderSmsLogic(mem, tc)
-	asyncSmsLogic := NewASyncSmsLogic(providerSmsService, repo)
+	asyncSmsLogic := NewASyncSmsLogic(providerSmsService, repo, KafkaProvider)
 	return NewCodeLogic(repo, KafkaProvider, asyncSmsLogic)
 }
 

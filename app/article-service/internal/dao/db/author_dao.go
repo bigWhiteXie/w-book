@@ -2,10 +2,10 @@ package db
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"time"
 
-	"github.com/zeromicro/go-zero/core/logx"
+	"github.com/pkg/errors"
 	"gorm.io/gorm"
 )
 
@@ -38,11 +38,10 @@ func (d *AuthorDao) UpdateById(ctx context.Context, artEntity *Article) error {
 		"Utime":   now,
 	})
 	if result.Error != nil {
-		return result.Error
+		return errors.Wrapf(result.Error, "[UpdateById_dsFdFEDS] 更新文章失败,authorId=%d,id=%d", artEntity.AuthorId, artEntity.Id)
 	}
 	if result.RowsAffected == 0 {
-		logx.WithContext(ctx).Errorf("[UpdateById_dsFdFEDS] 用户[%d]修改他人文章[%s],", artEntity.AuthorId, artEntity.Id)
-		return errors.New("用户非法修改文章")
+		return errors.Wrap(fmt.Errorf("[UpdateById_dsFdFEDS] 用户[%d]修改他人文章[%s],", artEntity.AuthorId, artEntity.Id), "")
 	}
 	return nil
 }
@@ -58,21 +57,28 @@ func (d *AuthorDao) SelectPage(ctx context.Context, authorId int64, page, size i
 		Limit(size).
 		Offset(offset).
 		Find(&articles)
-	if result.Error == gorm.ErrRecordNotFound {
-		return nil, nil
+	if err := result.Error; err != nil && err != gorm.ErrRecordNotFound {
+		return nil, errors.Wrapf(err, "[AuthorDao_SelectPage] 查询文章列表失败,authorId=%d, page=%d, size=%d", authorId, page, size)
 	}
-	return articles, result.Error
+
+	return articles, nil
 }
 
 func (d *AuthorDao) SelectById(ctx context.Context, id int64) (*Article, error) {
 	article := &Article{}
-	err := d.db.Find(article, id).Error
-	return article, err
+	if err := d.db.Find(article, id).Error; err != nil {
+		return nil, errors.Wrapf(err, "[AuthorDao_SelectById] 查询文章失败,id=%d", id)
+	}
+	return article, nil
 }
 
 func (d *AuthorDao) Create(ctx context.Context, artEntity *Article) error {
 	now := time.Now().UnixMilli()
 	artEntity.Utime = now
 	artEntity.Ctime = now
-	return d.db.Create(artEntity).Error
+	if err := d.db.Create(artEntity).Error; err != nil {
+		return errors.Wrapf(err, "[AuthorDao_Create] 创建文章失败,article:%v", artEntity)
+	}
+
+	return nil
 }

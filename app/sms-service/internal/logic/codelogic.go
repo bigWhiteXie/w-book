@@ -43,7 +43,7 @@ func (l *CodeLogic) SendCode(ctx context.Context, in *pb.SendCodeReq) (*pb.SendC
 
 	//调用短信服务发送短信
 	args := map[string]string{"code": randomCode}
-	if err = l.smsService.SendSms(ctx, in.Phone, args); err != nil {
+	if _, err = l.smsService.SendSms(ctx, in.Phone, args); err != nil {
 		return nil, err
 	}
 

@@ -10,6 +10,7 @@ import (
 	"codexie.com/w-book-user/internal/repo/cache"
 	"codexie.com/w-book-user/internal/repo/dao"
 
+	"github.com/pkg/errors"
 	"github.com/zeromicro/go-zero/core/logx"
 	"gorm.io/gorm"
 )
@@ -54,7 +55,7 @@ func (d *UserRepository) FindUserByEmail(ctx context.Context, email string) (*mo
 		return nil, err
 	}
 	if err == gorm.ErrRecordNotFound {
-		return nil, codeerr.WithCode(codeerr.UserEmailNotExistCode, "can't find any user by email %s", email)
+		return nil, errors.Wrap(codeerr.WithCode(codeerr.UserEmailNotExistCode, "[FindUserByEmail] 查找用户失败,email=%s:%s", email, err.Error()), "")
 	}
 	return user, nil
 }
@@ -83,7 +84,7 @@ func (d *UserRepository) FindOrCreate(ctx context.Context, phone string) (*model
 	//根据phone查找用户
 	user, err := d.userDao.FindOne(ctx, &model.User{Email: sql.StringToNullString(phone)})
 	if err != nil && err != gorm.ErrRecordNotFound {
-		return nil, err
+		return nil, errors.Wrap(codeerr.WithCode(codeerr.SystemErrCode, "[UserRepository_FindOrCreate] 使用phone=%s查找用户失败:%s", phone, err), "")
 	}
 	if err == nil {
 		return user, nil
@@ -91,8 +92,11 @@ func (d *UserRepository) FindOrCreate(ctx context.Context, phone string) (*model
 	//不存在则创建用户
 	err = d.userDao.Create(ctx, &model.User{Phone: sql.StringToNullString(phone)})
 	if err != nil && err != dao.ErrUserEmailDuplicate {
-		return nil, err
+		return nil, errors.Wrap(codeerr.WithCode(codeerr.SystemErrCode, "[UserRepository_FindOrCreate] 使用phone=%s创建用户失败:%s", phone, err), "")
 	}
 	//若唯一键冲突说明用户已经被创建，查找用户并返回
-	return d.userDao.FindOne(ctx, &model.User{Phone: sql.StringToNullString(phone)})
+	if user, err = d.userDao.FindOne(ctx, &model.User{Phone: sql.StringToNullString(phone)}); err != nil {
+		return nil, errors.Wrap(codeerr.WithCode(codeerr.SystemErrCode, "[UserRepository_FindOrCreate] 使用phone=%s查找用户失败:%s", phone, err), "")
+	}
+	return user, nil
 }

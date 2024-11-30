@@ -25,6 +25,11 @@ func RegisterHandlers(server *rest.Server, interactHandler *InteractHandler) {
 				Path:    "/resource/collect",
 				Handler: interactHandler.OperateCollectionItem,
 			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/resource/top/:biz",
+				Handler: interactHandler.TopLikeResource,
+			},
 		},
 		rest.WithPrefix("/v1"),
 		rest.WithTimeout(3000*time.Millisecond),

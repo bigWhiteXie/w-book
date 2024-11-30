@@ -14,6 +14,10 @@ import (
 	"github.com/zeromicro/go-zero/core/logx"
 )
 
+var (
+	articleBiz = "article"
+)
+
 type ArticleLogic struct {
 	authorRepo  repo.IAuthorRepository
 	readerRepo  repo.IReaderRepository
@@ -62,13 +66,13 @@ func (l *ArticleLogic) Publish(ctx context.Context, req *types.EditArticleReq) (
 	//保存到制作库,并刷新缓存
 	artId, err := l.authorRepo.Save(ctx, artDomain)
 	if err != nil {
-		return 0, err
+		return 0, errors.WithMessage(err, "[ArticleLogic] 保存文章到制作库失败")
 	}
 
 	artDomain.Id = artId
 	for i := 0; i < 3; i++ {
 		if id, err = l.readerRepo.Save(ctx, artDomain); err == nil {
-			return id, err
+			return id, errors.WithMessage(err, "[ArticleLogic] 保存文章到线上库失败")
 		}
 	}
 
@@ -81,12 +85,13 @@ func (l *ArticleLogic) Page(ctx context.Context, req *types.ArticlePageReq) ([]*
 	return l.authorRepo.SelectPage(ctx, id, req.Page, req.Size)
 }
 
-func (l *ArticleLogic) ViewArticle(ctx context.Context, req *types.ArticleViewReq) (article *domain.Article, err error) {
+func (l *ArticleLogic) ViewArticle(ctx context.Context, id int64, published bool) (article *domain.Article, err error) {
+	log := logx.WithContext(ctx)
 	defer func() {
 		if err == nil {
 			jsonStr, err := decodeReadEvt(ctx, article.Id)
 			if err != nil {
-				logx.Errorf("反序列化读事件异常：%s", err)
+				log.Errorf("[ArticleLogic_ViewArticle] 反序列化读事件异常：%s", err)
 				return
 			}
 			l.producer.SendAsync(
@@ -94,19 +99,18 @@ func (l *ArticleLogic) ViewArticle(ctx context.Context, req *types.ArticleViewRe
 				domain.ReadTopic,
 				string(jsonStr),
 				func(err error) {
-					logx.WithContext(ctx).Errorf("向消息队列推送文章阅读事件失败,%s", err)
+					log.Errorf("向消息队列推送文章阅读事件失败,%s", err)
 				},
 			)
 		}
 	}()
-	if req.Published > 0 {
+	if published {
 		uid := user.GetUidByCtx(ctx)
-		stat, err := l.interactRpc.QueryInteractionInfo(ctx, &interact.QueryInteractionReq{Uid: uid, Biz: domain.Biz, BizId: req.Id})
+		stat, err := l.interactRpc.QueryInteractionInfo(ctx, &interact.QueryInteractionReq{Uid: uid, Biz: domain.Biz, BizId: id})
 		if err != nil {
-			logx.WithContext(ctx).Errorf("[RPC失败] 访问文章统计数量错误,原因:%s", err)
-			return nil, errors.Wrapf(err, "用户%s访问文章计数信息失败", ctx.Value("id"))
+			return nil, errors.Wrapf(err, "[ArticleLogic_ViewArticle]Rpc访问交互信息异常,uid=%d,biz=%s,bizId=%d", ctx.Value("id"), domain.Biz, id)
 		}
-		article, err = l.readerRepo.FindById(ctx, req.Id)
+		article, err = l.readerRepo.FindById(ctx, id)
 		if err != nil {
 			return nil, err
 		}
@@ -118,7 +122,15 @@ func (l *ArticleLogic) ViewArticle(ctx context.Context, req *types.ArticleViewRe
 
 		return article, nil
 	}
-	return l.authorRepo.FindArticleById(ctx, req.Id)
+	return l.authorRepo.FindArticleById(ctx, id)
+}
+
+func (l *ArticleLogic) GetTopLikeArticles(ctx context.Context) ([]*domain.Article, error) {
+	topResp, err := l.interactRpc.TopLike(ctx, &interact.TopLikeReq{Biz: articleBiz})
+	if err != nil {
+		return nil, errors.Wrapf(err, "[ArticleLogic_GetTopLikeArticles]Rpc调用interactRpc的TopLike方法异常,biz=%s", articleBiz)
+	}
+	return l.readerRepo.GetShortArticles(ctx, topResp.Items)
 }
 
 func decodeReadEvt(ctx context.Context, bid int64) ([]byte, error) {

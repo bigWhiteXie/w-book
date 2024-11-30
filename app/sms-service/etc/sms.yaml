@@ -5,6 +5,20 @@ Etcd:
   - 127.0.0.1:2479
   Key: code.rpc
 
+Prometheus:
+  Host: 0.0.0.0
+  Port: 9094
+  Path: /metrics
+
+Telemetry:
+  Name: sms-service
+  Endpoint: localhost:14317
+  Batcher: otlpgrpc
+
+MetricConf:
+  service: sms-service
+  version: v1
+  
 MySQLConf:
   Enable: true
   User: root
@@ -29,14 +43,14 @@ RedisConf:
 SmsConf:
   TC:
     Name: TC
-    Weight: 2
+    Weight: 6
     SecretKey: "sadd"
     SecretId: "sadsadas"
     AppId: "sada"
     SignName: "sadasdsa"
   Memory:
     Name: Memory
-    Weight: 8
+    Weight: 4
 
 KafkaConf:
   brokers:

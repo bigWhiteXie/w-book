@@ -19,13 +19,21 @@ message AddReadCntReq {
   int64 BizId = 2;  //id
 }
 
-// 通用响应体
+
 message InteractionResult {
     int64 ReadCnt = 1;
     int64 CollectCnt = 2;
     int64 LikeCnt = 3;
     bool  IsLiked = 4;
     bool  IsCollected = 5;
+}
+
+message TopLikeResp {
+  repeated int64 Items = 1;
+}
+
+message TopLikeReq {
+  string Biz = 1;   //业务类型
 }
 
 message CommonResult {
@@ -37,4 +45,5 @@ message CommonResult {
 service Interaction {
   rpc QueryInteractionInfo(QueryInteractionReq) returns (InteractionResult);
   rpc IncreReadCnt(AddReadCntReq) returns(CommonResult);
+  rpc TopLike(TopLikeReq) returns(TopLikeResp);
 }

@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/zeromicro/go-zero/core/logx"
 	"gorm.io/gorm"
 )
 
@@ -47,11 +46,11 @@ func (dao *CollectionDao) AddCollection(ctx context.Context, entity *Collection)
 func (dao *CollectionDao) DelCollection(ctx context.Context, uid, cid int64) error {
 	res := dao.db.Where("id=? and uid=?", cid, uid).Delete(&Collection{})
 	if res.Error != nil {
-		return res.Error
+		return errors.Wrapf(res.Error, "[CollectionDao_DelCollection]删除收藏记录失败,uid=%d,cid=%d", uid, cid)
 	}
 
 	if res.RowsAffected == 0 {
-		logx.Errorf("用户[%d]删除不属于他的收藏夹[%d]", uid, cid)
+		return errors.Wrap(fmt.Errorf("[CollectionDao_DelCollection]用户[%d]删除他人收藏夹[%d]中添加数据", uid, cid), "")
 	}
 
 	return nil
@@ -67,14 +66,17 @@ func (dao *CollectionDao) AddCollectionItem(ctx context.Context, entity *Collect
 			return res.Error
 		}
 		if res.RowsAffected == 0 {
-			return fmt.Errorf("用户[%d]往他人收藏夹[%d]中添加数据", entity.Uid, entity.Cid)
+			return errors.Wrap(fmt.Errorf("[CollectionDao_AddCollectionItem]用户[%d]往他人收藏夹[%d]中添加数据", entity.Uid, entity.Cid), "")
 		}
 		entity.Id = 0
 		//设置唯一索引，重复点赞会异常
-		return tx.Create(entity).Error
+		if err := tx.Create(entity).Error; err != nil {
+			return errors.Wrapf(err, "[CollectionDao_AddCollectionItem]创建收藏记录失败,data=%v", entity)
+		}
+		return nil
 	})
 	if err != nil {
-		return nil, errors.Wrap(err, "[CollectionDao] AddCollectionItem")
+		return nil, err
 	}
 	return entity, err
 }
@@ -89,15 +91,16 @@ func (dao *CollectionDao) DelCollectionItem(ctx context.Context, entity *Collect
 			return res.Error
 		}
 		if res.RowsAffected == 0 {
-			return fmt.Errorf("用户[%d]往他人收藏夹[%d]中删除数据", entity.Uid, entity.Cid)
+			return errors.Wrap(fmt.Errorf("[CollectionDao_DelCollectionItem] 用户[%d]删除他人收藏夹[%d]中的数据[biz=%s bizId=%d]", entity.Uid, entity.Id, entity.Biz, entity.BizId), "")
+
 		}
 		delRes := tx.Where("id=?", entity.Id).Delete(&CollectionItem{})
 		if err := delRes.Error; err != nil {
-			return err
+			return errors.Wrapf(err, "[CollectionDao_DelCollectionItem] 用户[%d]删除收藏夹[%d]失败", entity.Uid, entity.Id)
 		}
 
 		if delRes.RowsAffected == 0 {
-			return errors.Errorf("用户[%d]重复删除收藏数据[%d]", entity.Uid, entity.Id)
+			return errors.Wrap(fmt.Errorf("[CollectionDao_DelCollectionItem] 用户[%d]删除的收藏夹[%d]不存在", entity.Uid, entity.Id), "")
 		}
 		return nil
 	})
@@ -105,8 +108,11 @@ func (dao *CollectionDao) DelCollectionItem(ctx context.Context, entity *Collect
 	return entity, err
 }
 
-func (dao *CollectionDao) FindCollection(ctx context.Context, uid, bizId int64, biz string) (*CollectionItem, error) {
+func (dao *CollectionDao) FindCollectionItem(ctx context.Context, uid, bizId int64, biz string) (*CollectionItem, error) {
 	item := &CollectionItem{}
 	res := dao.db.Where("biz=? and biz_id=? and uid=?", biz, bizId, uid).First(item)
-	return item, res.Error
+	if res.Error != nil && res.Error != gorm.ErrRecordNotFound {
+		return nil, errors.Wrapf(res.Error, "[CollectionDao_FindCollection] 查找收藏项失败,uid=%d,biz=%s,bizId=%d", uid, biz, bizId)
+	}
+	return item, nil
 }

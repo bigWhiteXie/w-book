@@ -23,3 +23,4 @@ type ArticleViewReq struct {
 	Id    int64 `form:"id"`
 	Published int64 `form:"published"`
 }
+

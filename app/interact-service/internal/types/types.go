@@ -27,6 +27,10 @@ type CollectResourceReq struct {
 	Action    int  `json:"action,optional"`
 }
 
+type TopLikeReq struct {
+	Biz       string `path:"biz"`
+}
+
 func (req *CollectResourceReq) ToDomain(uid int64) *domain.CollectionItem {
 	return &domain.CollectionItem{
 		Id: int64(req.Id),

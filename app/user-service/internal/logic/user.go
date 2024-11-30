@@ -14,6 +14,7 @@ import (
 	"codexie.com/w-book-user/internal/repo"
 	"codexie.com/w-book-user/internal/types"
 
+	"github.com/pkg/errors"
 	"github.com/zeromicro/go-zero/core/logx"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -49,10 +50,10 @@ func (l *UserLogic) Sign(ctx context.Context, req *types.SignReq) error {
 func (l *UserLogic) Login(ctx context.Context, req *types.LoginReq) (resp *model.User, err error) {
 	var user *model.User
 	if user, err = l.userRepo.FindUserByEmail(ctx, req.Email); err != nil {
-		return nil, codeerr.WithCode(codeerr.UserEmailNotExistCode, "[Login] 邮箱 %s 不存在", req.Email)
+		return nil, errors.WithMessage(err, "[UserLogic_Login] 根据邮箱查找用户失败")
 	}
 	if err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
-		return nil, codeerr.WithCode(codeerr.UserPwdNotMatchCode, "[Login] 用户id %s 密码错误", user.Id)
+		return nil, errors.Wrap(codeerr.WithCode(codeerr.UserPwdNotMatchCode, "[UserLogic_Login] 邮箱=%s,密码错误:%s", req.Email, err), "")
 	}
 
 	return user, nil
@@ -92,7 +93,7 @@ func (l *UserLogic) SendLoginCode(ctx context.Context, req *types.SmsSendCodeReq
 	codeRpcReq := &pb.SendCodeReq{Biz: "login", Phone: req.Phone}
 	_, grpcErr := l.codeRpc.SendCode(ctx, codeRpcReq)
 	if grpcErr != nil {
-		return codeerr.ParseGrpcErr(grpcErr)
+		return errors.Wrap(codeerr.ParseGrpcErr(grpcErr), "")
 	}
 	return nil
 }

@@ -30,6 +30,11 @@ func RegisterHandlers(server *rest.Server, articleHandler *ArticleHandler) {
 				Path:    "/article/list",
 				Handler: articleHandler.FindPage,
 			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/article/toplike",
+				Handler: articleHandler.TopLikeArticles,
+			},
 		},
 		rest.WithPrefix("/v1"),
 		rest.WithTimeout(3000*time.Millisecond),

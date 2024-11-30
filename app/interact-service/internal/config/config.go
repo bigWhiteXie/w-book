@@ -1,16 +1,18 @@
 package config
 
 import (
+	"codexie.com/w-book-common/metric"
 	"github.com/zeromicro/go-zero/rest"
 	"github.com/zeromicro/go-zero/zrpc"
 )
 
 type Config struct {
 	rest.RestConf
-	Grpc      zrpc.RpcServerConf
-	KafkaConf KafkaConf
-	MySQLConf MySQLConf
-	RedisConf RedisConf
+	Grpc       zrpc.RpcServerConf
+	KafkaConf  KafkaConf
+	MySQLConf  MySQLConf
+	RedisConf  RedisConf
+	MetricConf metric.ConstMetricLabelsConf
 }
 
 type KafkaConf struct {

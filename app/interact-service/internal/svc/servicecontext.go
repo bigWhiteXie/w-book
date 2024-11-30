@@ -7,7 +7,11 @@ import (
 
 	"codexie.com/w-book-interact/internal/config"
 	dao "codexie.com/w-book-interact/internal/dao/db"
+	red "github.com/go-redis/redis"
+	"github.com/go-redsync/redsync/v4"
+	"github.com/go-redsync/redsync/v4/redis/goredis"
 	"github.com/redis/go-redis/v9"
+
 	"github.com/zeromicro/go-zero/core/logx"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -78,6 +82,21 @@ func CreateRedisClient(c config.Config) *redis.Client {
 	}
 	logx.Infof("redis连接成功: %s", pong)
 	return myRedis
+}
+
+func CreateRedSync(c config.Config) *redsync.Redsync {
+	redisConf := c.RedisConf
+
+	// 创建 Redis 客户端
+	rdb := red.NewClient(&red.Options{
+		Addr:     redisConf.Host,
+		Password: redisConf.Pass,
+		DB:       0,
+	})
+	pool := goredis.NewPool(rdb)
+
+	// 创建 RedSync 实例
+	return redsync.New(pool)
 }
 
 func InitTables(db *gorm.DB) error {

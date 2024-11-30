@@ -2,10 +2,10 @@ package producer
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/IBM/sarama"
+	"github.com/pkg/errors"
 	"github.com/zeromicro/go-zero/core/logx"
 )
 
@@ -22,12 +22,11 @@ func (p *KafkaProducer) SendSync(ctx context.Context, topic string, msg string, 
 
 	message, err := p.buildMessage(ctx, topic, msg, opts...)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "[KafkaProducer] 构建消息[%s]失败:%s", msg, err)
 	}
 	partition, offset, err := p.kafkaClient.SendMessage(message)
 	if err != nil {
-		logger.Errorf("[KafkaProducer] 投递消息[%s]失败:%s", msg, err)
-		return err
+		return errors.Wrapf(err, "[KafkaProducer] 投递消息[%s]失败:%s", msg, err)
 	}
 	logger.Infof("[kafka producer] 发送成功, topic:%s, partition:%d, offset: %d", topic, partition, offset)
 	return nil

@@ -9,6 +9,7 @@ import (
 	"codexie.com/w-book-interact/internal/dao/cache"
 	"codexie.com/w-book-interact/internal/dao/db"
 	"codexie.com/w-book-interact/internal/domain"
+	"github.com/pkg/errors"
 	"github.com/zeromicro/go-zero/core/logx"
 	"gorm.io/gorm"
 
@@ -76,9 +77,9 @@ func (repo *CollectRepository) AddCollectionItem(ctx context.Context, col *domai
 }
 
 func (repo *CollectRepository) IsCollected(ctx context.Context, uid int64, biz string, bizId int64) (bool, error) {
-	item, err := repo.collectDao.FindCollection(ctx, uid, bizId, biz)
+	item, err := repo.collectDao.FindCollectionItem(ctx, uid, bizId, biz)
 	switch {
-	case err == gorm.ErrRecordNotFound:
+	case errors.Cause(err) == gorm.ErrRecordNotFound:
 		return false, nil
 	case err != nil:
 		return false, err

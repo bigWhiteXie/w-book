@@ -7,6 +7,7 @@ import (
 
 	"codexie.com/w-book-code/pkg/sms/provider"
 	"codexie.com/w-book-common/common/codeerr"
+	"github.com/pkg/errors"
 	"github.com/zeromicro/go-zero/core/logx"
 )
 
@@ -15,7 +16,7 @@ var (
 )
 
 type SmsService interface {
-	SendSms(ctx context.Context, phone string, args map[string]string) error
+	SendSms(ctx context.Context, phone string, args map[string]string) (string, error)
 }
 
 type ProviderSmsLogic struct {
@@ -34,10 +35,10 @@ func NewProviderSmsLogic(providers ...provider.SmsProvider) *ProviderSmsLogic {
 	}
 }
 
-func (s *ProviderSmsLogic) SendSms(ctx context.Context, phone string, args map[string]string) error {
+func (s *ProviderSmsLogic) SendSms(ctx context.Context, phone string, args map[string]string) (string, error) {
 	p := s.selectProvider()
 	if p == nil {
-		return codeerr.WithCode(codeerr.SmsNotAvaliableErr, "no avaliable sms provider")
+		return "", errors.Wrap(codeerr.WithCode(codeerr.SmsNotAvaliableErr, "[ProviderSmsLogic_SendSms]当前没有可用的短信服务提供商, phone=%s, args=%v", phone, args), "")
 	}
 
 	startTime := time.Now()
@@ -47,18 +48,18 @@ func (s *ProviderSmsLogic) SendSms(ctx context.Context, phone string, args map[s
 	if err != nil || responseTime >= 3*time.Second {
 		s.markProviderUnavailable(p, 60*time.Second, err != nil)
 		if err != nil {
-			return err
+			return "", errors.Wrapf(err, "[ProviderSmsLogic_SendSms]发送短信失败, 供应商=%s, phone=%s, args=%v", p.GetName(), phone, args)
 		} else {
 			logx.Errorf("[%s]响应时间超过3秒,请检查短信服务商是否故障", p.GetName())
-			return nil
+			return p.GetName(), nil
 		}
 	}
 
 	// 重置provider状态
 	p.SetStatus(provider.Avaliable)
 
-	logx.Infof("短信发送成功，耗时：%v", responseTime)
-	return nil
+	logx.Infof("短信发送成功，名称:%s,耗时：%v", p.GetName(), responseTime)
+	return p.GetName(), nil
 }
 
 func (s *ProviderSmsLogic) selectProvider() provider.SmsProvider {

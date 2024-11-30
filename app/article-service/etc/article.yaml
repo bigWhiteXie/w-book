@@ -8,6 +8,11 @@ InteractRpcConf:
       - 192.168.126.100:2479
     Key: interact.rpc
 
+Prometheus:
+  Host: 0.0.0.0
+  Port: 9096
+  Path: /metrics
+
 MySQLConf:
   Enable: true
   User: root
@@ -32,3 +37,8 @@ RedisConf:
 KafkaConf:
   brokers:
   - 192.168.126.100:9092
+
+Telemetry:
+  Name: article-service
+  Endpoint: 192.168.126.100:14317
+  Batcher: otlpgrpc

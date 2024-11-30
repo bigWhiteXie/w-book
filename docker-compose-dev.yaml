@@ -1,0 +1,70 @@
+version: '3'
+services:
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.0
+    container_name: etcd
+    ports:
+      - "2479:2379"
+      - "2480:2380"
+    environment:
+      - HTTPS_PROXY=""
+      - https_proxy=""
+      - NO_PROXY=*.test.example.com,.example2.com,127.0.0.0/8
+      - no_proxy=*.test.example.com,.example2.com,127.0.0.0/8
+      - HTTP_PROXY=""
+      - http_proxy=""
+    volumes:
+      - /data/etcd/data:/etcd-data
+    command:
+      - --name
+      - etcd0
+      - --data-dir
+      - /etcd-data
+      - --listen-client-urls
+      - http://0.0.0.0:2379
+      - --advertise-client-urls
+      - http://127.0.0.1:2479
+      - --listen-peer-urls
+      - http://0.0.0.0:2380
+      - --initial-advertise-peer-urls
+      - http://127.0.0.1:2380
+      - --initial-cluster
+      - etcd0=http://127.0.0.1:2380
+      - --initial-cluster-state
+      - new
+    restart: always
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    restart: always
+    ports:
+      - "3000:3000"
+    volumes:
+      - /data/grafana-storage:/var/lib/grafana
+    environment:
+      - http_proxy=""
+      - HTTP_PROXY=""
+      - HTTPS_PROXY=""
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    volumes:
+      - /etc/prometheus:/prometheus/config
+    ports:
+      - "9091:9090"
+    command:
+      - --config.file=/prometheus/config/prometheus.yaml
+      - --web.enable-lifecycle
+    restart: always    
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib
+    volumes:
+      - /etc/otel/otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml
+    ports:
+      - 1888:1888 # pprof extension
+      - 8888:8888 # Prometheus metrics exposed by the Collector
+      - 8889:8889 # Prometheus exporter metrics
+      - 13133:13133 # health_check extension
+      - 4317:4317 # OTLP gRPC receiver
+      - 4318:4318 # OTLP http receiver
+      - 55679:55679 # zpages extension

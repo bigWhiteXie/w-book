@@ -2,6 +2,19 @@ Name: interaction
 Host: 0.0.0.0
 Port: 20840
 
+Prometheus:
+  Host: 0.0.0.0
+  Port: 9093
+  Path: /metrics
+
+Telemetry:
+  Name: interact-service
+  Endpoint: localhost:14317
+  Batcher: otlpgrpc
+MetricConf:
+  service: interact-service
+  version: v1
+
 Grpc:
   Name: interact.rpc
   ListenOn: 0.0.0.0:20830
@@ -9,6 +22,10 @@ Grpc:
     Hosts:
     - 127.0.0.1:2479
     Key: interact.rpc
+  Telemetry:
+    Name: interact-rpc
+    Endpoint: localhost:14317
+    Batcher: otlpgrpc  
 
 MySQLConf:
   Enable: true

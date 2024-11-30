@@ -2,12 +2,13 @@ package logic
 
 import (
 	"context"
-	"errors"
-	"time"
 
+	"codexie.com/w-book-common/common/codeerr"
 	"codexie.com/w-book-interact/internal/domain"
 	"codexie.com/w-book-interact/internal/repo"
 	"codexie.com/w-book-interact/internal/types"
+	"github.com/pkg/errors"
+	"github.com/zeromicro/go-zero/core/logx"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -18,7 +19,8 @@ type InteractLogic struct {
 }
 
 func NewInteractLogic(authorRepo repo.ILikeInfoRepository, readerRepo repo.IInteractRepo, colRepo repo.ICollectRepository) *InteractLogic {
-	return &InteractLogic{likeRepo: authorRepo, interactRepo: readerRepo, colRepo: colRepo}
+	logic := &InteractLogic{likeRepo: authorRepo, interactRepo: readerRepo, colRepo: colRepo}
+	return logic
 }
 
 // 点赞/取消点赞资源
@@ -53,7 +55,7 @@ func (l *InteractLogic) AddOrDelCollection(ctx context.Context, req *types.Colle
 		return l.colRepo.AddCollection(ctx, col)
 	}
 	if col.Id == 0 {
-		return errors.New("删除收藏夹但没指定id")
+		return errors.Wrap(codeerr.WithCode(codeerr.SystemErrCode, "[InteractLogic_AddOrDelCollection] 删除收藏夹id不能为空"), "")
 	}
 
 	return l.colRepo.DelCollection(ctx, uid, col.Id)
@@ -78,6 +80,7 @@ func (l *InteractLogic) QueryStatInfo(ctx context.Context, req *types.OpResource
 	eg.Go(func() error {
 		var err error
 		statInfo, err = l.interactRepo.GetInteraction(ctx, statInfo)
+		logx.Errorf("[InteractLogic_QueryStatInfo] 获取统计信息 err:%s", errors.Cause(err))
 		return err
 	})
 
@@ -85,6 +88,7 @@ func (l *InteractLogic) QueryStatInfo(ctx context.Context, req *types.OpResource
 	eg.Go(func() error {
 		var err error
 		isLiked, err = l.likeRepo.IsLike(ctx, req.Uid, req.Biz, req.BizId)
+		logx.Errorf("[InteractLogic_QueryStatInfo] 获取统计信息 err:%s", errors.Cause(err))
 		return err
 	})
 
@@ -92,6 +96,7 @@ func (l *InteractLogic) QueryStatInfo(ctx context.Context, req *types.OpResource
 	eg.Go(func() error {
 		var err error
 		isCollected, err = l.colRepo.IsCollected(ctx, req.Uid, req.Biz, req.BizId)
+		logx.Errorf("[InteractLogic_QueryStatInfo] 获取统计信息 err:%s", errors.Cause(err))
 		return err
 	})
 	if err := eg.Wait(); err != nil {
@@ -102,22 +107,6 @@ func (l *InteractLogic) QueryStatInfo(ctx context.Context, req *types.OpResource
 	return statInfo, nil
 }
 
-func (l *InteractLogic) StartPeriodicCacheUpdates(ctx context.Context) {
-	ticker1 := time.NewTicker(1 * time.Minute)
-	ticker5 := time.NewTicker(5 * time.Minute)
-
-	go func() {
-		for {
-			select {
-			case <-ticker1.C:
-				//todo:更新本地缓存
-			case <-ticker5.C:
-				l.interactRepo.UpdateRedisZSet(ctx, "article", 500)
-			case <-ctx.Done():
-				ticker1.Stop()
-				ticker5.Stop()
-				return
-			}
-		}
-	}()
+func (l *InteractLogic) GetTopLike(ctx context.Context, biz string) ([]int64, error) {
+	return l.interactRepo.GetTopResIdsByLike(ctx, biz, 100)
 }

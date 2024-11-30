@@ -3,10 +3,12 @@ package repo
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"codexie.com/w-book-interact/internal/dao/cache"
 	"codexie.com/w-book-interact/internal/dao/db"
 	"codexie.com/w-book-interact/internal/domain"
+	"github.com/IBM/sarama"
 	"github.com/zeromicro/go-zero/core/logx"
 	"golang.org/x/sync/singleflight"
 )
@@ -15,49 +17,99 @@ type IInteractRepo interface {
 	GetInteraction(ctx context.Context, cntInfo *domain.Interaction) (*domain.Interaction, error)
 	AddReadCnt(ctx context.Context, biz string, bizId int64) error
 	HandleBatchRead(ctx context.Context, eventBatch []domain.ReadEvent) error
+	HandleBatchReadV2(eventBatch []domain.ReadEvent, msgs []*sarama.ConsumerMessage) error
+
 	CreateInteractData(ctx context.Context, readEvt *domain.ReadEvent) error
-	GetTopResourcesByLikes(ctx context.Context, resourceType string, limit int) ([]*domain.Interaction, error)
-	UpdateRedisZSet(ctx context.Context, resourceType string, limit int) error
+	GetTopResIdsByLike(ctx context.Context, resourceType string, limit int) ([]int64, error)
+	RefreshTopLikeRedis(ctx context.Context, resourceType string, limit int) error
+	RefreshTopLikeLocal(ctx context.Context, resourceType string, limit int) error
 }
 
 type InteractRepository struct {
 	interactDao *db.InteractDao
 	recordDao   *db.RecordDao
 	cache       cache.InteractCache
+	localCache  cache.TopLikeCache
 	sg          singleflight.Group
 	isTx        bool
 }
 
-func NewInteractRepository(readerDao *db.InteractDao, recordDao *db.RecordDao, cache cache.InteractCache) IInteractRepo {
-	return &InteractRepository{interactDao: readerDao, cache: cache, recordDao: recordDao}
+func NewInteractRepository(readerDao *db.InteractDao, recordDao *db.RecordDao, cache cache.InteractCache, localCache cache.TopLikeCache) IInteractRepo {
+	return &InteractRepository{interactDao: readerDao, cache: cache, recordDao: recordDao, localCache: localCache}
 }
 
-func (repo *InteractRepository) UpdateRedisZSet(ctx context.Context, resourceType string, limit int) error {
-	//todo:需要加分布式锁进行控制
-	entities, err := repo.interactDao.GetTopResourcesByLikes("article", limit)
-	if err != nil {
-		return err
-	}
-	return repo.cache.UpdateRedisZSet(ctx, resourceType, entities)
-}
-func (repo *InteractRepository) GetTopResourcesByLikes(ctx context.Context, resourceType string, limit int) ([]*domain.Interaction, error) {
-	models, err := repo.cache.GetTopFromRedisZSet(ctx, resourceType, 100)
-	if len(models) == 0 || err != nil {
-		models, err = repo.interactDao.GetTopResourcesByLikes(resourceType, limit*5)
+func (repo *InteractRepository) RefreshTopLikeRedis(ctx context.Context, resourceType string, limit int) error {
+	return repo.cache.UpdateRedisZSet(ctx, resourceType, func() ([]*domain.Interaction, error) {
+		resources, err := repo.interactDao.GetTopResourcesByLikes("article", limit)
 		if err != nil {
 			return nil, err
 		}
-		//更新缓存
-		go func() {
-			repo.cache.UpdateRedisZSet(ctx, resourceType, models)
-		}()
+		return fromInteractions(resources), nil
+	})
+}
+
+func (repo *InteractRepository) RefreshTopLikeLocal(ctx context.Context, resourceType string, limit int) error {
+	var (
+		resourceIds []int64
+		err         error
+	)
+
+	if !repo.localCache.TryLock(resourceType) {
+		logx.Infof("已有协程在更新资源[%s]的本地缓存,不再重复更新", resourceType)
+		return nil
 	}
-	domains := make([]*domain.Interaction, len(models))
-	for _, model := range models {
-		domains = append(domains, fromInteraction(&model))
+	defer repo.localCache.Unlock(resourceType)
+	for i := 0; i <= 3; i++ {
+		resourceIds, err = repo.cache.GetTopFromRedisZSet(ctx, resourceType, limit)
+		// 指数退避
+		if err != nil || len(resourceIds) == 0 {
+			if i == 3 {
+				logx.Errorf("获取资源[%s]的缓存失败,原因:%s", resourceType, err)
+				return err
+			}
+			time.Sleep(time.Duration((i + 1)) * time.Second)
+		}
+		break
+	}
+	return repo.localCache.UpdateResourceCache(resourceType, resourceIds)
+}
+
+func (repo *InteractRepository) GetTopResIdsByLike(ctx context.Context, resourceType string, limit int) ([]int64, error) {
+	// 先从本地缓存获取
+	localRes, err := repo.localCache.GetTopResources(resourceType)
+	if err != nil {
+		logx.Infof("获取Resource[%s]本地缓存失败:%s", err)
+	}
+	if len(localRes) >= limit {
+		return localRes[:limit], nil
 	}
 
-	return domains, nil
+	// 从redis中获取
+	resourceIds, err := repo.cache.GetTopFromRedisZSet(ctx, resourceType, 100)
+	if len(resourceIds) == 0 || err != nil { // redis中获取不到或失败，走数据库
+		entities, err := repo.interactDao.GetTopResourcesByLikes(resourceType, limit)
+		if err != nil {
+			return nil, err
+		}
+		for _, entity := range entities {
+			resourceIds = append(resourceIds, entity.BizId)
+		}
+
+		//更新缓存
+		go func() {
+			repo.cache.UpdateRedisZSet(ctx, resourceType, func() ([]*domain.Interaction, error) {
+				resources, err := repo.interactDao.GetTopResourcesByLikes("article", limit)
+				if err != nil {
+					return nil, err
+				}
+				return fromInteractions(resources), nil
+			})
+		}()
+	}
+	//更新本地缓存
+	repo.localCache.UpdateResourceCache(resourceType, resourceIds)
+
+	return resourceIds, nil
 }
 func (repo *InteractRepository) GetInteraction(ctx context.Context, cntInfo *domain.Interaction) (*domain.Interaction, error) {
 	logger := logx.WithContext(ctx)
@@ -93,11 +145,21 @@ func (repo *InteractRepository) GetInteraction(ctx context.Context, cntInfo *dom
 	return statInfo, err
 }
 
+func (repo *InteractRepository) HandleBatchReadV2(eventBatch []domain.ReadEvent, msgs []*sarama.ConsumerMessage) error {
+	logx.WithContext(context.Background()).Infof("批量阅读事件,长度:%d", len(eventBatch))
+	err := repo.HandleBatchRead(context.Background(), eventBatch)
+	if err != nil {
+		logx.Errorf("处理批量阅读事件失败,原因:%s", err)
+	}
+	return err
+}
+
 func (repo *InteractRepository) AddReadCnt(ctx context.Context, biz string, bizId int64) error {
 	repo.interactDao.IncreRead(ctx, biz, bizId)
 	return repo.cache.IncreCntIfExist(ctx, fmt.Sprintf(cntInfoKeyFmt, biz, bizId), domain.Read, 1)
 }
 
+// HandleBatchRead handles a batch of read events, updating the database and cache accordingly.
 func (repo *InteractRepository) HandleBatchRead(ctx context.Context, eventBatch []domain.ReadEvent) error {
 	bizs := make([]string, 0, len(eventBatch))
 	bizIds := make([]int64, 0, len(eventBatch))
@@ -142,9 +204,17 @@ func (repo *InteractRepository) CreateInteractData(ctx context.Context, readEvt 
 func fromInteraction(entity *db.Interaction) *domain.Interaction {
 	return &domain.Interaction{
 		Biz:        entity.Biz,
-		BizId:      entity.Id,
+		BizId:      entity.BizId,
 		LikeCnt:    entity.LikeCnt,
 		ReadCnt:    entity.ReadCnt,
 		CollectCnt: entity.CollectCnt,
 	}
+}
+
+func fromInteractions(entitis []db.Interaction) []*domain.Interaction {
+	res := make([]*domain.Interaction, 0, len(entitis))
+	for _, entity := range entitis {
+		res = append(res, fromInteraction(&entity))
+	}
+	return res
 }

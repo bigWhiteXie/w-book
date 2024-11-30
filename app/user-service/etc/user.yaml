@@ -12,6 +12,11 @@ Auth:
   AccessSecret: w-book-authentication-sadgeadSDSA
   AccessExpire: 3600
 
+Prometheus:
+  Host: 0.0.0.0
+  Port: 9095
+  Path: /metrics
+
 IpRate:
   Rate: 10
   Capacity: 20
@@ -19,6 +24,11 @@ BucketRateConf:
   Capacity: 100
   TokensPerSecond: 50
   Biz: system
+
+Telemetry:
+  Name: user-service
+  Endpoint: localhost:14317
+  Batcher: otlpgrpc
 
 MySQLConf:
   Enable: true

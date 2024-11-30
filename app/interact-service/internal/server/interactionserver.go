@@ -50,3 +50,13 @@ func (s *InteractionServer) IncreReadCnt(ctx context.Context, in *interact.AddRe
 		Msg: "ok",
 	}, nil
 }
+
+func (s *InteractionServer) TopLike(ctx context.Context, in *interact.TopLikeReq) (*interact.TopLikeResp, error) {
+	ids, err := s.logic.GetTopLike(ctx, in.Biz)
+	if err != nil {
+		return nil, err
+	}
+	return &interact.TopLikeResp{
+		Items: ids,
+	}, nil
+}

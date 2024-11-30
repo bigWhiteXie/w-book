@@ -62,7 +62,7 @@ func (d *LikeInfoDao) UpdateLikeInfo(ctx context.Context, uid int64, biz string,
 	).Create(likeInfo)
 
 	if res.Error != nil {
-		return res.Error
+		return errors.Wrapf(res.Error, "[LikeInfoDao_UpdateLikeInfo] 插入点赞信息失败")
 	}
 	return nil
 }
@@ -71,7 +71,8 @@ func (d *LikeInfoDao) FindLikeInfo(ctx context.Context, uid int64, biz string, b
 	likeInfo := &LikeInfo{}
 	res := d.db.Where("biz=? and biz_id=? and uid=?", biz, bizId, uid).First(likeInfo)
 	if res.Error != nil {
-		return nil, errors.Wrap(res.Error, "[DAO] 查找点赞信息失败")
+		return nil, errors.Wrapf(res.Error, "[LikeInfoDao_FindLikeInfo] 查询点赞信息失败")
 	}
+
 	return likeInfo, nil
 }

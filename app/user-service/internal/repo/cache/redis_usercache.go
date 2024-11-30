@@ -3,13 +3,15 @@ package cache
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strconv"
 	"time"
 
+	"codexie.com/w-book-common/common/codeerr"
 	"codexie.com/w-book-user/internal/model"
+	"github.com/pkg/errors"
 	"github.com/redis/go-redis/v9"
+	"github.com/zeromicro/go-zero/core/logx"
 )
 
 var ErrKeyNotExist = errors.New("id not exist in cache")
@@ -37,11 +39,12 @@ func (cache *RedisUserCache) Get(ctx context.Context, id string) (*model.User, e
 	key := cache.key(id)
 	data, err := cache.cmd.Get(ctx, key).Result()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(codeerr.WithCode(codeerr.SystemErrCode, "[RedisUserCache_Get]redis中获取key=%s失败:%s", key, err), "")
 	}
 
 	if data == "" {
-
+		logx.WithContext(ctx).Infof("[RedisUserCache_Get]redis中不存在该key=%s", key)
+		return nil, nil
 	}
 	user := &model.User{}
 	return user, json.Unmarshal([]byte(data), user)
@@ -51,9 +54,13 @@ func (cache *RedisUserCache) Set(ctx context.Context, user *model.User) error {
 	key := cache.key(strconv.Itoa(user.Id))
 	data, err := json.Marshal(user)
 	if err != nil {
-		return err
+		return errors.Wrap(codeerr.WithCode(codeerr.SystemErrCode, "[RedisUserCache_Set] 序列化用户信息%v失败:%s", user, err), "")
 	}
-	return cache.cmd.Set(ctx, key, data, cache.expiration).Err()
+	if err := cache.cmd.Set(ctx, key, data, cache.expiration).Err(); err != nil {
+		return errors.Wrap(codeerr.WithCode(codeerr.SystemErrCode, "[RedisUserCache_Set] 写入用户信息%v到缓存失败:%s", user, err), "")
+	}
+
+	return nil
 }
 
 func (cache *RedisUserCache) key(id string) string {

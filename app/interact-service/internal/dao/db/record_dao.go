@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/pkg/errors"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -49,7 +50,7 @@ func (d *RecordDao) AddRecords(ctx context.Context, bizs []string, bizIds []int6
 				},
 			).Create(record)
 			if result.Error != nil {
-				return result.Error
+				return errors.Wrapf(result.Error, "[RecordDao_AddRecords] 创建资源浏览记录失败,biz:%s,bizId:%d,uid:%d", biz, bizId, uid)
 			}
 		}
 		return nil
@@ -66,7 +67,7 @@ func (d *RecordDao) ListRecordByBiz(ctx context.Context, biz string, bizId int64
 		Find(&records).Error
 
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "[RecordDao_ListRecordByBiz] 查询资源浏览记录失败,biz:%s,bizId:%d", biz, bizId)
 	}
 	return records, nil
 }
@@ -81,7 +82,7 @@ func (d *RecordDao) ListRecordByUid(ctx context.Context, uid int64, limit, offse
 		Find(&records).Error
 
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "[RecordDao_ListRecordByUid] 查询资源浏览记录失败,uid:%d", uid)
 	}
 	return records, nil
 }

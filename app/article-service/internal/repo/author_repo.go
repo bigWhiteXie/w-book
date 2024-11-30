@@ -41,13 +41,14 @@ func (artRepo *AuthorRepository) Save(ctx context.Context, article *domain.Artic
 	if err != nil {
 		return 0, err
 	}
-	// 删除初始页缓存信息
-	if err := artRepo.articleCache.DelFirstPage(ctx, artEntity.AuthorId); err != nil {
-		logx.WithContext(ctx).Error("[Save] 删除首页缓存失败")
-	}
+
 	//异步缓存文章内容
 	go func() {
-		if err := artRepo.articleCache.CacheArticle(ctx, FromArticle(artEntity), false); err != nil {
+		// 删除初始页缓存信息
+		if err := artRepo.articleCache.DelFirstPage(context.Background(), artEntity.AuthorId); err != nil {
+			logx.WithContext(ctx).Error("[Save] 删除首页缓存失败")
+		}
+		if err := artRepo.articleCache.CacheArticle(context.Background(), FromArticle(artEntity), false); err != nil {
 			logx.Errorf("[Save] 异步缓存制作库文章失败,原因:%s", err)
 		}
 	}()
@@ -65,7 +66,7 @@ func (artRepo *AuthorRepository) SelectPage(ctx context.Context, authorId int64,
 			return articles, nil
 		}
 		key := "article:firstpage:" + strconv.Itoa(int(authorId))
-		artRepo.g.Do(key, func() (interface{}, error) {
+		_, err, _ = artRepo.g.Do(key, func() (interface{}, error) {
 			// 缓存未命中，查询数据库
 			articles, err := artRepo.articleDao.SelectPage(ctx, authorId, page, size)
 			if err != nil {
@@ -84,8 +85,13 @@ func (artRepo *AuthorRepository) SelectPage(ctx context.Context, authorId int64,
 			}
 			return res, nil
 		})
+		if err != nil {
+			return nil, err
+		}
+
 		return res, nil
 	}
+	// 非首页时直接查询数据库
 	articles, err := artRepo.articleDao.SelectPage(context.Background(), authorId, page, size)
 	if err != nil {
 		return nil, err

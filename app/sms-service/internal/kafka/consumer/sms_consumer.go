@@ -12,12 +12,14 @@ import (
 	"codexie.com/w-book-code/internal/logic"
 	"codexie.com/w-book-code/internal/repo"
 	"codexie.com/w-book-common/common/codeerr"
+	"codexie.com/w-book-common/metric"
 	"github.com/IBM/sarama"
 	"github.com/zeromicro/go-zero/core/logx"
 )
 
 type SmsConsumerGroup struct {
 	topic      string
+	group      string
 	client     sarama.ConsumerGroup
 	smsService logic.SmsService
 	codeRepo   repo.SmsRepo
@@ -31,6 +33,7 @@ func NewSmsConsumer(topic string, client sarama.ConsumerGroup, codeRepo repo.Sms
 	pool, _ := ants.NewPool(256, ants.WithExpiryDuration(1*time.Second), ants.WithNonblocking(false), ants.WithMaxBlockingTasks(math.MaxInt64))
 	return &SmsConsumerGroup{
 		topic:      topic,
+		group:      "sms-service",
 		client:     client,
 		smsService: smsService,
 		codeRepo:   codeRepo,
@@ -66,8 +69,10 @@ func (SmsConsumerGroup) Setup(_ sarama.ConsumerGroupSession) error   { return ni
 func (SmsConsumerGroup) Cleanup(_ sarama.ConsumerGroupSession) error { return nil }
 func (h SmsConsumerGroup) ConsumeClaim(sess sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
 	for msg := range claim.Messages() {
+		metric.ConsumeCountCounter.WithLabelValues(h.topic, h.group).Add(1)
 		sess.MarkMessage(msg, "")
 		h.pool.Submit(func() {
+			begin := time.Now()
 			logx.Infof("Received message: key=%s, value=%s, partition=%d, offset=%d\n", string(msg.Key), string(msg.Value), msg.Partition, msg.Offset)
 			//幂等性校验及状态校验
 			record, err := h.codeRepo.FindById(context.Background(), string(msg.Value))
@@ -81,7 +86,7 @@ func (h SmsConsumerGroup) ConsumeClaim(sess sarama.ConsumerGroupSession, claim s
 				return
 			}
 			if record.Status != 0 { //幂等性校验失败
-				logx.Errorf("record[%v] already handled", record)
+				logx.Errorf("[sms consumer] 幂等性校验失败，该记录已经被处理过,record=%v", record)
 				return
 			}
 
@@ -91,16 +96,18 @@ func (h SmsConsumerGroup) ConsumeClaim(sess sarama.ConsumerGroupSession, claim s
 			for {
 				var err error
 				codeErr := codeerr.WithCodeErr{}
-				if err = h.smsService.SendSms(ctx, record.Phone, data); err == nil {
+				if _, err = h.smsService.SendSms(ctx, record.Phone, data); err == nil {
 					record.Status = 1
 					h.codeRepo.UpdateById(ctx, record)
+					metric.ConsumeTimeHistogram.WithLabelValues(h.topic, h.group).Observe(float64(time.Since(begin).Milliseconds()))
 					return
 				}
 				if errors.As(err, codeErr) && codeErr.Code == codeerr.SmsNotAvaliableErr {
-					//todo: 监控埋点
+					metric.ConsumeErrCounter.WithLabelValues(h.topic, h.group, err.Error()).Inc()
 					logx.Errorf("[SmsConsumerGroup] 发送短信[id=%d]时无短信服务商正常运行")
 					return
 				}
+				logx.Errorf("[SmsConsumerGroup] 异步发送短信异常，尝试再次发送:%s", err)
 			}
 		})
 	}

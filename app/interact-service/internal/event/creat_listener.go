@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
+	"time"
 
+	"codexie.com/w-book-common/metric"
 	"codexie.com/w-book-interact/internal/config"
 	"codexie.com/w-book-interact/internal/domain"
 	"codexie.com/w-book-interact/internal/repo"
@@ -72,23 +74,30 @@ func (h CreateEventListener) ConsumeClaim(sess sarama.ConsumerGroupSession, clai
 		errGroup, _ := errgroup.WithContext(context.Background())
 		for i := 0; i < batchSize; i++ {
 			msg, ok := <-claim.Messages()
+			startTime := time.Now()
+			metric.ConsumeCountCounter.WithLabelValues(domain.CreateEvtTopic, "interact-group").Inc()
 			if !ok {
 				done = true
 				break
 			}
 			sess.MarkMessage(msg, "")
 			errGroup.Go(func() error {
+				defer func() {
+					metric.ConsumeTimeHistogram.WithLabelValues(domain.CreateEvtTopic, "interact-group").Observe(float64(time.Since(startTime).Milliseconds()))
+				}()
 				logx.Infof("添加msg:%s", msg.Value)
 				readEvt, _ := convertMsg2ReadEvt(msg)
-				return h.interactRepo.CreateInteractData(context.Background(), &readEvt)
+				if err := h.interactRepo.CreateInteractData(context.Background(), &readEvt); err != nil {
+					logx.Errorf("[CreateListener] 消费消息异常:%s", err)
+					metric.ConsumeErrCounter.WithLabelValues(domain.CreateEvtTopic, "interact-group", err.Error()).Inc()
+				}
+				return nil
 			})
 		}
 		logx.Info("[CreateListener] 批量提交消息")
 		//批量提交消息,无论消费是否异常
 		sess.Commit()
-		if err := errGroup.Wait(); err != nil {
-			logx.Errorf("[CreateListener] 消费消息异常:%s", err)
-		}
+		errGroup.Wait()
 	}
 
 	logx.Info("CreateEvtConsumer消费者停止运行")

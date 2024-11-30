@@ -7,6 +7,7 @@ import (
 	"codexie.com/w-book-code/internal/repo/cache"
 	"codexie.com/w-book-code/internal/repo/dao"
 	"codexie.com/w-book-common/common/codeerr"
+	"github.com/pkg/errors"
 )
 
 type SmsRepo interface {
@@ -44,10 +45,18 @@ func (repo *SmsRepoImpl) SaveSmsRecord(ctx context.Context, record *model.SmsSen
 	return nil
 }
 
-func (repo *SmsRepoImpl) FindById(ctx context.Context, idstr string) (*model.SmsSendRecord, error) {
-	return repo.codeDao.FindById(ctx, idstr)
+func (repo *SmsRepoImpl) FindById(ctx context.Context, idstr string) (record *model.SmsSendRecord, err error) {
+	if record, err = repo.codeDao.FindById(ctx, idstr); err != nil {
+		return nil, errors.Wrap(codeerr.WithCode(codeerr.SmsNotFoundErr, "[SmsRepoImpl_FindById]查找短信失败,Id=%s:%s", idstr, err), "")
+	}
+
+	return record, nil
 }
 
 func (repo *SmsRepoImpl) UpdateById(ctx context.Context, record *model.SmsSendRecord) error {
-	return repo.codeDao.Update(ctx, record)
+	if err := repo.codeDao.Update(ctx, record); err != nil {
+		return errors.Wrap(codeerr.WithCode(codeerr.SmsNotFoundErr, "[SmsRepoImpl_UpdateById]修改短信记录失败,record=%v:%s", record, err), "")
+	}
+
+	return nil
 }

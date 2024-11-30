@@ -3,7 +3,6 @@ package cache
 import (
 	"context"
 
-	"codexie.com/w-book-interact/internal/dao/db"
 	"codexie.com/w-book-interact/internal/domain"
 )
 
@@ -18,11 +17,11 @@ type InteractCache interface {
 	CacheStatCnt(ctx context.Context, key string, info *domain.Interaction) error
 
 	//更新资源top的zset
-	UpdateRedisZSet(ctx context.Context, resourceType string, resources []db.Interaction) error
+	UpdateRedisZSet(ctx context.Context, resourceType string, fn func() ([]*domain.Interaction, error)) error
 
 	//增加zset中资源点赞数
-	IncrementLikeInZSet(ctx context.Context, resourceType string, resourceID int64, incre int) error
+	IncrementLikeInZSet(ctx context.Context, resourceType string, resource int64, incre int) error
 
 	//从zset中拿到top资源id
-	GetTopFromRedisZSet(ctx context.Context, resourceType string, limit int) ([]db.Interaction, error)
+	GetTopFromRedisZSet(ctx context.Context, resourceType string, limit int) ([]int64, error)
 }

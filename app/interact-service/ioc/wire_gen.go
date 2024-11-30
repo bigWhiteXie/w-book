@@ -14,7 +14,9 @@ import (
 	"codexie.com/w-book-interact/internal/handler"
 	"codexie.com/w-book-interact/internal/logic"
 	"codexie.com/w-book-interact/internal/repo"
+	"codexie.com/w-book-interact/internal/server"
 	"codexie.com/w-book-interact/internal/svc"
+	"codexie.com/w-book-interact/internal/worker"
 	"github.com/google/wire"
 	"github.com/zeromicro/go-zero/rest"
 )
@@ -24,25 +26,46 @@ import (
 func NewApp(c config.Config) (*rest.Server, error) {
 	serviceContext := svc.NewServiceContext(c)
 	client := svc.CreateRedisClient(c)
-	interactCache := cache.NewInteractRedis(client)
+	redsync := svc.CreateRedSync(c)
+	interactCache := cache.NewInteractRedis(client, redsync)
 	gormDB := svc.CreteDbClient(c)
 	iLikeInfoRepository := repo.NewLikeInfoRepository(interactCache, gormDB)
 	interactDao := db.NewInteractDao(gormDB)
 	recordDao := db.NewRecordDao(gormDB)
-	iInteractRepo := repo.NewInteractRepository(interactDao, recordDao, interactCache)
+	topLikeCache := cache.NewBigCacheResourceCache()
+	iInteractRepo := repo.NewInteractRepository(interactDao, recordDao, interactCache, topLikeCache)
 	collectionDao := db.NewCollectionDao(gormDB)
 	iCollectRepository := repo.NewCollectRepository(interactCache, collectionDao)
 	interactLogic := logic.NewInteractLogic(iLikeInfoRepository, iInteractRepo, iCollectRepository)
 	interactHandler := handler.NewInteractHandler(serviceContext, interactLogic)
-	readEventListener := event.NewReadEventListener(c, iInteractRepo)
+	batchConsumer := event.NewBatchReadEventListener(c, iInteractRepo)
 	createEventListener := event.NewCreateEventListener(c, iInteractRepo)
-	server := NewServer(c, interactHandler, client, readEventListener, createEventListener)
+	workerWorker := worker.NewTopLikeWorker(iInteractRepo)
+	server := NewServer(c, interactHandler, client, batchConsumer, createEventListener, workerWorker)
 	return server, nil
+}
+
+func NewRpcApp(c config.Config) (*server.InteractionServer, error) {
+	serviceContext := svc.NewServiceContext(c)
+	client := svc.CreateRedisClient(c)
+	redsync := svc.CreateRedSync(c)
+	interactCache := cache.NewInteractRedis(client, redsync)
+	gormDB := svc.CreteDbClient(c)
+	iLikeInfoRepository := repo.NewLikeInfoRepository(interactCache, gormDB)
+	interactDao := db.NewInteractDao(gormDB)
+	recordDao := db.NewRecordDao(gormDB)
+	topLikeCache := cache.NewBigCacheResourceCache()
+	iInteractRepo := repo.NewInteractRepository(interactDao, recordDao, interactCache, topLikeCache)
+	collectionDao := db.NewCollectionDao(gormDB)
+	iCollectRepository := repo.NewCollectRepository(interactCache, collectionDao)
+	interactLogic := logic.NewInteractLogic(iLikeInfoRepository, iInteractRepo, iCollectRepository)
+	interactionServer := NewRpcServer(serviceContext, interactLogic)
+	return interactionServer, nil
 }
 
 // wire.go:
 
-var ServerSet = wire.NewSet(NewServer)
+var ServerSet = wire.NewSet(NewServer, NewRpcServer)
 
 var HandlerSet = wire.NewSet(handler.NewInteractHandler)
 
@@ -52,8 +75,10 @@ var SvcSet = wire.NewSet(svc.NewServiceContext)
 
 var RepoSet = wire.NewSet(repo.NewCollectRepository, repo.NewInteractRepository, repo.NewLikeInfoRepository)
 
-var DaoSet = wire.NewSet(db.NewCollectionDao, db.NewInteractDao, db.NewLikeInfoDao, db.NewRecordDao, cache.NewInteractRedis)
+var DaoSet = wire.NewSet(db.NewCollectionDao, db.NewInteractDao, db.NewLikeInfoDao, db.NewRecordDao, cache.NewInteractRedis, cache.NewBigCacheResourceCache)
 
-var DbSet = wire.NewSet(svc.CreteDbClient, svc.CreateRedisClient)
+var DbSet = wire.NewSet(svc.CreteDbClient, svc.CreateRedisClient, svc.CreateRedSync)
 
-var ListenerSet = wire.NewSet(event.NewReadEventListener, event.NewCreateEventListener)
+var ListenerSet = wire.NewSet(event.NewBatchReadEventListener, event.NewCreateEventListener)
+
+var WokerSet = wire.NewSet(worker.NewTopLikeWorker)

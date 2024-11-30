@@ -9,6 +9,8 @@ import (
 	"codexie.com/w-book-code/api/pb"
 	"codexie.com/w-book-code/internal/repo"
 	"codexie.com/w-book-common/producer"
+	"github.com/pkg/errors"
+	"github.com/zeromicro/go-zero/core/logx"
 
 	"codexie.com/w-book-code/internal/logic"
 	"codexie.com/w-book-code/internal/svc"
@@ -27,8 +29,13 @@ func NewSMSServer(svcCtx *svc.ServiceContext, smsRepo repo.SmsRepo, producer pro
 	}
 }
 
-func (s *SMSServer) SendCode(ctx context.Context, in *pb.SendCodeReq) (*pb.SendCodeResp, error) {
-	return s.codeLogic.SendCode(ctx, in)
+func (s *SMSServer) SendCode(ctx context.Context, in *pb.SendCodeReq) (resp *pb.SendCodeResp, err error) {
+	if resp, err = s.codeLogic.SendCode(ctx, in); err != nil {
+		logx.Errorf("[SMSServer_SendCode] 发送短信失败,cause=%s, stack:%v", errors.Cause(err),err)
+		return nil, err
+	}
+
+	return resp, nil
 }
 
 func (s *SMSServer) VerifyCode(ctx context.Context, in *pb.VerifyCodeReq) (*pb.VerifyCodeResp, error) {

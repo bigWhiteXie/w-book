@@ -23,6 +23,7 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	Interaction_QueryInteractionInfo_FullMethodName = "/api.Interaction/QueryInteractionInfo"
 	Interaction_IncreReadCnt_FullMethodName         = "/api.Interaction/IncreReadCnt"
+	Interaction_TopLike_FullMethodName              = "/api.Interaction/TopLike"
 )
 
 // InteractionClient is the client API for Interaction service.
@@ -33,6 +34,7 @@ const (
 type InteractionClient interface {
 	QueryInteractionInfo(ctx context.Context, in *QueryInteractionReq, opts ...grpc.CallOption) (*InteractionResult, error)
 	IncreReadCnt(ctx context.Context, in *AddReadCntReq, opts ...grpc.CallOption) (*CommonResult, error)
+	TopLike(ctx context.Context, in *TopLikeReq, opts ...grpc.CallOption) (*TopLikeResp, error)
 }
 
 type interactionClient struct {
@@ -63,6 +65,16 @@ func (c *interactionClient) IncreReadCnt(ctx context.Context, in *AddReadCntReq,
 	return out, nil
 }
 
+func (c *interactionClient) TopLike(ctx context.Context, in *TopLikeReq, opts ...grpc.CallOption) (*TopLikeResp, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(TopLikeResp)
+	err := c.cc.Invoke(ctx, Interaction_TopLike_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // InteractionServer is the server API for Interaction service.
 // All implementations must embed UnimplementedInteractionServer
 // for forward compatibility.
@@ -71,6 +83,7 @@ func (c *interactionClient) IncreReadCnt(ctx context.Context, in *AddReadCntReq,
 type InteractionServer interface {
 	QueryInteractionInfo(context.Context, *QueryInteractionReq) (*InteractionResult, error)
 	IncreReadCnt(context.Context, *AddReadCntReq) (*CommonResult, error)
+	TopLike(context.Context, *TopLikeReq) (*TopLikeResp, error)
 	mustEmbedUnimplementedInteractionServer()
 }
 
@@ -86,6 +99,9 @@ func (UnimplementedInteractionServer) QueryInteractionInfo(context.Context, *Que
 }
 func (UnimplementedInteractionServer) IncreReadCnt(context.Context, *AddReadCntReq) (*CommonResult, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method IncreReadCnt not implemented")
+}
+func (UnimplementedInteractionServer) TopLike(context.Context, *TopLikeReq) (*TopLikeResp, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method TopLike not implemented")
 }
 func (UnimplementedInteractionServer) mustEmbedUnimplementedInteractionServer() {}
 func (UnimplementedInteractionServer) testEmbeddedByValue()                     {}
@@ -144,6 +160,24 @@ func _Interaction_IncreReadCnt_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Interaction_TopLike_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TopLikeReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(InteractionServer).TopLike(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Interaction_TopLike_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(InteractionServer).TopLike(ctx, req.(*TopLikeReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Interaction_ServiceDesc is the grpc.ServiceDesc for Interaction service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -158,6 +192,10 @@ var Interaction_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "IncreReadCnt",
 			Handler:    _Interaction_IncreReadCnt_Handler,
+		},
+		{
+			MethodName: "TopLike",
+			Handler:    _Interaction_TopLike_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

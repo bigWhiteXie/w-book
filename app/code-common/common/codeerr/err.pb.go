@@ -39,9 +39,10 @@ type WithCodeErr struct {
 
 func WithCode(code int, format string, args ...interface{}) error {
 	msg := fmt.Sprintf(format, args...)
-	return errors.Wrap(&WithCodeErr{
+	return &WithCodeErr{
 		Code: int32(code),
-	}, msg)
+		Msg: msg,
+	}
 }
 
 func ParseGrpcErr(err error) error {
@@ -83,7 +84,8 @@ func ToGrpcErr(e error) error {
 //	@param err
 //	@return *response.Response
 func HandleErr(ctx context.Context, err error) *response.Response {
-	logx.WithContext(ctx).Errorf("%+v", err)
+	log := logx.WithContext(ctx)
+	log.Errorf("err cause:%s, stack:%+v",errors.Cause(err),err)
 	coder := ParseCoder(err)
 	return response.Fail(coder.Code(), coder.String())
 }
@@ -95,7 +97,7 @@ func (e *WithCodeErr) StackTrace() errors.StackTrace {
 	}).StackTrace()
 
 	// Remove the top frame (which corresponds to the `WithCodeErrErr` call)
-	return stack[1:] // Skip the first stack frame
+	return stack[2:] // Skip the first stack frame
 }
 
 func (w *WithCodeErr) Error() string { return w.Msg }

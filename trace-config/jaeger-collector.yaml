@@ -1,0 +1,3 @@
+collector:
+  grpc:
+    endpoint: ":4317"  # 监听 4317 端口

@@ -9,6 +9,7 @@ import (
 	"codexie.com/w-book-code/internal/repo"
 	"codexie.com/w-book-code/internal/repo/cache"
 	"codexie.com/w-book-code/internal/repo/dao"
+	"codexie.com/w-book-common/metric"
 	"codexie.com/w-book-common/producer"
 
 	"codexie.com/w-book-code/pkg/sms"
@@ -20,6 +21,7 @@ import (
 	"codexie.com/w-book-code/internal/svc"
 
 	"github.com/zeromicro/go-zero/core/conf"
+	"github.com/zeromicro/go-zero/core/prometheus"
 	"github.com/zeromicro/go-zero/core/service"
 	"github.com/zeromicro/go-zero/zrpc"
 	"google.golang.org/grpc"
@@ -34,12 +36,12 @@ func main() {
 	var c config.Config
 	conf.MustLoad(*configFile, &c)
 	ctx := svc.NewServiceContext(c)
-
-	smsRepo := repo.NewSmsRepo(cache.NewRedisCache(ctx.Cache), dao.NewCodeDao(ctx.DB))
+	metric.InitMessageMetric(c.MetricConf)
+	smsRepo := repo.NewSmsRepo(cache.NewCodeRedisCache(ctx.Cache), dao.NewCodeDao(ctx.DB))
 	producer := producer.NewKafkaProducer(ctx.KafkaProvider)
-	providerSmsService := NewSmsSerice(c.SmsConf)
-	asyncSmsLogic := logic.NewASyncSmsLogic(providerSmsService, smsRepo)
-	smsConsumer := consumer.NewSmsConsumer(c.KafkaConf.Topic, ctx.ConsumerGroup, smsRepo, providerSmsService)
+	prometheusSmsService := NewSmsSerice(c.SmsConf, c.MetricConf)
+	asyncSmsLogic := logic.NewASyncSmsLogic(prometheusSmsService, smsRepo, producer)
+	smsConsumer := consumer.NewSmsConsumer(c.KafkaConf.Topic, ctx.ConsumerGroup, smsRepo, prometheusSmsService)
 
 	s := zrpc.MustNewServer(c.RpcServerConf, func(grpcServer *grpc.Server) {
 		pb.RegisterSMSServer(grpcServer, server.NewSMSServer(ctx, smsRepo, producer, asyncSmsLogic))
@@ -54,11 +56,17 @@ func main() {
 	go func() {
 		smsConsumer.StartConsumer()
 	}()
+
+	// 启动prometheus
+	go func() {
+		prometheus.StartAgent(c.ServiceConf.Prometheus)
+	}()
 	s.Start()
 }
 
-func NewSmsSerice(conf sms.SmsConf) logic.SmsService {
+func NewSmsSerice(conf sms.SmsConf, labelConf metric.ConstMetricLabelsConf) logic.SmsService {
 	mem := provider.NewMemoryClient(conf.Memory)
 	tc := provider.NewTCSmsClient(conf.TC)
-	return logic.NewProviderSmsLogic(mem, tc)
+	providerSmsLogic := logic.NewProviderSmsLogic(mem, tc)
+	return logic.NewPrometheusSmsLogic(labelConf, providerSmsLogic)
 }

@@ -81,3 +81,24 @@ func (h *InteractHandler) OperateCollectionItem(w http.ResponseWriter, r *http.R
 
 	httpx.OkJsonCtx(r.Context(), w, resp)
 }
+
+func (h *InteractHandler) TopLikeResource(w http.ResponseWriter, r *http.Request) {
+	var (
+		req  types.TopLikeReq
+		resp *response.Response
+		res  []int64
+	)
+	if err := httpx.ParsePath(r, &req); err != nil {
+		httpx.ErrorCtx(r.Context(), w, err)
+		return
+	}
+
+	res, err := h.interactLogic.GetTopLike(r.Context(), req.Biz)
+	if err != nil {
+		resp = codeerr.HandleErr(r.Context(), err)
+	} else {
+		resp = response.Ok(res)
+	}
+
+	httpx.OkJsonCtx(r.Context(), w, resp)
+}

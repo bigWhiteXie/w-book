@@ -61,6 +61,20 @@ func (h *ArticleHandler) Publish(w http.ResponseWriter, r *http.Request) {
 	httpx.OkJsonCtx(r.Context(), w, resp)
 }
 
+func (h *ArticleHandler) TopLikeArticles(w http.ResponseWriter, r *http.Request) {
+	var (
+		resp *response.Response
+	)
+
+	id, err := h.articleLogic.GetTopLikeArticles(r.Context())
+	if err != nil {
+		resp = codeerr.HandleErr(r.Context(), err)
+	} else {
+		resp = response.Ok(id)
+	}
+	httpx.OkJsonCtx(r.Context(), w, resp)
+}
+
 func (h *ArticleHandler) FindPage(w http.ResponseWriter, r *http.Request) {
 	var (
 		req  types.ArticlePageReq
@@ -90,7 +104,7 @@ func (h *ArticleHandler) ViewArticle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	article, err := h.articleLogic.ViewArticle(r.Context(), &req)
+	article, err := h.articleLogic.ViewArticle(r.Context(), req.Id, req.Published > 0)
 	if err != nil {
 		resp = codeerr.HandleErr(r.Context(), err)
 	} else {

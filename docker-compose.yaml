@@ -1,29 +1,78 @@
 version: '3'
 services:
-  zoo1:
-    image: confluentinc/cp-zookeeper:7.3.2
-    hostname: zoo1
-    container_name: zoo1
-    ports:
-      - "2181:2181"
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.8.0
+    container_name: jaeger-es
     environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_SERVER_ID: 1
-      ZOOKEEPER_SERVERS: zoo1:2888:3888
-
-  Etcd:
-    container_name: etcd3
-    image: bitnami/etcd:3.5.6
-    deploy:
-      replicas: 1
-      restart_policy:
-        condition: on-failure
-    environment:
-      - ALLOW_NONE_AUTHENTICATION=yes
-    privileged: true
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - discovery.type=single-node
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
     volumes:
-      - /data/etcd/data:/bitnami/etcd/data
-      - /etc/localtime:/etc/localtime:ro
+      - /data/es:/usr/share/elasticsearch/data
     ports:
-      - 2379:2379
-      - 2380:2380
+      - 9201:9200
+ 
+  # jaeger-query UI
+  jaeger-query:
+    image: jaegertracing/jaeger-query
+    container_name: jaeger-query
+    restart: always
+    depends_on:
+      - elasticsearch
+    environment:
+      - NO_PROXY="192.168.126.100" 
+      - SPAN_STORAGE_TYPE=elasticsearch
+      - ES_SERVER_URLS=http://192.168.126.100:9201
+      - ES_USERNAME=elastic
+      - LOG_LEVEL=debug
+    ports:
+      - 16686:16686
+      - 16687:16687 
+    
+  jaeger-collector:
+    image: jaegertracing/jaeger-collector:latest
+    container_name: jaeger-collector
+    restart: always
+    depends_on:
+      - elasticsearch
+    volumes:
+    - /etc/jaeger-col/jaeger-collector.yaml:/etc/jaeger/jaeger-collector.yaml  
+    environment:
+      - NO_PROXY="192.168.126.100" 
+      - SPAN_STORAGE_TYPE=elasticsearch
+      - ES_SERVER_URLS=http://192.168.126.100:9201
+      - ES_USERNAME=elastic
+      - COLLECTOR_OTLP_ENABLED=true
+      - LOG_LEVEL=debug
+    ports:
+      - 9411:9411
+      - 14250:14250
+      - 14268:14268
+      - 14269:14269
+      - 4317:4317
+      - 4318:4318
+
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: otel-agent
+    restart: always
+    depends_on:
+      - jaeger-collector
+    volumes:
+      - /etc/otel/otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml
+    environment:
+      - NO_PROXY="192.168.126.100" 
+    ports:
+      - 1888:1888 # pprof extension
+      - 11800:11800 # Prometheus metrics exposed by the Collector
+      - 12800:12800 # Prometheus exporter metrics
+      - 13133:13133 # health_check extension
+      - 14317:14317 # OTLP gRPC receiver
+      - 14318:14318 # OTLP http receiver
+      - 55679:55679 # zpages extension
+

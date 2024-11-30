@@ -33,8 +33,11 @@ func NewInteractDao(db *gorm.DB) *InteractDao {
 
 func (d *InteractDao) GetTopResourcesByLikes(resourceType string, limit int) ([]Interaction, error) {
 	var resources []Interaction
-	err := d.db.Where("biz = ?", resourceType).Order("like_cnt DESC").Limit(limit).Find(&resources).Error
-	return resources, err
+	if err := d.db.Where("biz = ?", resourceType).Order("like_cnt DESC").Limit(limit).Find(&resources).Error; err != nil {
+		return nil, errors.Wrapf(err, "[InteractDao_GetTopResourcesByLikes] 查询点赞数失败,limit:%d", limit)
+	}
+
+	return resources, nil
 }
 
 func (d *InteractDao) CrateCntData(ctx context.Context, biz string, bizId int64) (*Interaction, error) {
@@ -46,21 +49,19 @@ func (d *InteractDao) CrateCntData(ctx context.Context, biz string, bizId int64)
 		Utime:   now,
 		Ctime:   now,
 	}
-	result := d.db.Create(interaction)
-
-	if result.Error != nil {
-		return nil, result.Error
+	if err := d.db.Create(interaction).Error; err != nil {
+		return nil, errors.Wrapf(err, "[InteractDao_CrateCntData] 创建点赞数失败,biz:%s,bizId:%d", biz, bizId)
 	}
 
 	return interaction, nil
 }
 func (d *InteractDao) FindInteractByBiz(ctx context.Context, biz string, bizId int64) (*Interaction, error) {
 	model := &Interaction{}
-
 	result := d.db.Where("biz=? and biz_id=?", biz, bizId).First(model)
 	if result.Error != nil {
-		return nil, errors.Wrap(result.Error, "查询Interaction失败")
+		return nil, errors.Wrapf(result.Error, "[InteractDao_FindInteractByBiz] 查询点赞数失败,biz:%s,bizId:%d", biz, bizId)
 	}
+
 	return model, nil
 }
 
@@ -81,9 +82,8 @@ func (d *InteractDao) IncreLike(ctx context.Context, biz string, bizId int64) er
 			}), // 更新字段
 		},
 	).Create(interaction)
-
 	if result.Error != nil {
-		return result.Error
+		return errors.Wrapf(result.Error, "[InteractDao_DecreLike] 更新点赞数失败,biz:%s,bizId:%d", biz, bizId)
 	}
 
 	return nil
@@ -98,11 +98,11 @@ func (d *InteractDao) DecreLike(ctx context.Context, biz string, bizId int64) er
 	})
 
 	if result.Error != nil {
-		return errors.Wrap(result.Error, "数据库操作错误")
+		return errors.Wrapf(result.Error, "[InteractDao_DecreLike] 更新点赞数失败,biz:%s,bizId:%d", biz, bizId)
 	}
 
 	if result.RowsAffected == 0 {
-		return fmt.Errorf("uid[%d]点赞不存在的数据", ctx.Value("id"))
+		return errors.Wrap(fmt.Errorf("[InteractDao_DecreLike] 用户[%d]点赞不存在的数据", ctx.Value("id")), "")
 	}
 	return nil
 }

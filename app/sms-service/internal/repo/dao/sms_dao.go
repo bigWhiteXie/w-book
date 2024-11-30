@@ -5,7 +5,6 @@ import (
 	"strconv"
 
 	"codexie.com/w-book-code/internal/model"
-	"codexie.com/w-book-common/common/codeerr"
 
 	"gorm.io/gorm"
 )
@@ -42,9 +41,6 @@ func (d *CodeDao) FindById(ctx context.Context, idstr string) (*model.SmsSendRec
 	id, _ := strconv.Atoi(idstr)
 	record := &model.SmsSendRecord{}
 	if err := d.db.WithContext(ctx).First(record, id).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return nil, codeerr.WithCode(codeerr.SmsNotFoundErr, "fail to find record by id:%s", id)
-		}
 		return nil, err
 	}
 	return record, nil
