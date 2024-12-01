@@ -41,7 +41,7 @@ func (s *InteractionServer) QueryInteractionInfo(ctx context.Context, in *intera
 	}, err
 }
 
-func (s *InteractionServer) QueryInteractionInfos(ctx context.Context, in *interact.QueryInteractionsReq) ([]*interact.InteractionResult, error) {
+func (s *InteractionServer) QueryInteractionsInfo(ctx context.Context, in *interact.QueryInteractionsReq) (*interact.InteractionsInfo, error) {
 	stats, err := s.logic.QueryInteractionInfos(ctx, in.Biz, in.BizIds)
 
 	if err != nil {
@@ -57,7 +57,10 @@ func (s *InteractionServer) QueryInteractionInfos(ctx context.Context, in *inter
 			IsCollected: stat.IsCollected,
 		})
 	}
-	return res, nil
+
+	return &interact.InteractionsInfo{
+		Interactions: res,
+	}, nil
 }
 
 func (s *InteractionServer) IncreReadCnt(ctx context.Context, in *interact.AddReadCntReq) (*interact.CommonResult, error) {

@@ -42,41 +42,26 @@ func (s *ArticleHandlerSuite) SetupSuite() {
 	var c config.Config
 	conf.MustLoad(*configFile, &c)
 
-	server := rest.MustNewServer(c.RestConf, rest.WithCors())
 	serviceContext := svc.NewServiceContext(c)
-	s.db = svc.CreteDbClient(c)
-	s.cache = svc.CreateRedisClient(c)
-	rpcClient := svc.CreateCodeRpcClient(c)
-	articleLogic := logic.NewArticleLogic(repo.NewAuthorRepository(db.NewAuthorDao(s.db), cache.NewArticleRedis(s.cache)), repo.NewReaderRepository(db.NewReaderDao(s.db), cache.NewArticleRedis(s.cache)), rpcClient, svc.CreateKafkaProducer(c))
-	articleHandler := NewArticleHandler(serviceContext, articleLogic)
-	server.AddRoute(rest.Route{
-		Method:  http.MethodPost,
-		Path:    "/v1/article/edit",
-		Handler: articleHandler.EditArticle,
-	})
-	server.AddRoute(rest.Route{
-		Method:  http.MethodPost,
-		Path:    "/v1/article/publish",
-		Handler: articleHandler.Publish,
-	})
-	server.AddRoute(rest.Route{
-		Method:  http.MethodGet,
-		Path:    "/v1/article/list",
-		Handler: articleHandler.FindPage,
-	}, rest.WithTimeout(1000*time.Second))
-	server.AddRoute(rest.Route{
-		Method:  http.MethodGet,
-		Path:    "/v1/article/view",
-		Handler: articleHandler.ViewArticle,
-	}, rest.WithTimeout(1000*time.Second))
-	server.Use(func(next http.HandlerFunc) http.HandlerFunc {
-		return func(w http.ResponseWriter, r *http.Request) {
-			ctx := context.WithValue(r.Context(), "id", 123)
-			ctx = context.WithValue(ctx, "sid", "dsadas")
-			next(w, r.WithContext(ctx))
-		}
-	})
+	gormDB := svc.CreteDbClient(c)
+	authorDao := db.NewAuthorDao(gormDB)
+	client := svc.CreateRedisClient(c)
+	articleCache := cache.NewArticleRedis(client)
+	iAuthorRepository := repo.NewAuthorRepository(authorDao, articleCache)
+	readerDao := db.NewReaderDao(gormDB)
+	iReaderRepository := repo.NewReaderRepository(readerDao, articleCache)
+	interactionClient := svc.CreateCodeRpcClient(c)
+	producer := svc.CreateKafkaProducer(c)
+	articleLogic := logic.NewArticleLogic(iAuthorRepository, iReaderRepository, interactionClient, producer)
+	localArtTopCache := cache.NewLocalArtTopCache()
+	redisArtTopNCache := cache.NewRankCacheRedis(client)
+	rankRepo := repo.NewRankRepo(localArtTopCache, redisArtTopNCache)
+	redsync := svc.CreateRedSync(c)
+	rankingLogic := logic.NewRankingLogic(iReaderRepository, rankRepo, redsync, interactionClient)
+	articleHandler := NewArticleHandler(serviceContext, articleLogic, rankingLogic)
 
+	server := rest.MustNewServer(c.RestConf, rest.WithCors())
+	RegisterHandlers(server, articleHandler)
 	s.server = server
 }
 

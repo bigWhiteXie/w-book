@@ -10,6 +10,8 @@ require (
 	codexie.com/w-book-common v0.0.0-00010101000000-000000000000
 	codexie.com/w-book-interact v0.0.0-00010101000000-000000000000
 	github.com/IBM/sarama v1.43.3
+	github.com/allegro/bigcache/v3 v3.1.0
+	github.com/go-redis/redis v6.15.9+incompatible
 	github.com/google/wire v0.6.0
 	github.com/pkg/errors v0.9.1
 	github.com/redis/go-redis/v9 v9.7.0
@@ -18,6 +20,11 @@ require (
 	golang.org/x/sync v0.9.0
 	gorm.io/driver/mysql v1.5.7
 	gorm.io/gorm v1.25.12
+)
+
+require (
+	github.com/onsi/ginkgo v1.16.5 // indirect
+	github.com/robfig/cron/v3 v3.0.1 // indirect
 )
 
 require (
@@ -39,12 +46,14 @@ require (
 	github.com/go-openapi/jsonpointer v0.19.6 // indirect
 	github.com/go-openapi/jsonreference v0.20.2 // indirect
 	github.com/go-openapi/swag v0.22.4 // indirect
+	github.com/go-redsync/redsync/v4 v4.13.0
 	github.com/go-sql-driver/mysql v1.8.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.1 // indirect
 	github.com/golang/mock v1.6.0 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
+	github.com/gomodule/redigo v2.0.0+incompatible // indirect
 	github.com/google/gnostic-models v0.6.8 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect

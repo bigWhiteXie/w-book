@@ -5,29 +5,27 @@ import (
 	"encoding/json"
 
 	"codexie.com/w-book-article/internal/domain"
-	"github.com/go-redsync/redsync"
 	"github.com/pkg/errors"
 	"github.com/redis/go-redis/v9"
 )
 
 type RedisArtTopNCache struct {
 	redisClient *redis.Client
-	redLock     *redsync.Redsync
 }
 
-func NewInteractRedis(client *redis.Client, rs *redsync.Redsync) *RedisArtTopNCache {
-	return &RedisArtTopNCache{redisClient: client, redLock: rs}
+func NewRankCacheRedis(client *redis.Client) *RedisArtTopNCache {
+	return &RedisArtTopNCache{redisClient: client}
 }
 
 func (c *RedisArtTopNCache) ReplaceTopN(ctx context.Context, arts []*domain.Article) error {
-	topKey := "resource:top:" + domain.Biz
+	topKey := "rank:top:" + domain.Biz
 	luaScript := `
     -- 删除指定key对应的List
     redis.call('DEL', KEYS[1])
     -- 遍历要添加的文章列表, 逐个添加到List中
     for i, art in ipairs(ARGV) do
         local serialized_art = art
-        redis.call('LPUSH', KEYS[1], serialized_art)
+        redis.call('RPUSH', KEYS[1], serialized_art)
     end
     return 1
     `
@@ -48,7 +46,7 @@ func (c *RedisArtTopNCache) ReplaceTopN(ctx context.Context, arts []*domain.Arti
 }
 
 func (c *RedisArtTopNCache) TakeTopNArticles(ctx context.Context) ([]*domain.Article, error) {
-	topKey := "resource:top:" + domain.Biz
+	topKey := "rank:top:" + domain.Biz
 	// 从Redis List中获取所有元素
 	result, err := c.redisClient.LRange(ctx, topKey, 0, -1).Result()
 	if err != nil {

@@ -11,6 +11,7 @@ import (
 	"codexie.com/w-book-article/internal/dao/cache"
 	"codexie.com/w-book-article/internal/dao/db"
 	"codexie.com/w-book-article/internal/handler"
+	"codexie.com/w-book-article/internal/job"
 	"codexie.com/w-book-article/internal/logic"
 	"codexie.com/w-book-article/internal/repo"
 	"codexie.com/w-book-article/internal/svc"
@@ -32,9 +33,31 @@ func NewApp(c config.Config) (*rest.Server, error) {
 	interactionClient := svc.CreateCodeRpcClient(c)
 	producer := svc.CreateKafkaProducer(c)
 	articleLogic := logic.NewArticleLogic(iAuthorRepository, iReaderRepository, interactionClient, producer)
-	articleHandler := handler.NewArticleHandler(serviceContext, articleLogic)
+	localArtTopCache := cache.NewLocalArtTopCache()
+	redisArtTopNCache := cache.NewRankCacheRedis(client)
+	rankRepo := repo.NewRankRepo(localArtTopCache, redisArtTopNCache)
+	redsync := svc.CreateRedSync(c)
+	rankingLogic := logic.NewRankingLogic(iReaderRepository, rankRepo, redsync, interactionClient)
+	articleHandler := handler.NewArticleHandler(serviceContext, articleLogic, rankingLogic)
 	server := NewServer(c, articleHandler, client)
 	return server, nil
+}
+
+func NewJobStarter(c config.Config) (*job.JobBuilder, error) {
+	gormDB := svc.CreteDbClient(c)
+	readerDao := db.NewReaderDao(gormDB)
+	client := svc.CreateRedisClient(c)
+	articleCache := cache.NewArticleRedis(client)
+	iReaderRepository := repo.NewReaderRepository(readerDao, articleCache)
+	localArtTopCache := cache.NewLocalArtTopCache()
+	redisArtTopNCache := cache.NewRankCacheRedis(client)
+	rankRepo := repo.NewRankRepo(localArtTopCache, redisArtTopNCache)
+	redsync := svc.CreateRedSync(c)
+	interactionClient := svc.CreateCodeRpcClient(c)
+	rankingLogic := logic.NewRankingLogic(iReaderRepository, rankRepo, redsync, interactionClient)
+	rankingJob := job.NewRankingJob(rankingLogic)
+	jobBuilder := job.InitJobBuilder(rankingJob)
+	return jobBuilder, nil
 }
 
 // wire.go:
@@ -43,16 +66,30 @@ var ServerSet = wire.NewSet(NewServer)
 
 var HandlerSet = wire.NewSet(handler.NewArticleHandler)
 
-var LogicSet = wire.NewSet(logic.NewArticleLogic)
+var LogicSet = wire.NewSet(logic.NewArticleLogic, logic.NewRankingLogic)
 
 var SvcSet = wire.NewSet(svc.NewServiceContext)
 
-var RepoSet = wire.NewSet(repo.NewAuthorRepository, repo.NewReaderRepository)
+var RepoSet = wire.NewSet(repo.NewAuthorRepository, repo.NewReaderRepository, repo.NewRankRepo)
 
-var DaoSet = wire.NewSet(db.NewAuthorDao, db.NewReaderDao, cache.NewArticleRedis)
+var DaoSet = wire.NewSet(db.NewAuthorDao, db.NewReaderDao)
 
-var DbSet = wire.NewSet(svc.CreteDbClient, svc.CreateRedisClient)
+var CacheSet = wire.NewSet(cache.NewRankCacheRedis, cache.NewLocalArtTopCache, cache.NewArticleRedis)
+
+var DbSet = wire.NewSet(svc.CreteDbClient, svc.CreateRedisClient, svc.CreateRedSync)
 
 var MessageSet = wire.NewSet(svc.CreateKafkaProducer)
 
 var RpcSet = wire.NewSet(svc.CreateCodeRpcClient)
+
+var JobSet = wire.NewSet(job.InitJobBuilder, job.NewRankingJob)
+
+var JobLogicSet = wire.NewSet(logic.NewRankingLogic)
+
+var JobRepoSet = wire.NewSet(repo.NewReaderRepository, repo.NewRankRepo)
+
+var JobDaoSet = wire.NewSet(db.NewReaderDao)
+
+var JobCacheSet = wire.NewSet(cache.NewRankCacheRedis, cache.NewLocalArtTopCache, cache.NewArticleRedis)
+
+var JobDbSet = wire.NewSet(svc.CreteDbClient, svc.CreateRedisClient, svc.CreateRedSync)

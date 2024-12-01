@@ -8,6 +8,7 @@ import (
 	"codexie.com/w-book-article/internal/dao/cache"
 	dao "codexie.com/w-book-article/internal/dao/db"
 	"codexie.com/w-book-article/internal/handler"
+	"codexie.com/w-book-article/internal/job"
 	"codexie.com/w-book-article/internal/logic"
 	"codexie.com/w-book-article/internal/repo"
 
@@ -20,19 +21,29 @@ var ServerSet = wire.NewSet(NewServer)
 
 var HandlerSet = wire.NewSet(handler.NewArticleHandler)
 
-var LogicSet = wire.NewSet(logic.NewArticleLogic)
+var LogicSet = wire.NewSet(logic.NewArticleLogic, logic.NewRankingLogic)
 
 var SvcSet = wire.NewSet(svc.NewServiceContext)
 
-var RepoSet = wire.NewSet(repo.NewAuthorRepository, repo.NewReaderRepository)
+var RepoSet = wire.NewSet(repo.NewAuthorRepository, repo.NewReaderRepository, repo.NewRankRepo)
 
-var DaoSet = wire.NewSet(dao.NewAuthorDao, dao.NewReaderDao, cache.NewArticleRedis)
+var DaoSet = wire.NewSet(dao.NewAuthorDao, dao.NewReaderDao)
 
-var DbSet = wire.NewSet(svc.CreteDbClient, svc.CreateRedisClient)
+var CacheSet = wire.NewSet(cache.NewRankCacheRedis, cache.NewLocalArtTopCache, cache.NewArticleRedis)
+
+var DbSet = wire.NewSet(svc.CreteDbClient, svc.CreateRedisClient, svc.CreateRedSync)
 
 var MessageSet = wire.NewSet(svc.CreateKafkaProducer)
 
 var RpcSet = wire.NewSet(svc.CreateCodeRpcClient)
+
+var JobSet = wire.NewSet(job.InitJobBuilder, job.NewRankingJob)
+var JobLogicSet = wire.NewSet(logic.NewRankingLogic)
+var JobRepoSet = wire.NewSet(repo.NewReaderRepository, repo.NewRankRepo)
+
+var JobDaoSet = wire.NewSet(dao.NewReaderDao)
+var JobCacheSet = wire.NewSet(cache.NewRankCacheRedis, cache.NewLocalArtTopCache, cache.NewArticleRedis)
+var JobDbSet = wire.NewSet(svc.CreteDbClient, svc.CreateRedisClient, svc.CreateRedSync)
 
 func NewApp(c config.Config) (*rest.Server, error) {
 	panic(wire.Build(
@@ -42,8 +53,21 @@ func NewApp(c config.Config) (*rest.Server, error) {
 		SvcSet,
 		RepoSet,
 		DaoSet,
+		CacheSet,
 		DbSet,
 		MessageSet,
+		RpcSet,
+	))
+}
+
+func NewJobStarter(c config.Config) (*job.JobBuilder, error) {
+	panic(wire.Build(
+		JobSet,
+		JobLogicSet,
+		JobRepoSet,
+		JobDaoSet,
+		JobCacheSet,
+		JobDbSet,
 		RpcSet,
 	))
 }

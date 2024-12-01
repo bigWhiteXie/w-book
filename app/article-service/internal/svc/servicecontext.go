@@ -7,9 +7,13 @@ import (
 
 	"codexie.com/w-book-article/internal/config"
 	dao "codexie.com/w-book-article/internal/dao/db"
+	red "github.com/go-redis/redis"
+
 	"codexie.com/w-book-common/producer"
 	"codexie.com/w-book-interact/api/pb/interact"
 	"github.com/IBM/sarama"
+	"github.com/go-redsync/redsync/v4"
+	"github.com/go-redsync/redsync/v4/redis/goredis"
 	"github.com/redis/go-redis/v9"
 	"github.com/zeromicro/go-zero/core/logx"
 	"github.com/zeromicro/go-zero/zrpc"
@@ -69,6 +73,21 @@ func CreteDbClient(c config.Config) *gorm.DB {
 	sqlDB.SetConnMaxLifetime(time.Duration(mysqlConf.Gorm.ConnMaxLifetime) * time.Second)
 
 	return db
+}
+
+func CreateRedSync(c config.Config) *redsync.Redsync {
+	redisConf := c.RedisConf
+
+	// 创建 Redis 客户端
+	rdb := red.NewClient(&red.Options{
+		Addr:     redisConf.Host,
+		Password: redisConf.Pass,
+		DB:       0,
+	})
+	pool := goredis.NewPool(rdb)
+
+	// 创建 RedSync 实例
+	return redsync.New(pool)
 }
 
 func CreateRedisClient(c config.Config) *redis.Client {

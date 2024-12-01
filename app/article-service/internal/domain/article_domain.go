@@ -52,7 +52,6 @@ func (m ArticleArray) MarshalBinary() (data []byte, err error) {
 // 反序列化
 func (m ArticleArray) UnmarshalBinary(data []byte) error {
 	return json.Unmarshal(data, m)
-
 }
 
 type ArticleStatus uint8

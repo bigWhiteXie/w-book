@@ -14,12 +14,14 @@ import (
 type ArticleHandler struct {
 	ctx          *svc.ServiceContext
 	articleLogic *logic.ArticleLogic
+	rankingLogic *logic.RankingLogic
 }
 
-func NewArticleHandler(ctx *svc.ServiceContext, articleLogic *logic.ArticleLogic) *ArticleHandler {
+func NewArticleHandler(ctx *svc.ServiceContext, articleLogic *logic.ArticleLogic, rankingLogic *logic.RankingLogic) *ArticleHandler {
 	return &ArticleHandler{
 		ctx:          ctx,
 		articleLogic: articleLogic,
+		rankingLogic: rankingLogic,
 	}
 }
 
@@ -66,11 +68,11 @@ func (h *ArticleHandler) TopLikeArticles(w http.ResponseWriter, r *http.Request)
 		resp *response.Response
 	)
 
-	id, err := h.articleLogic.GetTopLikeArticles(r.Context())
+	articles, err := h.rankingLogic.GetTopArticles(r.Context())
 	if err != nil {
 		resp = codeerr.HandleErr(r.Context(), err)
 	} else {
-		resp = response.Ok(id)
+		resp = response.Ok(articles)
 	}
 	httpx.OkJsonCtx(r.Context(), w, resp)
 }

@@ -2,11 +2,14 @@ package logic
 
 import (
 	"context"
+	"time"
 
 	"codexie.com/w-book-article/internal/domain"
 	"codexie.com/w-book-article/internal/repo"
 	"codexie.com/w-book-common/common/queue"
 	"codexie.com/w-book-interact/api/pb/interact"
+	"github.com/go-redsync/redsync/v4"
+	"github.com/pkg/errors"
 	"github.com/zeromicro/go-zero/core/logx"
 )
 
@@ -17,19 +20,19 @@ var (
 
 type RankingLogic struct {
 	readerRepo  repo.IReaderRepository
+	rankRepo    repo.IRankRepo
 	interactRpc interact.InteractionClient
-	topQueue    *queue.FixedSizePriorityQueue[*domain.Article]
+	redLock     *redsync.Redsync
 }
 
-func NewRankingLogic(readerRepo repo.IReaderRepository, interactRpc interact.InteractionClient) *RankingLogic {
-	topQueue := queue.NewFixedSizePriorityQueue[*domain.Article](topN)
-	return &RankingLogic{readerRepo: readerRepo, topQueue: topQueue}
+func NewRankingLogic(readerRepo repo.IReaderRepository, rankRepo *repo.RankRepo, rs *redsync.Redsync, interactRpc interact.InteractionClient) *RankingLogic {
+	return &RankingLogic{readerRepo: readerRepo, rankRepo: rankRepo, interactRpc: interactRpc, redLock: rs}
 }
 
 // 批量查询文章,计算每个文章的分数(点赞)，添加到topQueue中
-func (l *RankingLogic) RankTopN(ctx context.Context) ([]*domain.Article, error) {
-	log := logx.WithContext(ctx)
+func (l *RankingLogic) RankTopNFromDB(ctx context.Context) ([]*domain.Article, error) {
 	offset := 0
+	topQueue := queue.NewFixedSizePriorityQueue[*domain.Article](topN)
 	for {
 		var (
 			arts []*domain.Article
@@ -49,20 +52,21 @@ func (l *RankingLogic) RankTopN(ctx context.Context) ([]*domain.Article, error) 
 		})
 
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrapf(err, "[RankTopNFromDB] RPC访问交互统计资源失败:%s", err)
 		}
 
 		for i, art := range arts {
-			score := int(result.Interactions[i].LikeCnt)
-			err := l.topQueue.Enqueue(art, score)
-			if err != nil {
-				log.Info("[RankTopN] TopN队满")
-			}
-			val, minScore, _ := l.topQueue.Dequeue()
-			if score > minScore {
-				l.topQueue.Enqueue(art, score)
-			} else {
-				l.topQueue.Enqueue(val, minScore)
+			if i < len(result.Interactions) {
+				cnt := result.Interactions[i]
+				score := int(cnt.LikeCnt)
+
+				art.LikeCnt = cnt.LikeCnt
+				art.CollectCnt = cnt.CollectCnt
+				art.ReadCnt = cnt.ReadCnt
+				err := topQueue.Enqueue(art, score)
+				if err != nil {
+					logx.Errorf("TopQueue入队失败:%s", err)
+				}
 			}
 		}
 
@@ -72,5 +76,39 @@ func (l *RankingLogic) RankTopN(ctx context.Context) ([]*domain.Article, error) 
 		offset += len(arts)
 	}
 
-	return l.topQueue.GetAll(), nil
+	return topQueue.GetAll(), nil
+}
+
+func (l *RankingLogic) RefreshTopArticle(ctx context.Context) error {
+	lockKey := "rank:top:article:lock"
+	mutex := l.redLock.NewMutex(lockKey,
+		redsync.WithExpiry(60*time.Second),
+		redsync.WithTries(1),
+	)
+
+	if err := mutex.TryLock(); err != nil {
+		if err == redsync.ErrFailed {
+			logx.Infof("[RankingLogic_RefreshTopArticle] 当前其它服务正在占用锁:%s", lockKey)
+			return nil
+		}
+		logx.Errorf("获取分布式锁%s失败", lockKey)
+		return errors.Wrapf(err, "[RankingLogic_RefreshTopArticle] 获取分布式锁失败,lockKey=%s", lockKey)
+	}
+	defer mutex.Unlock()
+
+	arts, err := l.RankTopNFromDB(ctx)
+	if err != nil {
+		return errors.WithMessage(err, "[RefreshTopArticle] 从数据库取数据异常导致刷新热榜article失败")
+	}
+
+	return l.rankRepo.FreshTopNArticles(ctx, arts)
+}
+
+func (l *RankingLogic) GetTopArticles(ctx context.Context) ([]*domain.Article, error) {
+	arts, err := l.rankRepo.GetTopNArticles(ctx)
+	if err != nil {
+		return nil, errors.WithMessage(err, "[RankingLogic] GetTopArticles失败")
+	}
+
+	return arts, nil
 }

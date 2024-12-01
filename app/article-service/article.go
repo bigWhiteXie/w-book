@@ -19,11 +19,12 @@ func main() {
 	conf.MustLoad(*configFile, &c)
 
 	server, err := ioc.NewApp(c)
+	jobStarter, err := ioc.NewJobStarter(c)
 	if err != nil {
 		panic(err)
 	}
 	defer server.Stop()
-
+	jobStarter.Start()
 	fmt.Printf("Starting server at %s:%d...\n", c.Host, c.Port)
 	server.Start()
 }
