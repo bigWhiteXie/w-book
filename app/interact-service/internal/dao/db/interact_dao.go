@@ -192,10 +192,34 @@ func (d *InteractDao) DecreReadCnt(ctx context.Context, biz string, bizId int64)
 		"read_cnt": gorm.Expr("`read_cnt` - 1"),
 		"utime":    now,
 	})
-
 	if result.Error != nil {
 		return result.Error
 	}
 
 	return nil
+}
+
+func (d *InteractDao) GetInteractions(ctx context.Context, biz string, bizIds []int64) ([]Interaction, error) {
+	var interactions []Interaction
+	err := d.db.WithContext(ctx).
+		Where("biz = ? AND biz_id IN (?)", biz, bizIds).
+		Find(&interactions).Error
+
+	if err != nil {
+		return nil, errors.Wrap(err, "[InteractDao_FindInteractionsByBiz] 数据库查询失败")
+	}
+
+	idToInteraction := make(map[int64]Interaction, len(interactions))
+	for _, interaction := range interactions {
+		idToInteraction[interaction.BizId] = interaction
+	}
+
+	result := make([]Interaction, 0, len(bizIds))
+	for _, id := range bizIds {
+		if interaction, exists := idToInteraction[id]; exists {
+			result = append(result, interaction)
+		}
+	}
+
+	return result, nil
 }

@@ -15,6 +15,8 @@ import (
 
 type IInteractRepo interface {
 	GetInteraction(ctx context.Context, cntInfo *domain.Interaction) (*domain.Interaction, error)
+	GetInteractions(ctx context.Context, biz string, bizIds []int64) ([]*domain.Interaction, error)
+
 	AddReadCnt(ctx context.Context, biz string, bizId int64) error
 	HandleBatchRead(ctx context.Context, eventBatch []domain.ReadEvent) error
 	HandleBatchReadV2(eventBatch []domain.ReadEvent, msgs []*sarama.ConsumerMessage) error
@@ -46,6 +48,15 @@ func (repo *InteractRepository) RefreshTopLikeRedis(ctx context.Context, resourc
 		}
 		return fromInteractions(resources), nil
 	})
+}
+
+func (repo *InteractRepository) GetInteractions(ctx context.Context, biz string, bizIds []int64) ([]*domain.Interaction, error) {
+	inters, err := repo.interactDao.GetInteractions(ctx, biz, bizIds)
+	if err != nil {
+		return nil, err
+	}
+
+	return fromInteractions(inters), nil
 }
 
 func (repo *InteractRepository) RefreshTopLikeLocal(ctx context.Context, resourceType string, limit int) error {

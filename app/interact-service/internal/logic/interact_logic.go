@@ -43,6 +43,11 @@ func (l *InteractLogic) AddRead(ctx context.Context, biz string, bizId int64) er
 	return l.interactRepo.AddReadCnt(ctx, biz, bizId)
 }
 
+// 查询用户的所有收藏夹
+func (l *InteractLogic) QueryInteractionInfos(ctx context.Context, biz string, bizIds []int64) ([]*domain.Interaction, error) {
+	return l.interactRepo.GetInteractions(ctx, biz, bizIds)
+}
+
 // 添加/删除收藏夹
 func (l *InteractLogic) AddOrDelCollection(ctx context.Context, req *types.CollectionReq) error {
 	uid := int64(ctx.Value("id").(int))

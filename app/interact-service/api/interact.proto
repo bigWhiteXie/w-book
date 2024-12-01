@@ -13,6 +13,11 @@ message QueryInteractionReq {
     int64  Uid = 3;  //用户id
 }
 
+message QueryInteractionsReq {
+  string Biz = 1;   //业务类型
+  repeated int64 BizIds = 2;  //id
+}
+
 // 增加阅读量请求
 message AddReadCntReq {
   string Biz = 1;   //业务类型
@@ -26,6 +31,10 @@ message InteractionResult {
     int64 LikeCnt = 3;
     bool  IsLiked = 4;
     bool  IsCollected = 5;
+}
+
+message InteractionsInfo {
+  repeated InteractionResult interactions = 1; // InteractionResult 的列表
 }
 
 message TopLikeResp {
@@ -44,6 +53,8 @@ message CommonResult {
 // 定义 Greet 服务
 service Interaction {
   rpc QueryInteractionInfo(QueryInteractionReq) returns (InteractionResult);
+  rpc QueryInteractionsInfo(QueryInteractionsReq) returns (InteractionsInfo);
+
   rpc IncreReadCnt(AddReadCntReq) returns(CommonResult);
   rpc TopLike(TopLikeReq) returns(TopLikeResp);
 }

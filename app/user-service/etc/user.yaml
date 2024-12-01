@@ -25,10 +25,10 @@ BucketRateConf:
   TokensPerSecond: 50
   Biz: system
 
-Telemetry:
-  Name: user-service
-  Endpoint: localhost:14317
-  Batcher: otlpgrpc
+# Telemetry:
+#   Name: user-service
+#   Endpoint: localhost:14317
+#   Batcher: otlpgrpc
 
 MySQLConf:
   Enable: true

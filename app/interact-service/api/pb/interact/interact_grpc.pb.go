@@ -21,9 +21,10 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Interaction_QueryInteractionInfo_FullMethodName = "/api.Interaction/QueryInteractionInfo"
-	Interaction_IncreReadCnt_FullMethodName         = "/api.Interaction/IncreReadCnt"
-	Interaction_TopLike_FullMethodName              = "/api.Interaction/TopLike"
+	Interaction_QueryInteractionInfo_FullMethodName  = "/api.Interaction/QueryInteractionInfo"
+	Interaction_QueryInteractionsInfo_FullMethodName = "/api.Interaction/QueryInteractionsInfo"
+	Interaction_IncreReadCnt_FullMethodName          = "/api.Interaction/IncreReadCnt"
+	Interaction_TopLike_FullMethodName               = "/api.Interaction/TopLike"
 )
 
 // InteractionClient is the client API for Interaction service.
@@ -33,6 +34,7 @@ const (
 // 定义 Greet 服务
 type InteractionClient interface {
 	QueryInteractionInfo(ctx context.Context, in *QueryInteractionReq, opts ...grpc.CallOption) (*InteractionResult, error)
+	QueryInteractionsInfo(ctx context.Context, in *QueryInteractionsReq, opts ...grpc.CallOption) (*InteractionsInfo, error)
 	IncreReadCnt(ctx context.Context, in *AddReadCntReq, opts ...grpc.CallOption) (*CommonResult, error)
 	TopLike(ctx context.Context, in *TopLikeReq, opts ...grpc.CallOption) (*TopLikeResp, error)
 }
@@ -49,6 +51,16 @@ func (c *interactionClient) QueryInteractionInfo(ctx context.Context, in *QueryI
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(InteractionResult)
 	err := c.cc.Invoke(ctx, Interaction_QueryInteractionInfo_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *interactionClient) QueryInteractionsInfo(ctx context.Context, in *QueryInteractionsReq, opts ...grpc.CallOption) (*InteractionsInfo, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(InteractionsInfo)
+	err := c.cc.Invoke(ctx, Interaction_QueryInteractionsInfo_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -82,6 +94,7 @@ func (c *interactionClient) TopLike(ctx context.Context, in *TopLikeReq, opts ..
 // 定义 Greet 服务
 type InteractionServer interface {
 	QueryInteractionInfo(context.Context, *QueryInteractionReq) (*InteractionResult, error)
+	QueryInteractionsInfo(context.Context, *QueryInteractionsReq) (*InteractionsInfo, error)
 	IncreReadCnt(context.Context, *AddReadCntReq) (*CommonResult, error)
 	TopLike(context.Context, *TopLikeReq) (*TopLikeResp, error)
 	mustEmbedUnimplementedInteractionServer()
@@ -96,6 +109,9 @@ type UnimplementedInteractionServer struct{}
 
 func (UnimplementedInteractionServer) QueryInteractionInfo(context.Context, *QueryInteractionReq) (*InteractionResult, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method QueryInteractionInfo not implemented")
+}
+func (UnimplementedInteractionServer) QueryInteractionsInfo(context.Context, *QueryInteractionsReq) (*InteractionsInfo, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method QueryInteractionsInfo not implemented")
 }
 func (UnimplementedInteractionServer) IncreReadCnt(context.Context, *AddReadCntReq) (*CommonResult, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method IncreReadCnt not implemented")
@@ -138,6 +154,24 @@ func _Interaction_QueryInteractionInfo_Handler(srv interface{}, ctx context.Cont
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(InteractionServer).QueryInteractionInfo(ctx, req.(*QueryInteractionReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Interaction_QueryInteractionsInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryInteractionsReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(InteractionServer).QueryInteractionsInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Interaction_QueryInteractionsInfo_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(InteractionServer).QueryInteractionsInfo(ctx, req.(*QueryInteractionsReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -188,6 +222,10 @@ var Interaction_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "QueryInteractionInfo",
 			Handler:    _Interaction_QueryInteractionInfo_Handler,
+		},
+		{
+			MethodName: "QueryInteractionsInfo",
+			Handler:    _Interaction_QueryInteractionsInfo_Handler,
 		},
 		{
 			MethodName: "IncreReadCnt",

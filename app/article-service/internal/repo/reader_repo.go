@@ -16,6 +16,7 @@ type IReaderRepository interface {
 	Save(ctx context.Context, article *domain.Article) (int64, error)
 	FindById(ctx context.Context, id int64) (*domain.Article, error)
 	GetShortArticles(ctx context.Context, ids []int64) ([]*domain.Article, error)
+	ListArticles(ctx context.Context, offset int, limit int) ([]*domain.Article, error)
 }
 
 type ReaderRepository struct {
@@ -87,6 +88,14 @@ func (repo *ReaderRepository) FindById(ctx context.Context, id int64) (*domain.A
 
 func (repo *ReaderRepository) GetShortArticles(ctx context.Context, ids []int64) ([]*domain.Article, error) {
 	entities, err := repo.readerDao.FindShortArticlesBatch(ids)
+	if err != nil {
+		return nil, err
+	}
+	return FromPublishedArticles(entities), nil
+}
+
+func (repo *ReaderRepository) ListArticles(ctx context.Context, offset int, limit int) ([]*domain.Article, error) {
+	entities, err := repo.readerDao.ListArticles(ctx, offset, limit)
 	if err != nil {
 		return nil, err
 	}

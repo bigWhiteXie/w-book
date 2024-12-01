@@ -6,7 +6,7 @@ import (
 
 	"codexie.com/w-book-user/internal/config"
 	"codexie.com/w-book-user/ioc"
-
+	_ "github.com/apache/skywalking-go"
 	"github.com/zeromicro/go-zero/core/conf"
 )
 

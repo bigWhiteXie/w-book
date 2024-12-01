@@ -116,3 +116,18 @@ func (d *ReaderDao) FindShortArticlesBatch(ids []int64) ([]*PublishedArticle, er
 
 	return result, nil
 }
+
+func (d *ReaderDao) ListArticles(ctx context.Context, offset, limit int) ([]*PublishedArticle, error) {
+	var articles []*PublishedArticle
+
+	result := d.db.WithContext(ctx).
+		Offset(offset).
+		Limit(limit).
+		Find(&articles)
+
+	if result.Error != nil {
+		return nil, fmt.Errorf("[ReaderDao_ListArticles] 查询文章失败: %w", result.Error)
+	}
+
+	return articles, nil
+}

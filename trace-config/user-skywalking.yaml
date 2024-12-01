@@ -1,0 +1,5 @@
+agent: 
+  service_name: "user-service" # <serviceName>替换为应用名
+reporter:
+  grpc:
+    backend_service: "localhost:14317" # <endpoint>替换为上报地址
