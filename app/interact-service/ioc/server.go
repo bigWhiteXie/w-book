@@ -27,7 +27,7 @@ func NewServer(c config.Config, articleHandler *handler.InteractHandler, redisCl
 	createListener.StartListner()
 	workerManager := worker.Manager{}
 	workerManager.AddWorker(topLikeWorker)
-	workerManager.Start()
+	// workerManager.Start()
 	return server
 }
 

@@ -39,25 +39,10 @@ func NewApp(c config.Config) (*rest.Server, error) {
 	redsync := svc.CreateRedSync(c)
 	rankingLogic := logic.NewRankingLogic(iReaderRepository, rankRepo, redsync, interactionClient)
 	articleHandler := handler.NewArticleHandler(serviceContext, articleLogic, rankingLogic)
-	server := NewServer(c, articleHandler, client)
-	return server, nil
-}
-
-func NewJobStarter(c config.Config) (*job.JobBuilder, error) {
-	gormDB := svc.CreteDbClient(c)
-	readerDao := db.NewReaderDao(gormDB)
-	client := svc.CreateRedisClient(c)
-	articleCache := cache.NewArticleRedis(client)
-	iReaderRepository := repo.NewReaderRepository(readerDao, articleCache)
-	localArtTopCache := cache.NewLocalArtTopCache()
-	redisArtTopNCache := cache.NewRankCacheRedis(client)
-	rankRepo := repo.NewRankRepo(localArtTopCache, redisArtTopNCache)
-	redsync := svc.CreateRedSync(c)
-	interactionClient := svc.CreateCodeRpcClient(c)
-	rankingLogic := logic.NewRankingLogic(iReaderRepository, rankRepo, redsync, interactionClient)
 	rankingJob := job.NewRankingJob(rankingLogic)
 	jobBuilder := job.InitJobBuilder(rankingJob)
-	return jobBuilder, nil
+	server := NewServer(c, articleHandler, client, jobBuilder)
+	return server, nil
 }
 
 // wire.go:
@@ -83,13 +68,3 @@ var MessageSet = wire.NewSet(svc.CreateKafkaProducer)
 var RpcSet = wire.NewSet(svc.CreateCodeRpcClient)
 
 var JobSet = wire.NewSet(job.InitJobBuilder, job.NewRankingJob)
-
-var JobLogicSet = wire.NewSet(logic.NewRankingLogic)
-
-var JobRepoSet = wire.NewSet(repo.NewReaderRepository, repo.NewRankRepo)
-
-var JobDaoSet = wire.NewSet(db.NewReaderDao)
-
-var JobCacheSet = wire.NewSet(cache.NewRankCacheRedis, cache.NewLocalArtTopCache, cache.NewArticleRedis)
-
-var JobDbSet = wire.NewSet(svc.CreteDbClient, svc.CreateRedisClient, svc.CreateRedSync)

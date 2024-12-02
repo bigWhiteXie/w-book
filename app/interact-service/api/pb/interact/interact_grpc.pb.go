@@ -34,7 +34,7 @@ const (
 // 定义 Greet 服务
 type InteractionClient interface {
 	QueryInteractionInfo(ctx context.Context, in *QueryInteractionReq, opts ...grpc.CallOption) (*InteractionResult, error)
-	QueryInteractionsInfo(ctx context.Context, in *QueryInteractionsReq, opts ...grpc.CallOption) (*InteractionsInfo, error)
+	QueryInteractionsInfo(ctx context.Context, in *QueryInteractionsReq, opts ...grpc.CallOption) (*InteractionsResp, error)
 	IncreReadCnt(ctx context.Context, in *AddReadCntReq, opts ...grpc.CallOption) (*CommonResult, error)
 	TopLike(ctx context.Context, in *TopLikeReq, opts ...grpc.CallOption) (*TopLikeResp, error)
 }
@@ -57,9 +57,9 @@ func (c *interactionClient) QueryInteractionInfo(ctx context.Context, in *QueryI
 	return out, nil
 }
 
-func (c *interactionClient) QueryInteractionsInfo(ctx context.Context, in *QueryInteractionsReq, opts ...grpc.CallOption) (*InteractionsInfo, error) {
+func (c *interactionClient) QueryInteractionsInfo(ctx context.Context, in *QueryInteractionsReq, opts ...grpc.CallOption) (*InteractionsResp, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(InteractionsInfo)
+	out := new(InteractionsResp)
 	err := c.cc.Invoke(ctx, Interaction_QueryInteractionsInfo_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -94,7 +94,7 @@ func (c *interactionClient) TopLike(ctx context.Context, in *TopLikeReq, opts ..
 // 定义 Greet 服务
 type InteractionServer interface {
 	QueryInteractionInfo(context.Context, *QueryInteractionReq) (*InteractionResult, error)
-	QueryInteractionsInfo(context.Context, *QueryInteractionsReq) (*InteractionsInfo, error)
+	QueryInteractionsInfo(context.Context, *QueryInteractionsReq) (*InteractionsResp, error)
 	IncreReadCnt(context.Context, *AddReadCntReq) (*CommonResult, error)
 	TopLike(context.Context, *TopLikeReq) (*TopLikeResp, error)
 	mustEmbedUnimplementedInteractionServer()
@@ -110,7 +110,7 @@ type UnimplementedInteractionServer struct{}
 func (UnimplementedInteractionServer) QueryInteractionInfo(context.Context, *QueryInteractionReq) (*InteractionResult, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method QueryInteractionInfo not implemented")
 }
-func (UnimplementedInteractionServer) QueryInteractionsInfo(context.Context, *QueryInteractionsReq) (*InteractionsInfo, error) {
+func (UnimplementedInteractionServer) QueryInteractionsInfo(context.Context, *QueryInteractionsReq) (*InteractionsResp, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method QueryInteractionsInfo not implemented")
 }
 func (UnimplementedInteractionServer) IncreReadCnt(context.Context, *AddReadCntReq) (*CommonResult, error) {

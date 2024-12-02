@@ -50,23 +50,21 @@ func (l *RankingLogic) RankTopNFromDB(ctx context.Context) ([]*domain.Article, e
 			Biz:    domain.Biz,
 			BizIds: ids,
 		})
-
 		if err != nil {
 			return nil, errors.Wrapf(err, "[RankTopNFromDB] RPC访问交互统计资源失败:%s", err)
 		}
-
-		for i, art := range arts {
-			if i < len(result.Interactions) {
-				cnt := result.Interactions[i]
+		interMap := make(map[int64]*interact.InteractionResult, len(result.Interactions))
+		for _, inter := range result.Interactions {
+			interMap[inter.BizId] = inter
+		}
+		for _, art := range arts {
+			cnt, ok := interMap[art.Id]
+			if ok {
 				score := int(cnt.LikeCnt)
-
 				art.LikeCnt = cnt.LikeCnt
 				art.CollectCnt = cnt.CollectCnt
 				art.ReadCnt = cnt.ReadCnt
-				err := topQueue.Enqueue(art, score)
-				if err != nil {
-					logx.Errorf("TopQueue入队失败:%s", err)
-				}
+				topQueue.Enqueue(art, score)
 			}
 		}
 

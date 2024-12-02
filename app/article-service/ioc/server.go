@@ -8,16 +8,12 @@ import (
 	"github.com/zeromicro/go-zero/rest"
 )
 
-func NewServer(c config.Config, articleHandler *handler.ArticleHandler, redisClient *redis.Client) *rest.Server {
+func NewServer(c config.Config, articleHandler *handler.ArticleHandler, redisClient *redis.Client, jobStart *job.JobBuilder) *rest.Server {
 	server := rest.MustNewServer(c.RestConf, rest.WithCors())
 
 	// server.Use(middleware.NewJwtMiddleware(redisClient).Handle)
 	handler.RegisterHandlers(server, articleHandler)
 
+	jobStart.Start()
 	return server
-}
-
-func NewJobBuilder(c config.Config, rankJob *job.RankingJob) *job.JobBuilder {
-	jbd := job.InitJobBuilder(rankJob)
-	return jbd
 }

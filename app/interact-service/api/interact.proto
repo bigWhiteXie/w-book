@@ -31,9 +31,10 @@ message InteractionResult {
     int64 LikeCnt = 3;
     bool  IsLiked = 4;
     bool  IsCollected = 5;
+    int64 BizId = 6;
 }
 
-message InteractionsInfo {
+message InteractionsResp {
   repeated InteractionResult interactions = 1; // InteractionResult 的列表
 }
 
@@ -53,7 +54,7 @@ message CommonResult {
 // 定义 Greet 服务
 service Interaction {
   rpc QueryInteractionInfo(QueryInteractionReq) returns (InteractionResult);
-  rpc QueryInteractionsInfo(QueryInteractionsReq) returns (InteractionsInfo);
+  rpc QueryInteractionsInfo(QueryInteractionsReq) returns (InteractionsResp);
 
   rpc IncreReadCnt(AddReadCntReq) returns(CommonResult);
   rpc TopLike(TopLikeReq) returns(TopLikeResp);

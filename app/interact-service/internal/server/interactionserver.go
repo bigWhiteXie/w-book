@@ -41,7 +41,7 @@ func (s *InteractionServer) QueryInteractionInfo(ctx context.Context, in *intera
 	}, err
 }
 
-func (s *InteractionServer) QueryInteractionsInfo(ctx context.Context, in *interact.QueryInteractionsReq) (*interact.InteractionsInfo, error) {
+func (s *InteractionServer) QueryInteractionsInfo(ctx context.Context, in *interact.QueryInteractionsReq) (*interact.InteractionsResp, error) {
 	stats, err := s.logic.QueryInteractionInfos(ctx, in.Biz, in.BizIds)
 
 	if err != nil {
@@ -50,6 +50,7 @@ func (s *InteractionServer) QueryInteractionsInfo(ctx context.Context, in *inter
 	res := make([]*interact.InteractionResult, 0, len(stats))
 	for _, stat := range stats {
 		res = append(res, &interact.InteractionResult{
+			BizId:       stat.BizId,
 			ReadCnt:     stat.ReadCnt,
 			LikeCnt:     stat.LikeCnt,
 			CollectCnt:  stat.CollectCnt,
@@ -58,7 +59,7 @@ func (s *InteractionServer) QueryInteractionsInfo(ctx context.Context, in *inter
 		})
 	}
 
-	return &interact.InteractionsInfo{
+	return &interact.InteractionsResp{
 		Interactions: res,
 	}, nil
 }
