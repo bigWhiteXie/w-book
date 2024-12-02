@@ -18,7 +18,7 @@ var (
 )
 
 type ILikeInfoRepository interface {
-	Like(ctx context.Context, uid int64, biz string, bizId int64, isLike bool) error
+	Like(ctx context.Context, uid int64, biz string, bizId int64) error
 	IsLike(ctx context.Context, uid int64, biz string, bizId int64) (bool, error)
 }
 
@@ -32,7 +32,7 @@ func NewLikeInfoRepository(cache cache.InteractCache, db *gorm.DB) ILikeInfoRepo
 	return &LikeInfoRepository{interactCache: cache, db: db}
 }
 
-func (repo *LikeInfoRepository) Like(ctx context.Context, uid int64, biz string, bizId int64, isLike bool) error {
+func (repo *LikeInfoRepository) Like(ctx context.Context, uid int64, biz string, bizId int64) error {
 	status := 0
 	incre := -1
 

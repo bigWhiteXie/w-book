@@ -3,11 +3,13 @@ package handler
 import (
 	"net/http"
 
+	"codexie.com/w-book-article/internal/domain"
 	"codexie.com/w-book-article/internal/logic"
 	"codexie.com/w-book-article/internal/svc"
 	"codexie.com/w-book-article/internal/types"
 	"codexie.com/w-book-common/common/codeerr"
 	"codexie.com/w-book-common/common/response"
+	"codexie.com/w-book-common/user"
 	"github.com/zeromicro/go-zero/rest/httpx"
 )
 
@@ -34,8 +36,16 @@ func (h *ArticleHandler) EditArticle(w http.ResponseWriter, r *http.Request) {
 		httpx.ErrorCtx(r.Context(), w, err)
 		return
 	}
-
-	id, err := h.articleLogic.Edit(r.Context(), &req)
+	id := user.GetUidByCtx(r.Context())
+	artDomain := &domain.Article{
+		Id:      int64(req.Id),
+		Title:   req.Title,
+		Content: req.Content,
+		Author: domain.Author{
+			Id: int64(id),
+		},
+	}
+	id, err := h.articleLogic.Edit(r.Context(), artDomain)
 	if err != nil {
 		resp = codeerr.HandleErr(r.Context(), err)
 	} else {
@@ -53,8 +63,17 @@ func (h *ArticleHandler) Publish(w http.ResponseWriter, r *http.Request) {
 		httpx.ErrorCtx(r.Context(), w, err)
 		return
 	}
-
-	id, err := h.articleLogic.Publish(r.Context(), &req)
+	uid := user.GetUidByCtx(r.Context())
+	artDomain := &domain.Article{
+		Id:      int64(req.Id),
+		Title:   req.Title,
+		Content: req.Content,
+		Status:  domain.ArticlePublishedStatus,
+		Author: domain.Author{
+			Id: uid,
+		},
+	}
+	id, err := h.articleLogic.Publish(r.Context(), artDomain)
 	if err != nil {
 		resp = codeerr.HandleErr(r.Context(), err)
 	} else {
@@ -86,8 +105,8 @@ func (h *ArticleHandler) FindPage(w http.ResponseWriter, r *http.Request) {
 		httpx.ErrorCtx(r.Context(), w, err)
 		return
 	}
-
-	artList, err := h.articleLogic.Page(r.Context(), &req)
+	id := user.GetUidByCtx(r.Context())
+	artList, err := h.articleLogic.Page(r.Context(), id, req.Page, req.Size)
 	if err != nil {
 		resp = codeerr.HandleErr(r.Context(), err)
 	} else {

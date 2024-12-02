@@ -209,17 +209,5 @@ func (d *InteractDao) GetInteractions(ctx context.Context, biz string, bizIds []
 		return nil, errors.Wrap(err, "[InteractDao_FindInteractionsByBiz] 数据库查询失败")
 	}
 
-	idToInteraction := make(map[int64]Interaction, len(interactions))
-	for _, interaction := range interactions {
-		idToInteraction[interaction.BizId] = interaction
-	}
-
-	result := make([]Interaction, 0, len(bizIds))
-	for _, id := range bizIds {
-		if interaction, exists := idToInteraction[id]; exists {
-			result = append(result, interaction)
-		}
-	}
-
-	return result, nil
+	return interactions, nil
 }

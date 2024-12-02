@@ -85,12 +85,22 @@ func (d *ReaderDao) Save(ctx context.Context, artEntity *PublishedArticle) error
 	return nil
 }
 
-func (d *ReaderDao) FindById(ctx context.Context, id int64) (*PublishedArticle, error) {
+func (d *ReaderDao) FindById(ctx context.Context, id int64, fetchContent bool) (*PublishedArticle, error) {
 	art := &PublishedArticle{}
-	err := d.db.First(art, "id=?", id).Error
-	if err != nil {
-		return art, errors.Wrapf(err, "[ReaderDao_FindById] 查询文章失败,id=%d", id)
+
+	query := d.db.WithContext(ctx).Model(&PublishedArticle{})
+	if fetchContent {
+		// 查询所有字段
+		query = query.Where("id = ?", id)
+	} else {
+		// 仅查询不包含内容字段的数据
+		query = query.Select("id, title, author_id, status, ctime, utime").Where("id = ?", id)
 	}
+
+	if err := query.First(art).Error; err != nil && err != gorm.ErrRecordNotFound {
+		return nil, errors.Wrapf(err, "[ReaderDao_FindById] 查询文章失败, id=%d", id)
+	}
+
 	return art, nil
 }
 
@@ -124,6 +134,27 @@ func (d *ReaderDao) ListArticles(ctx context.Context, offset, limit int) ([]*Pub
 		Offset(offset).
 		Limit(limit).
 		Find(&articles)
+
+	if result.Error != nil && result.Error != gorm.ErrRecordNotFound {
+		return nil, fmt.Errorf("[ReaderDao_ListArticles] 查询文章失败: %w", result.Error)
+	}
+
+	return articles, nil
+}
+
+func (d *ReaderDao) ListArticlesV2(ctx context.Context, lastId int64, limit int, fetchContent bool) ([]*PublishedArticle, error) {
+	var (
+		articles []*PublishedArticle
+		result   *gorm.DB
+	)
+	query := d.db.WithContext(ctx).
+		Where("id > ?", lastId).
+		Limit(limit)
+	if fetchContent {
+		result = query.Find(&articles)
+	} else {
+		result = query.Select("id, title, author_id, status, ctime, utime").Find(&articles)
+	}
 
 	if result.Error != nil && result.Error != gorm.ErrRecordNotFound {
 		return nil, fmt.Errorf("[ReaderDao_ListArticles] 查询文章失败: %w", result.Error)

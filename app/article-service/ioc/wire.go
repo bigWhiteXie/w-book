@@ -38,12 +38,6 @@ var MessageSet = wire.NewSet(svc.CreateKafkaProducer)
 var RpcSet = wire.NewSet(svc.CreateCodeRpcClient)
 
 var JobSet = wire.NewSet(job.InitJobBuilder, job.NewRankingJob)
-var JobLogicSet = wire.NewSet(logic.NewRankingLogic)
-var JobRepoSet = wire.NewSet(repo.NewReaderRepository, repo.NewRankRepo)
-
-var JobDaoSet = wire.NewSet(dao.NewReaderDao)
-var JobCacheSet = wire.NewSet(cache.NewRankCacheRedis, cache.NewLocalArtTopCache, cache.NewArticleRedis)
-var JobDbSet = wire.NewSet(svc.CreteDbClient, svc.CreateRedisClient, svc.CreateRedSync)
 
 func NewApp(c config.Config) (*rest.Server, error) {
 	panic(wire.Build(
@@ -57,17 +51,6 @@ func NewApp(c config.Config) (*rest.Server, error) {
 		DbSet,
 		MessageSet,
 		RpcSet,
-	))
-}
-
-func NewJobStarter(c config.Config) (*job.JobBuilder, error) {
-	panic(wire.Build(
 		JobSet,
-		JobLogicSet,
-		JobRepoSet,
-		JobDaoSet,
-		JobCacheSet,
-		JobDbSet,
-		RpcSet,
 	))
 }

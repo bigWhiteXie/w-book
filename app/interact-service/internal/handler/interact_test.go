@@ -122,9 +122,8 @@ func (s *InteractHandlerSuite) TestLike() {
 				assert.True(t, interact.LikeCnt == 1)
 			},
 			req: &types.OpResourceReq{
-				Biz:    "article",
-				BizId:  1,
-				Action: 1,
+				Biz:   "article",
+				BizId: 1,
 			},
 			wantCode: http.StatusOK,
 			wantRes: Result[int]{
@@ -150,9 +149,8 @@ func (s *InteractHandlerSuite) TestLike() {
 				assert.True(t, interact.LikeCnt == 0)
 			},
 			req: &types.OpResourceReq{
-				Biz:    "article",
-				BizId:  1,
-				Action: 0,
+				Biz:   "article",
+				BizId: 1,
 			},
 			wantCode: http.StatusOK,
 			wantRes: Result[int]{
@@ -190,9 +188,8 @@ func (s *InteractHandlerSuite) TestLike() {
 				assert.True(t, interact.LikeCnt == 1)
 			},
 			req: &types.OpResourceReq{
-				Biz:    "article",
-				BizId:  1,
-				Action: 1,
+				Biz:   "article",
+				BizId: 1,
 			},
 			wantCode: http.StatusOK,
 			wantRes: Result[int]{

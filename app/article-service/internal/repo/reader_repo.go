@@ -14,9 +14,10 @@ import (
 
 type IReaderRepository interface {
 	Save(ctx context.Context, article *domain.Article) (int64, error)
-	FindById(ctx context.Context, id int64) (*domain.Article, error)
+	FindById(ctx context.Context, id int64, fetchContent bool) (*domain.Article, error)
 	GetShortArticles(ctx context.Context, ids []int64) ([]*domain.Article, error)
 	ListArticles(ctx context.Context, offset int, limit int) ([]*domain.Article, error)
+	ListArticlesV2(ctx context.Context, lastId int64, limit int, fetchContent bool) ([]*domain.Article, error)
 }
 
 type ReaderRepository struct {
@@ -51,7 +52,7 @@ func (repo *ReaderRepository) Save(ctx context.Context, article *domain.Article)
 	return publishedArtcile.Id, nil
 }
 
-func (repo *ReaderRepository) FindById(ctx context.Context, id int64) (*domain.Article, error) {
+func (repo *ReaderRepository) FindById(ctx context.Context, id int64, fetchContent bool) (*domain.Article, error) {
 	res, err := repo.articleCache.GetArticleById(ctx, id, true)
 	if err != nil {
 		logx.Errorf("[FindArticleById] 查询缓存失败,原因:%s", err)
@@ -64,8 +65,8 @@ func (repo *ReaderRepository) FindById(ctx context.Context, id int64) (*domain.A
 		strconv.Itoa(int(id)),
 		func() (interface{}, error) {
 			// 缓存未命中，查询数据库
-			article, err := repo.readerDao.FindById(ctx, id)
-			if err != nil {
+			article, err := repo.readerDao.FindById(ctx, id, fetchContent)
+			if err != nil && article != nil {
 				return nil, err
 			}
 
@@ -73,7 +74,7 @@ func (repo *ReaderRepository) FindById(ctx context.Context, id int64) (*domain.A
 			if err := repo.articleCache.CacheArticle(ctx, FromPublishedArticle(article), true); err != nil {
 				logx.Errorf("[FindArticleById] 缓存文章失败,原因:%s", err)
 			}
-			// 查询成功，将结果存入缓存（可选）
+
 			// 你可以根据需要调用 articleCache.CacheFirstPage 或其他缓存方法
 			return FromPublishedArticle(article), nil
 		},
@@ -96,6 +97,14 @@ func (repo *ReaderRepository) GetShortArticles(ctx context.Context, ids []int64)
 
 func (repo *ReaderRepository) ListArticles(ctx context.Context, offset int, limit int) ([]*domain.Article, error) {
 	entities, err := repo.readerDao.ListArticles(ctx, offset, limit)
+	if err != nil {
+		return nil, err
+	}
+	return FromPublishedArticles(entities), nil
+}
+
+func (repo *ReaderRepository) ListArticlesV2(ctx context.Context, lastId int64, limit int, fetchContent bool) ([]*domain.Article, error) {
+	entities, err := repo.readerDao.ListArticlesV2(ctx, lastId, limit, fetchContent)
 	if err != nil {
 		return nil, err
 	}

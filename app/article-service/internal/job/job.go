@@ -23,13 +23,13 @@ func InitJobBuilder(rankJob *RankingJob) *JobBuilder {
 	c := cron.New()
 	bd := &JobBuilder{cron: c}
 
-	run := bd.Build(rankJob)
+	run := bd.build(rankJob)
 	c.AddFunc(rankJob.TimeExper(), run)
 
 	return bd
 }
 
-func (b *JobBuilder) Build(job Job) jobRun {
+func (b *JobBuilder) build(job Job) jobRun {
 	job.Run()
 	return func() {
 		start := time.Now()
@@ -38,7 +38,7 @@ func (b *JobBuilder) Build(job Job) jobRun {
 		if err != nil {
 			logx.Errorf("任务[%s]执行失败:%s", job.Name(), err)
 		} else {
-			logx.Infof("任务[%s]执行结束，耗时 %f 秒", job.Name(), time.Since(time.Now()).Seconds())
+			logx.Infof("任务[%s]执行结束，耗时 %f 秒", job.Name(), time.Since(start).Seconds())
 		}
 	}
 }

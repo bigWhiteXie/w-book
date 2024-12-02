@@ -50,6 +50,7 @@ func (s *InteractionServer) QueryInteractionsInfo(ctx context.Context, in *inter
 	res := make([]*interact.InteractionResult, 0, len(stats))
 	for _, stat := range stats {
 		res = append(res, &interact.InteractionResult{
+			BizId:       stat.BizId,
 			ReadCnt:     stat.ReadCnt,
 			LikeCnt:     stat.LikeCnt,
 			CollectCnt:  stat.CollectCnt,

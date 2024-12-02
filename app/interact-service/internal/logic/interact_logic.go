@@ -26,7 +26,7 @@ func NewInteractLogic(authorRepo repo.ILikeInfoRepository, readerRepo repo.IInte
 // 点赞/取消点赞资源
 func (l *InteractLogic) Like(ctx context.Context, req *types.OpResourceReq) error {
 	uid := int64(ctx.Value("id").(int))
-	err := l.likeRepo.Like(ctx, uid, req.Biz, int64(req.BizId), req.Action == 1)
+	err := l.likeRepo.Like(ctx, uid, req.Biz, int64(req.BizId))
 
 	return err
 }

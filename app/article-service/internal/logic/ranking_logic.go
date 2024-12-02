@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	batchSize = 1000
+	batchSize = 2000
 	topN      = 100
 )
 
@@ -31,7 +31,7 @@ func NewRankingLogic(readerRepo repo.IReaderRepository, rankRepo *repo.RankRepo,
 
 // 批量查询文章,计算每个文章的分数(点赞)，添加到topQueue中
 func (l *RankingLogic) RankTopNFromDB(ctx context.Context) ([]*domain.Article, error) {
-	offset := 0
+	lastId := int64(0)
 	topQueue := queue.NewFixedSizePriorityQueue[*domain.Article](topN)
 	for {
 		var (
@@ -39,9 +39,11 @@ func (l *RankingLogic) RankTopNFromDB(ctx context.Context) ([]*domain.Article, e
 			err  error
 		)
 
-		if arts, err = l.readerRepo.ListArticles(ctx, offset, batchSize); err != nil {
+		if arts, err = l.readerRepo.ListArticlesV2(ctx, lastId, batchSize, false); err != nil {
 			return nil, err
 		}
+
+		lastId = arts[len(arts)-1].Id
 		ids := make([]int64, 0, len(arts))
 		for _, art := range arts {
 			ids = append(ids, art.Id)
@@ -50,16 +52,16 @@ func (l *RankingLogic) RankTopNFromDB(ctx context.Context) ([]*domain.Article, e
 			Biz:    domain.Biz,
 			BizIds: ids,
 		})
-
 		if err != nil {
 			return nil, errors.Wrapf(err, "[RankTopNFromDB] RPC访问交互统计资源失败:%s", err)
 		}
-
-		for i, art := range arts {
-			if i < len(result.Interactions) {
-				cnt := result.Interactions[i]
+		cntMap := make(map[int64]*interact.InteractionResult, len(result.Interactions))
+		for _, cnt := range result.Interactions {
+			cntMap[cnt.BizId] = cnt
+		}
+		for _, art := range arts {
+			if cnt, ok := cntMap[art.Id]; ok {
 				score := int(cnt.LikeCnt)
-
 				art.LikeCnt = cnt.LikeCnt
 				art.CollectCnt = cnt.CollectCnt
 				art.ReadCnt = cnt.ReadCnt
@@ -73,7 +75,6 @@ func (l *RankingLogic) RankTopNFromDB(ctx context.Context) ([]*domain.Article, e
 		if len(arts) < batchSize {
 			break
 		}
-		offset += len(arts)
 	}
 
 	return topQueue.GetAll(), nil

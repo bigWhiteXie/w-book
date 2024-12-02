@@ -26,11 +26,12 @@ message AddReadCntReq {
 
 
 message InteractionResult {
-    int64 ReadCnt = 1;
-    int64 CollectCnt = 2;
-    int64 LikeCnt = 3;
-    bool  IsLiked = 4;
-    bool  IsCollected = 5;
+    int64 BizId = 1;
+    int64 ReadCnt = 2;
+    int64 CollectCnt = 3;
+    int64 LikeCnt = 4;
+    bool  IsLiked = 5;
+    bool  IsCollected = 6;
 }
 
 message InteractionsInfo {

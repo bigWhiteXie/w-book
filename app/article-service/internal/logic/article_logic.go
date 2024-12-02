@@ -6,7 +6,6 @@ import (
 
 	"codexie.com/w-book-article/internal/domain"
 	"codexie.com/w-book-article/internal/repo"
-	"codexie.com/w-book-article/internal/types"
 	"codexie.com/w-book-common/producer"
 	"codexie.com/w-book-common/user"
 	"codexie.com/w-book-interact/api/pb/interact"
@@ -29,40 +28,29 @@ func NewArticleLogic(authorRepo repo.IAuthorRepository, readerRepo repo.IReaderR
 	return &ArticleLogic{authorRepo: authorRepo, readerRepo: readerRepo, interactRpc: interactClient, producer: producer}
 }
 
-func (l *ArticleLogic) Edit(ctx context.Context, req *types.EditArticleReq) (int64, error) {
-	id := user.GetUidByCtx(ctx)
-
-	artDomain := &domain.Article{
-		Id:      int64(req.Id),
-		Title:   req.Title,
-		Content: req.Content,
-		Author: domain.Author{
-			Id: int64(id),
-		},
-	}
+func (l *ArticleLogic) Edit(ctx context.Context, artDomain *domain.Article) (int64, error) {
 	return l.authorRepo.Save(ctx, artDomain)
 }
 
-func (l *ArticleLogic) Publish(ctx context.Context, req *types.EditArticleReq) (id int64, err error) {
+func (l *ArticleLogic) Publish(ctx context.Context, artDomain *domain.Article) (id int64, err error) {
+	var published = true
+	log := logx.WithContext(ctx)
 	defer func() {
 		// 发送文章创建事件
-		if req.Id == 0 && err == nil {
+		if !published && err == nil {
+			log.Infof("ArticleLogic] 创建文章发布事件, id:%d", artDomain.Id)
 			msg, _ := decodeReadEvt(ctx, id)
 			err = l.producer.SendSync(ctx, domain.ArticleCreateTopic, string(msg))
 		}
 	}()
-	uid := user.GetUidByCtx(ctx)
 
-	artDomain := &domain.Article{
-		Id:      int64(req.Id),
-		Title:   req.Title,
-		Content: req.Content,
-		Status:  domain.ArticlePublishedStatus,
-		Author: domain.Author{
-			Id: uid,
-		},
+	if artDomain.Id != 0 {
+		if art, err := l.readerRepo.FindById(ctx, artDomain.Id, false); err != nil {
+			log.Errorf("Fail to find published article by id %d,cause:%s", artDomain.Id, err)
+		} else if art == nil || art.Id == 0 {
+			published = false
+		}
 	}
-
 	//保存到制作库,并刷新缓存
 	artId, err := l.authorRepo.Save(ctx, artDomain)
 	if err != nil {
@@ -72,17 +60,15 @@ func (l *ArticleLogic) Publish(ctx context.Context, req *types.EditArticleReq) (
 	artDomain.Id = artId
 	for i := 0; i < 3; i++ {
 		if id, err = l.readerRepo.Save(ctx, artDomain); err == nil {
-			return id, errors.WithMessage(err, "[ArticleLogic] 保存文章到线上库失败")
+			return id, nil
 		}
 	}
 
 	return 0, err
 }
 
-func (l *ArticleLogic) Page(ctx context.Context, req *types.ArticlePageReq) ([]*domain.Article, error) {
-	id := user.GetUidByCtx(ctx)
-
-	return l.authorRepo.SelectPage(ctx, id, req.Page, req.Size)
+func (l *ArticleLogic) Page(ctx context.Context, uid int64, page, size int) ([]*domain.Article, error) {
+	return l.authorRepo.SelectPage(ctx, uid, page, size)
 }
 
 func (l *ArticleLogic) ViewArticle(ctx context.Context, id int64, published bool) (article *domain.Article, err error) {
@@ -110,7 +96,7 @@ func (l *ArticleLogic) ViewArticle(ctx context.Context, id int64, published bool
 		if err != nil {
 			return nil, errors.Wrapf(err, "[ArticleLogic_ViewArticle]Rpc访问交互信息异常,uid=%d,biz=%s,bizId=%d", ctx.Value("id"), domain.Biz, id)
 		}
-		article, err = l.readerRepo.FindById(ctx, id)
+		article, err = l.readerRepo.FindById(ctx, id, true)
 		if err != nil {
 			return nil, err
 		}
