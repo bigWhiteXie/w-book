@@ -125,7 +125,7 @@ func (d *ReaderDao) ListArticles(ctx context.Context, offset, limit int) ([]*Pub
 		Limit(limit).
 		Find(&articles)
 
-	if result.Error != nil {
+	if result.Error != nil && result.Error != gorm.ErrRecordNotFound {
 		return nil, fmt.Errorf("[ReaderDao_ListArticles] 查询文章失败: %w", result.Error)
 	}
 

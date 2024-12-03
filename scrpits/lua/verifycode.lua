@@ -5,7 +5,7 @@ local cntKey = key..":cnt"
 local code = ARGV[1]
 
 -- 获得验证码的过期时间
-local ttl = tonumber(redis.call("ttl", key)
+local ttl = tonumber(redis.call("ttl", key))
 
 -- -1 表示key存在但没有过期时间
 if ttl == -1 then

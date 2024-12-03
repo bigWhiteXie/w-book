@@ -12,6 +12,7 @@ import (
 
 var (
 	batchSize = 1000
+	topN      = 100
 )
 
 type RankingLogic struct {
@@ -21,7 +22,7 @@ type RankingLogic struct {
 }
 
 func NewRankingLogic(readerRepo repo.IReaderRepository, interactRpc interact.InteractionClient) *RankingLogic {
-	topQueue := queue.NewFixedSizePriorityQueue[*domain.Article](100)
+	topQueue := queue.NewFixedSizePriorityQueue[*domain.Article](topN)
 	return &RankingLogic{readerRepo: readerRepo, topQueue: topQueue}
 }
 
@@ -30,19 +31,20 @@ func (l *RankingLogic) RankTopN(ctx context.Context) ([]*domain.Article, error) 
 	log := logx.WithContext(ctx)
 	offset := 0
 	for {
-		var arts []*domain.Article
-		arts, err := l.readerRepo.ListArticles(ctx, offset, batchSize)
-		ids := make([]int64, 0, len(arts))
+		var (
+			arts []*domain.Article
+			err  error
+		)
 
-		if err != nil {
+		if arts, err = l.readerRepo.ListArticles(ctx, offset, batchSize); err != nil {
 			return nil, err
 		}
-
+		ids := make([]int64, 0, len(arts))
 		for _, art := range arts {
 			ids = append(ids, art.Id)
 		}
 		result, err := l.interactRpc.QueryInteractionsInfo(ctx, &interact.QueryInteractionsReq{
-			Biz:    "article",
+			Biz:    domain.Biz,
 			BizIds: ids,
 		})
 
