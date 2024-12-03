@@ -17,7 +17,14 @@ import (
 	"github.com/zeromicro/go-zero/rest"
 )
 
-func NewServer(c config.Config, articleHandler *handler.InteractHandler, redisClient *redis.Client, readListener *consumer.BatchConsumer[domain.ReadEvent], createListener *event.CreateEventListener, topLikeWorker worker.Worker) *rest.Server {
+type App struct {
+	Server            *rest.Server
+	ReadEvtListener   *consumer.BatchConsumer[domain.ReadEvent]
+	CreateEvtListener *event.CreateEventListener
+	TopLikeWorker     *worker.TopLikeWorker
+}
+
+func NewApp(c config.Config, articleHandler *handler.InteractHandler, redisClient *redis.Client, readListener *consumer.BatchConsumer[domain.ReadEvent], createListener *event.CreateEventListener) *App {
 	metric.InitMessageMetric(c.MetricConf)
 	logx.Infof("读取指标配置:%v", c.MetricConf)
 	server := rest.MustNewServer(c.RestConf, rest.WithCors())
@@ -28,7 +35,11 @@ func NewServer(c config.Config, articleHandler *handler.InteractHandler, redisCl
 	// workerManager := worker.Manager{}
 	// workerManager.AddWorker(topLikeWorker)
 	// workerManager.Start()
-	return server
+	return &App{
+		Server:            server,
+		ReadEvtListener:   readListener,
+		CreateEvtListener: createListener,
+	}
 }
 
 func NewRpcServer(serviceContext *svc.ServiceContext, interactLogic *logic.InteractLogic) *server.InteractionServer {

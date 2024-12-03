@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	"codexie.com/w-book-common/common/codeerr"
+	"codexie.com/w-book-common/codeerr"
 	"codexie.com/w-book-user/internal/model"
 	"github.com/pkg/errors"
 	"github.com/redis/go-redis/v9"

@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	"codexie.com/w-book-common/common/sql"
+	"codexie.com/w-book-common/sql"
 	"codexie.com/w-book-user/internal/model"
 
 	"github.com/DATA-DOG/go-sqlmock"

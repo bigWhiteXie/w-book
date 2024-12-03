@@ -22,7 +22,7 @@ func main() {
 	var c config.Config
 	conf.MustLoad(*configFile, &c)
 
-	server, err := ioc.NewApp(c)
+	app, err := ioc.NewInteractApp(c, c.MySQLConf, c.RedisConf, c.KafkaConf)
 	if err != nil {
 		panic(err)
 	}
@@ -30,7 +30,7 @@ func main() {
 	//启动rpc服务
 	go func() {
 		s := zrpc.MustNewServer(c.Grpc, func(grpcServer *grpc.Server) {
-			server, _ := ioc.NewRpcApp(c)
+			server, _ := ioc.NewRpcApp(c, c.MySQLConf, c.RedisConf)
 			interact.RegisterInteractionServer(grpcServer, server)
 			if c.Mode == service.DevMode || c.Mode == service.TestMode {
 				reflection.Register(grpcServer)
@@ -42,8 +42,11 @@ func main() {
 		s.Start()
 	}()
 
-	//启动api服务
-	defer server.Stop()
+	defer func() {
+		app.CreateEvtListener.Stop()
+		app.ReadEvtListener.Stop()
+		app.Server.Stop()
+	}()
 	fmt.Printf("Starting server at %s:%d...\n", c.Host, c.Port)
-	server.Start()
+	app.Server.Start()
 }

@@ -12,7 +12,7 @@ import (
 	reflect "reflect"
 	sync "sync"
 
-	"codexie.com/w-book-common/common/response"
+	"codexie.com/w-book-common/response"
 	"github.com/pkg/errors"
 	"github.com/zeromicro/go-zero/core/logx"
 	"google.golang.org/grpc/codes"

@@ -4,6 +4,7 @@
 package ioc
 
 import (
+	"codexie.com/w-book-common/ioc"
 	"codexie.com/w-book-interact/internal/config"
 	"codexie.com/w-book-interact/internal/dao/cache"
 	dao "codexie.com/w-book-interact/internal/dao/db"
@@ -16,10 +17,9 @@ import (
 
 	"codexie.com/w-book-interact/internal/svc"
 	"github.com/google/wire"
-	"github.com/zeromicro/go-zero/rest"
 )
 
-var ServerSet = wire.NewSet(NewServer, NewRpcServer)
+var ServerSet = wire.NewSet(NewApp, NewRpcServer)
 
 var HandlerSet = wire.NewSet(handler.NewInteractHandler)
 
@@ -31,13 +31,15 @@ var RepoSet = wire.NewSet(repo.NewCollectRepository, repo.NewInteractRepository,
 
 var DaoSet = wire.NewSet(dao.NewCollectionDao, dao.NewInteractDao, dao.NewLikeInfoDao, dao.NewRecordDao, cache.NewInteractRedis, cache.NewBigCacheResourceCache)
 
-var DbSet = wire.NewSet(svc.CreteDbClient, svc.CreateRedisClient, svc.CreateRedSync)
+var DbSet = wire.NewSet(ioc.InitGormDB, ioc.InitRedis, ioc.InitRedLock)
+
+var MessageSet = wire.NewSet(ioc.InitKafkaClient)
 
 var ListenerSet = wire.NewSet(event.NewBatchReadEventListener, event.NewCreateEventListener)
 
 var WokerSet = wire.NewSet(worker.NewTopLikeWorker)
 
-func NewApp(c config.Config) (*rest.Server, error) {
+func NewInteractApp(config config.Config, mysqlConf ioc.MySQLConf, redisConf ioc.RedisConf, kafkaConf ioc.KafkaConf) (*App, error) {
 	panic(wire.Build(
 		ServerSet,
 		HandlerSet,
@@ -46,12 +48,12 @@ func NewApp(c config.Config) (*rest.Server, error) {
 		RepoSet,
 		DaoSet,
 		DbSet,
-		WokerSet,
+		MessageSet,
 		ListenerSet,
 	))
 }
 
-func NewRpcApp(c config.Config) (*server.InteractionServer, error) {
+func NewRpcApp(c config.Config, mysqlConf ioc.MySQLConf, redisConf ioc.RedisConf) (*server.InteractionServer, error) {
 	panic(wire.Build(
 		ServerSet,
 		LogicSet,

@@ -6,9 +6,10 @@ import (
 	"strconv"
 
 	"codexie.com/w-book-code/api/pb"
-	"codexie.com/w-book-common/common"
-	"codexie.com/w-book-common/common/codeerr"
-	"codexie.com/w-book-common/common/sql"
+	"codexie.com/w-book-common/codeerr"
+	"codexie.com/w-book-common/ijwt"
+	"codexie.com/w-book-common/sql"
+
 	"codexie.com/w-book-user/internal/config"
 	"codexie.com/w-book-user/internal/model"
 	"codexie.com/w-book-user/internal/repo"
@@ -27,7 +28,7 @@ type UserLogic struct {
 	jwtExpire int64
 }
 
-func NewUserLogic(c config.Config, userRepo repo.IUserRepository, codeRpc pb.CodeClient) IUserLogic {
+func NewUserLogic(c config.Config, userRepo repo.IUserRepository, codeRpc pb.CodeClient) *UserLogic {
 	return &UserLogic{
 		userRepo:  userRepo,
 		jwtSecret: c.Auth.AccessSecret,
@@ -101,6 +102,6 @@ func (l *UserLogic) SendLoginCode(ctx context.Context, req *types.SmsSendCodeReq
 func (l *UserLogic) createTokenByUser(user *model.User) (string, error) {
 	claim := make(map[string]interface{})
 	claim["id"] = strconv.Itoa(user.Id)
-	token, err := common.GetJwtToken(l.jwtSecret, l.jwtExpire, claim)
+	token, err := ijwt.GetJwtToken(l.jwtSecret, l.jwtExpire, claim)
 	return token, err
 }

@@ -18,6 +18,8 @@ import (
 	"codexie.com/w-book-article/internal/logic"
 	"codexie.com/w-book-article/internal/repo"
 	"codexie.com/w-book-article/internal/svc"
+	"codexie.com/w-book-common/ioc"
+	"codexie.com/w-book-common/kafka/producer"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -43,20 +45,20 @@ func (s *ArticleHandlerSuite) SetupSuite() {
 	conf.MustLoad(*configFile, &c)
 
 	serviceContext := svc.NewServiceContext(c)
-	gormDB := svc.CreteDbClient(c)
+	gormDB := ioc.InitGormDB(c.MySQLConf)
 	authorDao := db.NewAuthorDao(gormDB)
-	client := svc.CreateRedisClient(c)
+	client := ioc.InitRedis(c.RedisConf)
 	articleCache := cache.NewArticleRedis(client)
 	iAuthorRepository := repo.NewAuthorRepository(authorDao, articleCache)
 	readerDao := db.NewReaderDao(gormDB)
 	iReaderRepository := repo.NewReaderRepository(readerDao, articleCache)
 	interactionClient := svc.CreateCodeRpcClient(c)
-	producer := svc.CreateKafkaProducer(c)
-	articleLogic := logic.NewArticleLogic(iAuthorRepository, iReaderRepository, interactionClient, producer)
+	p := producer.NewKafkaProducer(ioc.InitKafkaClient(c.KafkaConf))
+	articleLogic := logic.NewArticleLogic(iAuthorRepository, iReaderRepository, interactionClient, p)
 	localArtTopCache := cache.NewLocalArtTopCache()
 	redisArtTopNCache := cache.NewRankCacheRedis(client)
 	rankRepo := repo.NewRankRepo(localArtTopCache, redisArtTopNCache)
-	redsync := svc.CreateRedSync(c)
+	redsync := ioc.InitRedLock(c.RedisConf)
 	rankingLogic := logic.NewRankingLogic(iReaderRepository, rankRepo, redsync, interactionClient)
 	articleHandler := NewArticleHandler(serviceContext, articleLogic, rankingLogic)
 

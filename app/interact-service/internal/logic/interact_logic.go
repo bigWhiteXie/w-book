@@ -3,7 +3,7 @@ package logic
 import (
 	"context"
 
-	"codexie.com/w-book-common/common/codeerr"
+	"codexie.com/w-book-common/codeerr"
 	"codexie.com/w-book-interact/internal/domain"
 	"codexie.com/w-book-interact/internal/repo"
 	"codexie.com/w-book-interact/internal/types"

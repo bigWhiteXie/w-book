@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"testing"
 
-	"codexie.com/w-book-common/common/sql"
+	"codexie.com/w-book-common/ioc"
+	"codexie.com/w-book-common/sql"
 	"codexie.com/w-book-user/internal/config"
 	"codexie.com/w-book-user/internal/model"
-	"codexie.com/w-book-user/internal/svc"
 
 	"github.com/zeromicro/go-zero/core/conf"
 	"gorm.io/gorm"
@@ -17,7 +17,7 @@ import (
 func initDb() *gorm.DB {
 	var c config.Config
 	conf.MustLoad("/usr/local/go_project/w-book/app/user-service/etc/user.yaml", &c)
-	return svc.CreteDbClient(c)
+	return ioc.InitGormDB(c.MySQLConf)
 }
 
 func TestFindOne(t *testing.T) {

@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"codexie.com/w-book-code/api/pb"
-	"codexie.com/w-book-common/common/codeerr"
+	"codexie.com/w-book-common/codeerr"
 	"codexie.com/w-book-user/internal/config"
 
 	"github.com/zeromicro/go-zero/core/conf"

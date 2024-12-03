@@ -4,10 +4,10 @@
 package ioc
 
 import (
+	"codexie.com/w-book-common/ioc"
 	"codexie.com/w-book-user/internal/config"
 	"codexie.com/w-book-user/internal/handler"
 	"codexie.com/w-book-user/internal/logic"
-	"codexie.com/w-book-user/internal/repo"
 	"codexie.com/w-book-user/internal/repo/cache"
 	"codexie.com/w-book-user/internal/repo/dao"
 	"codexie.com/w-book-user/internal/svc"
@@ -20,14 +20,16 @@ var ServerSet = wire.NewSet(NewServer)
 var HandlerSet = wire.NewSet(handler.NewUserHandler)
 var LogicSet = wire.NewSet(logic.NewUserLogic)
 var CtxSet = wire.NewSet(svc.NewServiceContext)
-var DBSet = wire.NewSet(repo.NewUserRepository, dao.NewUserDao, cache.NewRedisUserCache)
-var BaseSet = wire.NewSet(svc.CreteDbClient, svc.CreateRedisClient, svc.CreateCodeRpcClient)
+var RepoSet = wire.NewSet(InitUserRepo)
+var DBSet = wire.NewSet(dao.NewUserDao, cache.NewRedisUserCache)
+var BaseSet = wire.NewSet(ioc.InitGormDB, ioc.InitRedis, svc.CreateCodeRpcClient)
 
-func NewApp(c config.Config) (*rest.Server, error) {
+func NewApp(c config.Config, mysqlConf ioc.MySQLConf, redisConf ioc.RedisConf) (*rest.Server, error) {
 	panic(wire.Build(
 		ServerSet,
 		HandlerSet,
 		LogicSet,
+		RepoSet,
 		DBSet,
 		BaseSet,
 		// CtxSet,

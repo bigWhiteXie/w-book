@@ -9,7 +9,7 @@ import (
 
 	"codexie.com/w-book-code/internal/model"
 	"codexie.com/w-book-code/internal/repo"
-	"codexie.com/w-book-common/producer"
+	"codexie.com/w-book-common/kafka/producer"
 	"github.com/zeromicro/go-zero/core/logx"
 )
 
@@ -22,11 +22,11 @@ type ASyncSmsLogic struct {
 	smsService    SmsService
 	sendLatencies []int64
 	kafkaProducer producer.Producer
-	smsRepo       repo.SmsRepo
+	smsRepo       repo.ISmsRepo
 	lock          sync.RWMutex
 }
 
-func NewASyncSmsLogic(smsService SmsService, smsRepo repo.SmsRepo, kafkaProducer producer.Producer) *ASyncSmsLogic {
+func NewASyncSmsLogic(smsService SmsService, smsRepo *repo.SmsRepo, kafkaProducer producer.Producer) *ASyncSmsLogic {
 	return &ASyncSmsLogic{
 		smsService:    smsService,
 		smsRepo:       smsRepo,

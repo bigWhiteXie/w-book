@@ -6,7 +6,7 @@ import (
 
 	"codexie.com/w-book-article/internal/domain"
 	"codexie.com/w-book-article/internal/repo"
-	"codexie.com/w-book-common/producer"
+	"codexie.com/w-book-common/kafka/producer"
 	"codexie.com/w-book-common/user"
 	"codexie.com/w-book-interact/api/pb/interact"
 	"github.com/pkg/errors"

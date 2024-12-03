@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"strconv"
 
-	"codexie.com/w-book-common/common/codeerr"
-	"codexie.com/w-book-common/common/response"
+	"codexie.com/w-book-common/codeerr"
 	"codexie.com/w-book-common/ijwt"
+	"codexie.com/w-book-common/response"
 	"codexie.com/w-book-user/internal/logic"
 	"codexie.com/w-book-user/internal/types"
 
@@ -17,7 +17,7 @@ type UserHandler struct {
 	userLogic logic.IUserLogic
 }
 
-func NewUserHandler(userLogic logic.IUserLogic) *UserHandler {
+func NewUserHandler(userLogic *logic.UserLogic) *UserHandler {
 	return &UserHandler{
 		userLogic: userLogic,
 	}

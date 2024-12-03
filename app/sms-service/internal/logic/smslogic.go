@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"codexie.com/w-book-code/pkg/sms/provider"
-	"codexie.com/w-book-common/common/codeerr"
+	"codexie.com/w-book-common/codeerr"
 	"github.com/pkg/errors"
 	"github.com/zeromicro/go-zero/core/logx"
 )

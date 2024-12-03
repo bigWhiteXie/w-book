@@ -7,6 +7,7 @@
 package ioc
 
 import (
+	"codexie.com/w-book-common/ioc"
 	"codexie.com/w-book-interact/internal/config"
 	"codexie.com/w-book-interact/internal/dao/cache"
 	"codexie.com/w-book-interact/internal/dao/db"
@@ -18,17 +19,16 @@ import (
 	"codexie.com/w-book-interact/internal/svc"
 	"codexie.com/w-book-interact/internal/worker"
 	"github.com/google/wire"
-	"github.com/zeromicro/go-zero/rest"
 )
 
 // Injectors from wire.go:
 
-func NewApp(c config.Config) (*rest.Server, error) {
-	serviceContext := svc.NewServiceContext(c)
-	client := svc.CreateRedisClient(c)
-	redsync := svc.CreateRedSync(c)
+func NewInteractApp(config2 config.Config, mysqlConf ioc.MySQLConf, redisConf ioc.RedisConf, kafkaConf ioc.KafkaConf) (*App, error) {
+	serviceContext := svc.NewServiceContext(config2)
+	client := ioc.InitRedis(redisConf)
+	redsync := ioc.InitRedLock(redisConf)
 	interactCache := cache.NewInteractRedis(client, redsync)
-	gormDB := svc.CreteDbClient(c)
+	gormDB := ioc.InitGormDB(mysqlConf)
 	iLikeInfoRepository := repo.NewLikeInfoRepository(interactCache, gormDB)
 	interactDao := db.NewInteractDao(gormDB)
 	recordDao := db.NewRecordDao(gormDB)
@@ -38,19 +38,19 @@ func NewApp(c config.Config) (*rest.Server, error) {
 	iCollectRepository := repo.NewCollectRepository(interactCache, collectionDao)
 	interactLogic := logic.NewInteractLogic(iLikeInfoRepository, iInteractRepo, iCollectRepository)
 	interactHandler := handler.NewInteractHandler(serviceContext, interactLogic)
-	batchConsumer := event.NewBatchReadEventListener(c, iInteractRepo)
-	createEventListener := event.NewCreateEventListener(c, iInteractRepo)
-	workerWorker := worker.NewTopLikeWorker(iInteractRepo)
-	server := NewServer(c, interactHandler, client, batchConsumer, createEventListener, workerWorker)
-	return server, nil
+	saramaClient := ioc.InitKafkaClient(kafkaConf)
+	batchConsumer := event.NewBatchReadEventListener(saramaClient, iInteractRepo)
+	createEventListener := event.NewCreateEventListener(saramaClient, iInteractRepo)
+	app := NewApp(config2, interactHandler, client, batchConsumer, createEventListener)
+	return app, nil
 }
 
-func NewRpcApp(c config.Config) (*server.InteractionServer, error) {
+func NewRpcApp(c config.Config, mysqlConf ioc.MySQLConf, redisConf ioc.RedisConf) (*server.InteractionServer, error) {
 	serviceContext := svc.NewServiceContext(c)
-	client := svc.CreateRedisClient(c)
-	redsync := svc.CreateRedSync(c)
+	client := ioc.InitRedis(redisConf)
+	redsync := ioc.InitRedLock(redisConf)
 	interactCache := cache.NewInteractRedis(client, redsync)
-	gormDB := svc.CreteDbClient(c)
+	gormDB := ioc.InitGormDB(mysqlConf)
 	iLikeInfoRepository := repo.NewLikeInfoRepository(interactCache, gormDB)
 	interactDao := db.NewInteractDao(gormDB)
 	recordDao := db.NewRecordDao(gormDB)
@@ -65,7 +65,7 @@ func NewRpcApp(c config.Config) (*server.InteractionServer, error) {
 
 // wire.go:
 
-var ServerSet = wire.NewSet(NewServer, NewRpcServer)
+var ServerSet = wire.NewSet(NewApp, NewRpcServer)
 
 var HandlerSet = wire.NewSet(handler.NewInteractHandler)
 
@@ -77,7 +77,9 @@ var RepoSet = wire.NewSet(repo.NewCollectRepository, repo.NewInteractRepository,
 
 var DaoSet = wire.NewSet(db.NewCollectionDao, db.NewInteractDao, db.NewLikeInfoDao, db.NewRecordDao, cache.NewInteractRedis, cache.NewBigCacheResourceCache)
 
-var DbSet = wire.NewSet(svc.CreteDbClient, svc.CreateRedisClient, svc.CreateRedSync)
+var DbSet = wire.NewSet(ioc.InitGormDB, ioc.InitRedis, ioc.InitRedLock)
+
+var MessageSet = wire.NewSet(ioc.InitKafkaClient)
 
 var ListenerSet = wire.NewSet(event.NewBatchReadEventListener, event.NewCreateEventListener)
 

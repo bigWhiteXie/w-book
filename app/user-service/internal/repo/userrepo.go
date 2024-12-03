@@ -4,8 +4,8 @@ import (
 	"context"
 	"strconv"
 
-	"codexie.com/w-book-common/common/codeerr"
-	"codexie.com/w-book-common/common/sql"
+	"codexie.com/w-book-common/codeerr"
+	"codexie.com/w-book-common/sql"
 	"codexie.com/w-book-user/internal/model"
 	"codexie.com/w-book-user/internal/repo/cache"
 	"codexie.com/w-book-user/internal/repo/dao"
@@ -30,7 +30,7 @@ type UserRepository struct {
 	isTx      bool
 }
 
-func NewUserRepository(userDao *dao.UserDao, cache cache.UserCache) IUserRepository {
+func NewUserRepository(userDao *dao.UserDao, cache cache.UserCache) *UserRepository {
 	return &UserRepository{userDao: userDao, userCache: cache}
 }
 
@@ -39,7 +39,7 @@ func (d *UserRepository) TX(fun func(txRepo *UserRepository) error) error {
 		return fun(d)
 	}
 	return d.userDao.TX(func(txDao *dao.UserDao) error {
-		userRepo := NewUserRepository(txDao, d.userCache).(*UserRepository)
+		userRepo := NewUserRepository(txDao, d.userCache)
 		userRepo.isTx = true
 		return fun(userRepo)
 	})

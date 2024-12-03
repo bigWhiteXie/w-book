@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"codexie.com/w-book-common/metric"
-	"codexie.com/w-book-interact/internal/config"
 	"codexie.com/w-book-interact/internal/domain"
 	"codexie.com/w-book-interact/internal/repo"
 	"github.com/IBM/sarama"
@@ -28,16 +27,13 @@ type CreateEventListener struct {
 	once         sync.Once
 }
 
-func NewCreateEventListener(config config.Config, interactRepo repo.IInteractRepo) *CreateEventListener {
-	conf := config.KafkaConf
-	saramaConf := sarama.NewConfig()
-	saramaConf.Version = sarama.V2_1_0_0
-	client, err := sarama.NewConsumerGroup(conf.Brokers, createConsumer, saramaConf)
+func NewCreateEventListener(client sarama.Client, interactRepo repo.IInteractRepo) *CreateEventListener {
+	consumeClient, err := sarama.NewConsumerGroupFromClient(createConsumer, client)
 	if err != nil {
 		panic(fmt.Sprintf("unable to create kafka consumer group, cause:%s", err))
 	}
 	return &CreateEventListener{
-		client:       client,
+		client:       consumeClient,
 		interactRepo: interactRepo,
 	}
 }

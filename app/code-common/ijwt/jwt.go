@@ -131,6 +131,20 @@ func ClearToken(sid string) error {
 	return nil
 }
 
+func GetJwtToken(secretKey string, seconds int64, payload map[string]interface{}) (string, error) {
+	claims := make(jwt.MapClaims)
+
+	iat := time.Now().Unix()
+	claims["exp"] = iat + seconds
+	claims["iat"] = iat
+	for k, v := range payload {
+		claims[k] = v
+	}
+	token := jwt.New(jwt.SigningMethodHS256)
+	token.Claims = claims
+	return token.SignedString([]byte(secretKey))
+}
+
 type UserClaims struct {
 	//Claims自带预定义的字段   相当于继承了这个结构体
 	jwt.RegisteredClaims

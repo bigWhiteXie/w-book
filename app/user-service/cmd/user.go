@@ -17,7 +17,7 @@ func main() {
 
 	var c config.Config
 	conf.MustLoad(*configFile, &c)
-	server, err := ioc.NewApp(c)
+	server, err := ioc.NewApp(c, c.MySQLConf, c.RedisConf)
 	if err != nil {
 		panic(err)
 	}

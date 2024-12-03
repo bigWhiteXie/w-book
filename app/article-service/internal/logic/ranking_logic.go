@@ -6,7 +6,7 @@ import (
 
 	"codexie.com/w-book-article/internal/domain"
 	"codexie.com/w-book-article/internal/repo"
-	"codexie.com/w-book-common/common/queue"
+	"codexie.com/w-book-common/queue"
 	"codexie.com/w-book-interact/api/pb/interact"
 	"github.com/go-redsync/redsync/v4"
 	"github.com/pkg/errors"

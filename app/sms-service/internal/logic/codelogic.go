@@ -7,21 +7,21 @@ import (
 	"time"
 
 	"codexie.com/w-book-code/internal/repo"
-	"codexie.com/w-book-common/common/codeerr"
-	"codexie.com/w-book-common/producer"
+	"codexie.com/w-book-common/codeerr"
+	"codexie.com/w-book-common/kafka/producer"
 
 	"codexie.com/w-book-code/api/pb"
 	"github.com/zeromicro/go-zero/core/logx"
 )
 
 type CodeLogic struct {
-	codeRepo      repo.SmsRepo
+	codeRepo      repo.ISmsRepo
 	kafkaProvider producer.Producer
 	smsService    SmsService
 	logx.Logger
 }
 
-func NewCodeLogic(repo repo.SmsRepo, provider producer.Producer, smsService *ASyncSmsLogic) *CodeLogic {
+func NewCodeLogic(repo repo.ISmsRepo, provider producer.Producer, smsService SmsService) *CodeLogic {
 	return &CodeLogic{
 		codeRepo:      repo,
 		smsService:    smsService,
@@ -34,7 +34,7 @@ func (l *CodeLogic) SendCode(ctx context.Context, in *pb.SendCodeReq) (*pb.SendC
 	randomCode := generateVerificationCode()
 	log := logx.WithContext(ctx)
 	//2.执行lua脚本，校验并缓存验证码
-	k := key(in.Biz, in.Phone)
+	k := codekey(in.Biz, in.Phone)
 	err := l.codeRepo.StoreCode(ctx, k, randomCode, sendCodeLuaTemplate())
 	if err != nil {
 		log.Errorf("[SendCode] %v", err)
@@ -52,7 +52,7 @@ func (l *CodeLogic) SendCode(ctx context.Context, in *pb.SendCodeReq) (*pb.SendC
 
 func (l *CodeLogic) VerifyCode(ctx context.Context, in *pb.VerifyCodeReq) (*pb.VerifyCodeResp, error) {
 	// 1. 判断校验次数是否超过限制
-	if err := l.codeRepo.VerifyCode(ctx, key(in.Biz, in.Phone), in.Code, verifyCodeLuaScript()); err != nil {
+	if err := l.codeRepo.VerifyCode(ctx, codekey(in.Biz, in.Phone), in.Code, verifyCodeLuaScript()); err != nil {
 		logx.Errorf("[VerifyCode] %v", err)
 		return nil, codeerr.ToGrpcErr(err)
 	}
@@ -66,6 +66,6 @@ func generateVerificationCode() string {
 	return fmt.Sprintf("%06d", code)   // 格式化为六位数字
 }
 
-func key(buz, phone string) string {
+func codekey(buz, phone string) string {
 	return fmt.Sprintf("%s:code:%s", buz, phone)
 }

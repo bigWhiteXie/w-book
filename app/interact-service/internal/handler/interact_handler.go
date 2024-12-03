@@ -3,8 +3,8 @@ package handler
 import (
 	"net/http"
 
-	"codexie.com/w-book-common/common/codeerr"
-	"codexie.com/w-book-common/common/response"
+	"codexie.com/w-book-common/codeerr"
+	"codexie.com/w-book-common/response"
 	"codexie.com/w-book-interact/internal/logic"
 	"codexie.com/w-book-interact/internal/svc"
 	"codexie.com/w-book-interact/internal/types"

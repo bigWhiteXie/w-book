@@ -22,10 +22,10 @@ type BatchConsumer[T any] struct {
 	batchSize int
 }
 
-func NewBatchConsumer[T any](topic string, brokers []string, group string, batchSize int, handler func(objs []T, msgs []*sarama.ConsumerMessage) error) *BatchConsumer[T] {
+func NewBatchConsumer[T any](topic string, client sarama.Client, group string, batchSize int, handler func(objs []T, msgs []*sarama.ConsumerMessage) error) *BatchConsumer[T] {
 	saramaConf := sarama.NewConfig()
 	saramaConf.Version = sarama.V2_1_0_0
-	client, err := sarama.NewConsumerGroup(brokers, group, saramaConf)
+	consumerClient, err := sarama.NewConsumerGroupFromClient(group, client)
 	if err != nil {
 		panic(fmt.Sprintf("unable to create kafka consumer group, cause:%s", err))
 	}
@@ -33,7 +33,7 @@ func NewBatchConsumer[T any](topic string, brokers []string, group string, batch
 		panic(err)
 	}
 	return &BatchConsumer[T]{
-		client:    client,
+		client:    consumerClient,
 		topic:     topic,
 		group:     group,
 		batchSize: batchSize,

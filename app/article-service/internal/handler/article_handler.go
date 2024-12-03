@@ -7,8 +7,9 @@ import (
 	"codexie.com/w-book-article/internal/logic"
 	"codexie.com/w-book-article/internal/svc"
 	"codexie.com/w-book-article/internal/types"
-	"codexie.com/w-book-common/common/codeerr"
-	"codexie.com/w-book-common/common/response"
+
+	"codexie.com/w-book-common/codeerr"
+	"codexie.com/w-book-common/response"
 	"codexie.com/w-book-common/user"
 	"github.com/zeromicro/go-zero/rest/httpx"
 )

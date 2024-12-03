@@ -10,11 +10,17 @@ import (
 )
 
 type KafkaProducer struct {
-	kafkaClient sarama.SyncProducer
+	syncProducer  sarama.SyncProducer
+	asyncProducer sarama.AsyncProducer
 }
 
-func NewKafkaProducer(producer sarama.SyncProducer) Producer {
-	return &KafkaProducer{kafkaClient: producer}
+func NewKafkaProducer(client sarama.Client) Producer {
+	sc, err := sarama.NewSyncProducerFromClient(client)
+	asc, err := sarama.NewAsyncProducerFromClient(client)
+	if err != nil {
+		panic("fail to init kafka producer,cause:" + err.Error())
+	}
+	return &KafkaProducer{syncProducer: sc, asyncProducer: asc}
 }
 
 func (p *KafkaProducer) SendSync(ctx context.Context, topic string, msg string, opts ...ProducerOption) error {
@@ -24,7 +30,7 @@ func (p *KafkaProducer) SendSync(ctx context.Context, topic string, msg string, 
 	if err != nil {
 		return errors.Wrapf(err, "[KafkaProducer] 构建消息[%s]失败:%s", msg, err)
 	}
-	partition, offset, err := p.kafkaClient.SendMessage(message)
+	partition, offset, err := p.syncProducer.SendMessage(message)
 	if err != nil {
 		return errors.Wrapf(err, "[KafkaProducer] 投递消息[%s]失败:%s", msg, err)
 	}
@@ -48,7 +54,7 @@ func (p *KafkaProducer) SendAsync(ctx context.Context, topic string, msg string,
 				}
 			}
 		}()
-		partition, offset, err := p.kafkaClient.SendMessage(message)
+		partition, offset, err := p.syncProducer.SendMessage(message)
 		if err != nil {
 			onError(err)
 			return

@@ -7,8 +7,9 @@ import (
 
 	"codexie.com/w-book-code/api/pb"
 	mock_pb "codexie.com/w-book-code/mocks/api/pb"
-	"codexie.com/w-book-common/common/codeerr"
-	"codexie.com/w-book-common/common/sql"
+	"codexie.com/w-book-common/codeerr"
+	"codexie.com/w-book-common/sql"
+
 	"codexie.com/w-book-user/internal/config"
 	"codexie.com/w-book-user/internal/model"
 	"codexie.com/w-book-user/internal/repo"
@@ -63,7 +64,7 @@ func TestUserLogic_Login(t *testing.T) {
 				userRepo := mock_repo.NewMockIUserRepository(ctrl)
 				pwd, _ := bcrypt.GenerateFromPassword([]byte("123456"), bcrypt.DefaultCost)
 				userRepo.EXPECT().FindUserByEmail(gomock.Any(), gomock.Any()).Return(&model.User{Id: 1, Email: sql.StringToNullString("2607219580@qq.com"), Password: string(pwd)}, nil)
-				return NewUserLogic(conf, userRepo, mock_pb.NewMockCodeClient(ctrl)).(*UserLogic)
+				return NewUserLogic(conf, userRepo, mock_pb.NewMockCodeClient(ctrl))
 			},
 			wantErr: false,
 		},
@@ -79,7 +80,7 @@ func TestUserLogic_Login(t *testing.T) {
 			mock: func(ctrl *gomock.Controller) *UserLogic {
 				userRepo := mock_repo.NewMockIUserRepository(ctrl)
 				userRepo.EXPECT().FindUserByEmail(gomock.Any(), gomock.Any()).Return(nil, codeerr.WithCode(codeerr.UserEmailNotExistCode, "can't find any user by email %s", "2607219580@qq.com"))
-				return NewUserLogic(conf, userRepo, mock_pb.NewMockCodeClient(ctrl)).(*UserLogic)
+				return NewUserLogic(conf, userRepo, mock_pb.NewMockCodeClient(ctrl))
 			},
 			wantErr:  true,
 			wantResp: nil,
@@ -97,7 +98,7 @@ func TestUserLogic_Login(t *testing.T) {
 				userRepo := mock_repo.NewMockIUserRepository(ctrl)
 				pwd, _ := bcrypt.GenerateFromPassword([]byte("1234567"), bcrypt.DefaultCost)
 				userRepo.EXPECT().FindUserByEmail(gomock.Any(), gomock.Any()).Return(&model.User{Id: 1, Email: sql.StringToNullString("2607219580@qq.com"), Password: string(pwd)}, nil)
-				return NewUserLogic(conf, userRepo, mock_pb.NewMockCodeClient(ctrl)).(*UserLogic)
+				return NewUserLogic(conf, userRepo, mock_pb.NewMockCodeClient(ctrl))
 			},
 			wantErr: true,
 		},
