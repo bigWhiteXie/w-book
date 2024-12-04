@@ -23,6 +23,7 @@ require (
 )
 
 require (
+	github.com/gotomicro/redis-lock v0.0.3 // indirect
 	github.com/onsi/ginkgo v1.16.5 // indirect
 	github.com/robfig/cron/v3 v3.0.1 // indirect
 )

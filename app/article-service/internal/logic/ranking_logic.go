@@ -2,7 +2,6 @@ package logic
 
 import (
 	"context"
-	"time"
 
 	"codexie.com/w-book-article/internal/domain"
 	"codexie.com/w-book-article/internal/repo"
@@ -81,22 +80,6 @@ func (l *RankingLogic) RankTopNFromDB(ctx context.Context) ([]*domain.Article, e
 }
 
 func (l *RankingLogic) RefreshTopArticle(ctx context.Context) error {
-	lockKey := "rank:top:article:lock"
-	mutex := l.redLock.NewMutex(lockKey,
-		redsync.WithExpiry(60*time.Second),
-		redsync.WithTries(1),
-	)
-
-	if err := mutex.TryLock(); err != nil {
-		if err == redsync.ErrFailed {
-			logx.Infof("[RankingLogic_RefreshTopArticle] 当前其它服务正在占用锁:%s", lockKey)
-			return nil
-		}
-		logx.Errorf("获取分布式锁%s失败", lockKey)
-		return errors.Wrapf(err, "[RankingLogic_RefreshTopArticle] 获取分布式锁失败,lockKey=%s", lockKey)
-	}
-	defer mutex.Unlock()
-
 	arts, err := l.RankTopNFromDB(ctx)
 	if err != nil {
 		return errors.WithMessage(err, "[RefreshTopArticle] 从数据库取数据异常导致刷新热榜article失败")

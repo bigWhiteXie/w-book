@@ -43,7 +43,7 @@ func NewApp(cron2 *cron.Cron, config2 config.Config, mysqlConf ioc.MySQLConf, re
 	rankingLogic := logic.NewRankingLogic(iReaderRepository, rankRepo, redsync, interactionClient)
 	articleHandler := handler.NewArticleHandler(serviceContext, articleLogic, rankingLogic)
 	rankingJob := job.NewRankingJob(rankingLogic)
-	jobBuilder := InitJobStarter(cron2, rankingJob)
+	jobBuilder := InitJobStarter(cron2, rankingJob, client)
 	app := NewServer(config2, articleHandler, client, jobBuilder)
 	return app, nil
 }
