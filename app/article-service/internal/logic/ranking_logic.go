@@ -6,7 +6,7 @@ import (
 	"codexie.com/w-book-article/internal/domain"
 	"codexie.com/w-book-article/internal/repo"
 	"codexie.com/w-book-common/queue"
-	"codexie.com/w-book-interact/api/pb/interact"
+	interactGrpc "codexie.com/w-book-interact/api/grpc"
 	"github.com/go-redsync/redsync/v4"
 	"github.com/pkg/errors"
 	"github.com/zeromicro/go-zero/core/logx"
@@ -20,11 +20,11 @@ var (
 type RankingLogic struct {
 	readerRepo  repo.IReaderRepository
 	rankRepo    repo.IRankRepo
-	interactRpc interact.InteractionClient
+	interactRpc interactGrpc.InteractionClient
 	redLock     *redsync.Redsync
 }
 
-func NewRankingLogic(readerRepo repo.IReaderRepository, rankRepo *repo.RankRepo, rs *redsync.Redsync, interactRpc interact.InteractionClient) *RankingLogic {
+func NewRankingLogic(readerRepo repo.IReaderRepository, rankRepo *repo.RankRepo, rs *redsync.Redsync, interactRpc interactGrpc.InteractionClient) *RankingLogic {
 	return &RankingLogic{readerRepo: readerRepo, rankRepo: rankRepo, interactRpc: interactRpc, redLock: rs}
 }
 
@@ -47,14 +47,14 @@ func (l *RankingLogic) RankTopNFromDB(ctx context.Context) ([]*domain.Article, e
 		for _, art := range arts {
 			ids = append(ids, art.Id)
 		}
-		result, err := l.interactRpc.QueryInteractionsInfo(ctx, &interact.QueryInteractionsReq{
+		result, err := l.interactRpc.QueryInteractionsInfo(ctx, &interactGrpc.QueryInteractionsReq{
 			Biz:    domain.Biz,
 			BizIds: ids,
 		})
 		if err != nil {
 			return nil, errors.Wrapf(err, "[RankTopNFromDB] RPC访问交互统计资源失败:%s", err)
 		}
-		cntMap := make(map[int64]*interact.InteractionResult, len(result.Interactions))
+		cntMap := make(map[int64]*interactGrpc.InteractionResult, len(result.Interactions))
 		for _, cnt := range result.Interactions {
 			cntMap[cnt.BizId] = cnt
 		}

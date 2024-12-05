@@ -6,7 +6,7 @@
 
 // proto 包名
 
-package interact
+package grpc
 
 import (
 	context "context"
@@ -27,11 +27,8 @@ const (
 	Interaction_TopLike_FullMethodName               = "/api.Interaction/TopLike"
 )
 
-// InteractionClient is the client API for Interaction service.
-//
-// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-//
-// 定义 Greet 服务
+
+//go:generate mockgen -source=interact_grpc.pb.go -package grpc -destination mock_interact_grpc.go InteractionClient 
 type InteractionClient interface {
 	QueryInteractionInfo(ctx context.Context, in *QueryInteractionReq, opts ...grpc.CallOption) (*InteractionResult, error)
 	QueryInteractionsInfo(ctx context.Context, in *QueryInteractionsReq, opts ...grpc.CallOption) (*InteractionsInfo, error)

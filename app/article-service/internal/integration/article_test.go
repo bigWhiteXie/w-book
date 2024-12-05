@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -12,18 +11,12 @@ import (
 	"time"
 
 	"codexie.com/w-book-article/internal/config"
-	"codexie.com/w-book-article/internal/dao/cache"
 	"codexie.com/w-book-article/internal/dao/db"
 	"codexie.com/w-book-article/internal/domain"
-	"codexie.com/w-book-article/internal/logic"
-	"codexie.com/w-book-article/internal/repo"
-	"codexie.com/w-book-article/internal/svc"
-	"codexie.com/w-book-common/ioc"
-	"codexie.com/w-book-common/kafka/producer"
+	"codexie.com/w-book-article/internal/integration/startup"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
-	"github.com/zeromicro/go-zero/core/conf"
 	"github.com/zeromicro/go-zero/rest"
 	"gorm.io/gorm"
 )
@@ -40,37 +33,19 @@ type ArticleHandlerSuite struct {
 }
 
 func (s *ArticleHandlerSuite) SetupSuite() {
-	var configFile = flag.String("f", "/usr/local/go_project/w-book/app/article-service/etc/article.yaml", "the config file")
 	var c config.Config
-	conf.MustLoad(*configFile, &c)
-
-	serviceContext := svc.NewServiceContext(c)
-	gormDB := ioc.InitGormDB(c.MySQLConf)
-	authorDao := db.NewAuthorDao(gormDB)
-	client := ioc.InitRedis(c.RedisConf)
-	articleCache := cache.NewArticleRedis(client)
-	iAuthorRepository := repo.NewAuthorRepository(authorDao, articleCache)
-	readerDao := db.NewReaderDao(gormDB)
-	iReaderRepository := repo.NewReaderRepository(readerDao, articleCache)
-	interactionClient := svc.CreateCodeRpcClient(c)
-	p := producer.NewKafkaProducer(ioc.InitKafkaClient(c.KafkaConf))
-	articleLogic := logic.NewArticleLogic(iAuthorRepository, iReaderRepository, interactionClient, p)
-	localArtTopCache := cache.NewLocalArtTopCache()
-	redisArtTopNCache := cache.NewRankCacheRedis(client)
-	rankRepo := repo.NewRankRepo(localArtTopCache, redisArtTopNCache)
-	redsync := ioc.InitRedLock(c.RedisConf)
-	rankingLogic := logic.NewRankingLogic(iReaderRepository, rankRepo, redsync, interactionClient)
-	articleHandler := NewArticleHandler(serviceContext, articleLogic, rankingLogic)
-
-	server := rest.MustNewServer(c.RestConf, rest.WithCors())
-	RegisterHandlers(server, articleHandler)
-	s.server = server
+	app, err := startup.NewApp(c, s.T())
+	if err != nil {
+		panic(err)
+	}
+	s.server = app.Server
+	s.db = startup.InitGormDB()
+	s.cache = startup.InitRedis()
 }
 
 func (s *ArticleHandlerSuite) TearDownTest() {
-	s.db.Exec("truncate table `published_article`")
-
-	s.db.Exec("truncate table `article`")
+	s.db.Exec("truncate table `published_articles`")
+	s.db.Exec("truncate table `articles`")
 	keys, _ := s.cache.Keys(context.Background(), "*").Result()
 	for _, k := range keys {
 		s.cache.Del(context.Background(), k)
@@ -88,7 +63,7 @@ func (s *ArticleHandlerSuite) TestEdit() {
 			after: func(t *testing.T) {
 				// check db
 				var art db.Article
-				err := s.db.Where("author_id=?", 123).First(&art).Error
+				err := s.db.Where("title=?", "my article").First(&art).Error
 				assert.NoError(t, err)
 				assert.True(t, art.Id > 0)
 				assert.True(t, art.Utime > 0)
@@ -405,7 +380,7 @@ func (s *ArticleHandlerSuite) TestPage() {
 			wantRes: Result[[]*domain.Article]{
 				Code: 200,
 				Msg:  "ok",
-				Data: []*domain.Article{&domain.Article{Title: "my title1", Content: "my content1"}},
+				Data: []*domain.Article{&domain.Article{Title: "my title2", Content: "my content2"}},
 			},
 		},
 	}
@@ -414,14 +389,16 @@ func (s *ArticleHandlerSuite) TestPage() {
 			tc.before(t)
 			defer tc.after(t)
 			request, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/v1/article/list?page=%d&size=%d", tc.req.Page, tc.req.Size), nil)
-			request.Header.Set("Content-Type", "application/json")
+			// request.Header.Set("Content-Type", "application/json")
 			assert.NoError(t, err)
 			recorder := httptest.NewRecorder()
 			s.server.ServeHTTP(recorder, request)
 			assert.Equal(t, tc.wantCode, recorder.Code)
 			var res Result[[]*domain.Article]
 			err = json.NewDecoder(recorder.Body).Decode(&res)
-			assert.NoError(t, err)
+			if !assert.NoError(t, err) {
+				return
+			}
 			assert.Equal(t, tc.wantRes.Data[0].Title, res.Data[0].Title)
 			assert.Empty(t, res.Data[0].Content)
 		})
@@ -452,7 +429,7 @@ func (s *ArticleHandlerSuite) TestViewArticle() {
 				Page:      1,
 				Size:      1,
 				Id:        1,
-				isPublish: "false",
+				isPublish: 0,
 			},
 			wantCode: http.StatusOK,
 			wantRes: Result[*domain.Article]{
@@ -466,17 +443,24 @@ func (s *ArticleHandlerSuite) TestViewArticle() {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.before(t)
 			defer tc.after(t)
-			request, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/v1/article/view?id=%d&isPublished=%s", tc.req.Id, tc.req.isPublish), nil)
-			request.Header.Set("Content-Type", "application/json")
+			request, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/v1/article/view?id=%d&published=%d", tc.req.Id, tc.req.isPublish), nil)
 			assert.NoError(t, err)
 			recorder := httptest.NewRecorder()
 			s.server.ServeHTTP(recorder, request)
-			assert.Equal(t, tc.wantCode, recorder.Code)
+			if !assert.Equal(t, tc.wantCode, recorder.Code) {
+				return
+			}
 			var res Result[*domain.Article]
 			err = json.NewDecoder(recorder.Body).Decode(&res)
-			assert.NoError(t, err)
-			assert.Equal(t, tc.wantRes.Data.Id, res.Data.Id)
-			assert.NotEmpty(t, res.Data.Content)
+			if !assert.NoError(t, err) {
+				return
+			}
+			if !assert.Equal(t, tc.wantRes.Data.Id, res.Data.Id) {
+				return
+			}
+			if !assert.NotEmpty(t, res.Data.Content) {
+				return
+			}
 		})
 	}
 }
@@ -487,7 +471,7 @@ type Article struct {
 	Content   string `json:"content"`
 	Page      int    `json:"page"`
 	Size      int    `json:"size"`
-	isPublish string
+	isPublish int64
 }
 
 type Result[T any] struct {
@@ -495,6 +479,7 @@ type Result[T any] struct {
 	Msg  string `json:"msg"`
 	Data T      `json:"data,optional"`
 }
+
 type testCase[T any] struct {
 	name     string
 	before   func(t *testing.T)

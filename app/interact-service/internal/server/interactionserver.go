@@ -3,7 +3,7 @@ package server
 import (
 	"context"
 
-	"codexie.com/w-book-interact/api/pb/interact"
+	interactGrpc "codexie.com/w-book-interact/api/grpc"
 	"codexie.com/w-book-interact/internal/logic"
 	"codexie.com/w-book-interact/internal/svc"
 	"codexie.com/w-book-interact/internal/types"
@@ -11,7 +11,7 @@ import (
 
 type InteractionServer struct {
 	svcCtx *svc.ServiceContext
-	interact.UnimplementedInteractionServer
+	interactGrpc.UnimplementedInteractionServer
 	logic *logic.InteractLogic
 }
 
@@ -22,7 +22,7 @@ func NewInteractionServer(svcCtx *svc.ServiceContext, interactLogic *logic.Inter
 	}
 }
 
-func (s *InteractionServer) QueryInteractionInfo(ctx context.Context, in *interact.QueryInteractionReq) (*interact.InteractionResult, error) {
+func (s *InteractionServer) QueryInteractionInfo(ctx context.Context, in *interactGrpc.QueryInteractionReq) (*interactGrpc.InteractionResult, error) {
 	stat, err := s.logic.QueryStatInfo(ctx, &types.OpResourceReq{
 		Biz:   in.Biz,
 		BizId: in.BizId,
@@ -32,7 +32,7 @@ func (s *InteractionServer) QueryInteractionInfo(ctx context.Context, in *intera
 	if err != nil {
 		return nil, err
 	}
-	return &interact.InteractionResult{
+	return &interactGrpc.InteractionResult{
 		ReadCnt:     stat.ReadCnt,
 		LikeCnt:     stat.LikeCnt,
 		CollectCnt:  stat.CollectCnt,
@@ -41,15 +41,15 @@ func (s *InteractionServer) QueryInteractionInfo(ctx context.Context, in *intera
 	}, err
 }
 
-func (s *InteractionServer) QueryInteractionsInfo(ctx context.Context, in *interact.QueryInteractionsReq) (*interact.InteractionsInfo, error) {
+func (s *InteractionServer) QueryInteractionsInfo(ctx context.Context, in *interactGrpc.QueryInteractionsReq) (*interactGrpc.InteractionsInfo, error) {
 	stats, err := s.logic.QueryInteractionInfos(ctx, in.Biz, in.BizIds)
 
 	if err != nil {
 		return nil, err
 	}
-	res := make([]*interact.InteractionResult, 0, len(stats))
+	res := make([]*interactGrpc.InteractionResult, 0, len(stats))
 	for _, stat := range stats {
-		res = append(res, &interact.InteractionResult{
+		res = append(res, &interactGrpc.InteractionResult{
 			BizId:       stat.BizId,
 			ReadCnt:     stat.ReadCnt,
 			LikeCnt:     stat.LikeCnt,
@@ -59,27 +59,27 @@ func (s *InteractionServer) QueryInteractionsInfo(ctx context.Context, in *inter
 		})
 	}
 
-	return &interact.InteractionsInfo{
+	return &interactGrpc.InteractionsInfo{
 		Interactions: res,
 	}, nil
 }
 
-func (s *InteractionServer) IncreReadCnt(ctx context.Context, in *interact.AddReadCntReq) (*interact.CommonResult, error) {
+func (s *InteractionServer) IncreReadCnt(ctx context.Context, in *interactGrpc.AddReadCntReq) (*interactGrpc.CommonResult, error) {
 	err := s.logic.AddRead(ctx, in.Biz, in.BizId)
 	if err != nil {
 		return nil, err
 	}
-	return &interact.CommonResult{
+	return &interactGrpc.CommonResult{
 		Msg: "ok",
 	}, nil
 }
 
-func (s *InteractionServer) TopLike(ctx context.Context, in *interact.TopLikeReq) (*interact.TopLikeResp, error) {
+func (s *InteractionServer) TopLike(ctx context.Context, in *interactGrpc.TopLikeReq) (*interactGrpc.TopLikeResp, error) {
 	ids, err := s.logic.GetTopLike(ctx, in.Biz)
 	if err != nil {
 		return nil, err
 	}
-	return &interact.TopLikeResp{
+	return &interactGrpc.TopLikeResp{
 		Items: ids,
 	}, nil
 }

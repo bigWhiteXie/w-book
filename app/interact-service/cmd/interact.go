@@ -4,7 +4,7 @@ import (
 	"flag"
 	"fmt"
 
-	"codexie.com/w-book-interact/api/pb/interact"
+	interactGrpc "codexie.com/w-book-interact/api/grpc"
 	"codexie.com/w-book-interact/internal/config"
 	"codexie.com/w-book-interact/ioc"
 	"github.com/zeromicro/go-zero/core/conf"
@@ -31,7 +31,7 @@ func main() {
 	go func() {
 		s := zrpc.MustNewServer(c.Grpc, func(grpcServer *grpc.Server) {
 			server, _ := ioc.NewRpcApp(c, c.MySQLConf, c.RedisConf)
-			interact.RegisterInteractionServer(grpcServer, server)
+			interactGrpc.RegisterInteractionServer(grpcServer, server)
 			if c.Mode == service.DevMode || c.Mode == service.TestMode {
 				reflection.Register(grpcServer)
 			}

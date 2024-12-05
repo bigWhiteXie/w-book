@@ -8,7 +8,7 @@ import (
 	"codexie.com/w-book-article/internal/repo"
 	"codexie.com/w-book-common/kafka/producer"
 	"codexie.com/w-book-common/user"
-	"codexie.com/w-book-interact/api/pb/interact"
+	interactGrpc "codexie.com/w-book-interact/api/grpc"
 	"github.com/pkg/errors"
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -20,11 +20,11 @@ var (
 type ArticleLogic struct {
 	authorRepo  repo.IAuthorRepository
 	readerRepo  repo.IReaderRepository
-	interactRpc interact.InteractionClient
+	interactRpc interactGrpc.InteractionClient
 	producer    producer.Producer
 }
 
-func NewArticleLogic(authorRepo repo.IAuthorRepository, readerRepo repo.IReaderRepository, interactClient interact.InteractionClient, producer producer.Producer) *ArticleLogic {
+func NewArticleLogic(authorRepo repo.IAuthorRepository, readerRepo repo.IReaderRepository, interactClient interactGrpc.InteractionClient, producer producer.Producer) *ArticleLogic {
 	return &ArticleLogic{authorRepo: authorRepo, readerRepo: readerRepo, interactRpc: interactClient, producer: producer}
 }
 
@@ -92,7 +92,7 @@ func (l *ArticleLogic) ViewArticle(ctx context.Context, id int64, published bool
 	}()
 	if published {
 		uid := user.GetUidByCtx(ctx)
-		stat, err := l.interactRpc.QueryInteractionInfo(ctx, &interact.QueryInteractionReq{Uid: uid, Biz: domain.Biz, BizId: id})
+		stat, err := l.interactRpc.QueryInteractionInfo(ctx, &interactGrpc.QueryInteractionReq{Uid: uid, Biz: domain.Biz, BizId: id})
 		if err != nil {
 			return nil, errors.Wrapf(err, "[ArticleLogic_ViewArticle]Rpc访问交互信息异常,uid=%d,biz=%s,bizId=%d", ctx.Value("id"), domain.Biz, id)
 		}
@@ -112,7 +112,7 @@ func (l *ArticleLogic) ViewArticle(ctx context.Context, id int64, published bool
 }
 
 func (l *ArticleLogic) GetTopLikeArticles(ctx context.Context) ([]*domain.Article, error) {
-	topResp, err := l.interactRpc.TopLike(ctx, &interact.TopLikeReq{Biz: articleBiz})
+	topResp, err := l.interactRpc.TopLike(ctx, &interactGrpc.TopLikeReq{Biz: articleBiz})
 	if err != nil {
 		return nil, errors.Wrapf(err, "[ArticleLogic_GetTopLikeArticles]Rpc调用interactRpc的TopLike方法异常,biz=%s", articleBiz)
 	}

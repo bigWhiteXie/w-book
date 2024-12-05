@@ -16,6 +16,9 @@ type KafkaProducer struct {
 
 func NewKafkaProducer(client sarama.Client) Producer {
 	sc, err := sarama.NewSyncProducerFromClient(client)
+	if err != nil {
+		panic("fail to init kafka producer,cause:" + err.Error())
+	}
 	asc, err := sarama.NewAsyncProducerFromClient(client)
 	if err != nil {
 		panic("fail to init kafka producer,cause:" + err.Error())

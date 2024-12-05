@@ -1,22 +1,22 @@
 //go:build wireinject
 // +build wireinject
 
-package ioc
+package startup
 
 import (
+	"testing"
+
 	"codexie.com/w-book-article/internal/config"
 	"codexie.com/w-book-article/internal/dao/cache"
 	dao "codexie.com/w-book-article/internal/dao/db"
 	"codexie.com/w-book-article/internal/handler"
-	"codexie.com/w-book-article/internal/job"
 	"codexie.com/w-book-article/internal/logic"
 	"codexie.com/w-book-article/internal/repo"
-	"codexie.com/w-book-common/ioc"
+
 	"codexie.com/w-book-common/kafka/producer"
 
 	"codexie.com/w-book-article/internal/svc"
 	"github.com/google/wire"
-	"github.com/robfig/cron/v3"
 )
 
 var AppSet = wire.NewSet(NewArticleApp)
@@ -33,15 +33,13 @@ var DaoSet = wire.NewSet(dao.NewAuthorDao, dao.NewReaderDao)
 
 var CacheSet = wire.NewSet(cache.NewRankCacheRedis, cache.NewLocalArtTopCache, cache.NewArticleRedis)
 
-var DbSet = wire.NewSet(ioc.InitGormDB, ioc.InitRedis, ioc.InitRedLock)
+var DbSet = wire.NewSet(InitGormDB, InitRedis, InitRedLock)
 
-var MessageSet = wire.NewSet(ioc.InitKafkaClient, producer.NewKafkaProducer)
+var MessageSet = wire.NewSet(InitKafkaClient, producer.NewKafkaProducer)
 
-var RpcSet = wire.NewSet(svc.CreateCodeRpcClient)
+var RpcSet = wire.NewSet(InitInteractClient)
 
-var JobSet = wire.NewSet(InitJobStarter, job.NewRankingJob)
-
-func NewApp(cron *cron.Cron, config config.Config, mysqlConf ioc.MySQLConf, redisConf ioc.RedisConf, kafkaConf ioc.KafkaConf) (*App, error) {
+func NewApp(c config.Config, t *testing.T) (*App, error) {
 	panic(wire.Build(
 		AppSet,
 		HandlerSet,
@@ -53,6 +51,5 @@ func NewApp(cron *cron.Cron, config config.Config, mysqlConf ioc.MySQLConf, redi
 		DbSet,
 		MessageSet,
 		RpcSet,
-		JobSet,
 	))
 }

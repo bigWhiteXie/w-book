@@ -2,9 +2,9 @@ syntax = "proto3";
 
 // proto 包名
 package api;
+
 // goctl rpc protoc interact.proto --go_out=. --go-grpc_out=. --zrpc_out=. --client=true
-// 生成 golang 代码后的包名
-option go_package = "pb/interact";
+option go_package = "./grpc";
 
 // 查询交互计数请求
 message QueryInteractionReq {

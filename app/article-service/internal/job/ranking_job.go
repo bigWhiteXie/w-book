@@ -25,5 +25,5 @@ func (job *RankingJob) Name() string {
 }
 
 func (job *RankingJob) TimeExper() string {
-	return "@every 60s"
+	return "*/1 * * * *"
 }

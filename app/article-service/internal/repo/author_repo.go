@@ -62,7 +62,7 @@ func (artRepo *AuthorRepository) SelectPage(ctx context.Context, authorId int64,
 		if err != nil {
 			logx.Errorf("[selectpage] 查询文章首页缓存失败,原因:%s", err)
 		}
-		if len(articles) != 0 {
+		if len(articles) == size {
 			return articles, nil
 		}
 		key := "article:firstpage:" + strconv.Itoa(int(authorId))

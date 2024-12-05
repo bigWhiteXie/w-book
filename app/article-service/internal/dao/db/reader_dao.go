@@ -55,7 +55,7 @@ func (d *ReaderDao) UpdateById(ctx context.Context, artEntity *PublishedArticle)
 		return errors.Wrapf(res.Error, "[ReaderDao_UpdateById] 更新文章失败,id=%d", artEntity.Id)
 	}
 	if res.RowsAffected == 0 {
-		return errors.Wrap(fmt.Errorf("[ReaderDao_UpdateById] 用户[%d]修改他人文章[%s]", artEntity.AuthorId, artEntity.Id), "")
+		return errors.Wrap(fmt.Errorf("[ReaderDao_UpdateById] 用户[%d]修改他人文章[%d]", artEntity.AuthorId, artEntity.Id), "")
 	}
 
 	return nil

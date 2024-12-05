@@ -4,47 +4,44 @@
 //go:build !wireinject
 // +build !wireinject
 
-package ioc
+package startup
 
 import (
+	"testing"
+
 	"codexie.com/w-book-article/internal/config"
 	"codexie.com/w-book-article/internal/dao/cache"
 	"codexie.com/w-book-article/internal/dao/db"
 	"codexie.com/w-book-article/internal/handler"
-	"codexie.com/w-book-article/internal/job"
 	"codexie.com/w-book-article/internal/logic"
 	"codexie.com/w-book-article/internal/repo"
 	"codexie.com/w-book-article/internal/svc"
-	"codexie.com/w-book-common/ioc"
 	"codexie.com/w-book-common/kafka/producer"
 	"github.com/google/wire"
-	"github.com/robfig/cron/v3"
 )
 
 // Injectors from wire.go:
 
-func NewApp(cron2 *cron.Cron, config2 config.Config, mysqlConf ioc.MySQLConf, redisConf ioc.RedisConf, kafkaConf ioc.KafkaConf) (*App, error) {
-	serviceContext := svc.NewServiceContext(config2)
-	gormDB := ioc.InitGormDB(mysqlConf)
+func NewApp(c config.Config, t *testing.T) (*App, error) {
+	serviceContext := svc.NewServiceContext(c)
+	gormDB := InitGormDB()
 	authorDao := db.NewAuthorDao(gormDB)
-	client := ioc.InitRedis(redisConf)
+	client := InitRedis()
 	articleCache := cache.NewArticleRedis(client)
 	iAuthorRepository := repo.NewAuthorRepository(authorDao, articleCache)
 	readerDao := db.NewReaderDao(gormDB)
 	iReaderRepository := repo.NewReaderRepository(readerDao, articleCache)
-	interactionClient := svc.CreateCodeRpcClient(config2)
-	saramaClient := ioc.InitKafkaClient(kafkaConf)
+	interactionClient := InitInteractClient(t)
+	saramaClient := InitKafkaClient()
 	producerProducer := producer.NewKafkaProducer(saramaClient)
 	articleLogic := logic.NewArticleLogic(iAuthorRepository, iReaderRepository, interactionClient, producerProducer)
 	localArtTopCache := cache.NewLocalArtTopCache()
 	redisArtTopNCache := cache.NewRankCacheRedis(client)
 	rankRepo := repo.NewRankRepo(localArtTopCache, redisArtTopNCache)
-	redsync := ioc.InitRedLock(redisConf)
+	redsync := InitRedLock()
 	rankingLogic := logic.NewRankingLogic(iReaderRepository, rankRepo, redsync, interactionClient)
 	articleHandler := handler.NewArticleHandler(serviceContext, articleLogic, rankingLogic)
-	rankingJob := job.NewRankingJob(rankingLogic)
-	jobBuilder := InitJobStarter(cron2, rankingJob, client)
-	app := NewArticleApp(config2, articleHandler, client, jobBuilder)
+	app := NewArticleApp(c, articleHandler, client)
 	return app, nil
 }
 
@@ -64,10 +61,8 @@ var DaoSet = wire.NewSet(db.NewAuthorDao, db.NewReaderDao)
 
 var CacheSet = wire.NewSet(cache.NewRankCacheRedis, cache.NewLocalArtTopCache, cache.NewArticleRedis)
 
-var DbSet = wire.NewSet(ioc.InitGormDB, ioc.InitRedis, ioc.InitRedLock)
+var DbSet = wire.NewSet(InitGormDB, InitRedis, InitRedLock)
 
-var MessageSet = wire.NewSet(ioc.InitKafkaClient, producer.NewKafkaProducer)
+var MessageSet = wire.NewSet(InitKafkaClient, producer.NewKafkaProducer)
 
 var RpcSet = wire.NewSet(svc.CreateCodeRpcClient)
-
-var JobSet = wire.NewSet(InitJobStarter, job.NewRankingJob)

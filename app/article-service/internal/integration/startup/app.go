@@ -1,4 +1,4 @@
-package ioc
+package startup
 
 import (
 	"codexie.com/w-book-article/internal/config"
@@ -14,12 +14,11 @@ type App struct {
 	JobStarter *job.JobBuilder
 }
 
-func NewArticleApp(c config.Config, articleHandler *handler.ArticleHandler, redisClient *redis.Client, jobStart *job.JobBuilder) *App {
+func NewArticleApp(c config.Config, articleHandler *handler.ArticleHandler, redisClient *redis.Client) *App {
 	server := rest.MustNewServer(c.RestConf, rest.WithCors())
-	server.Use(middleware.NewJwtMiddleware(redisClient).Handle)
+	server.Use(middleware.TestUidHandle)
 	handler.RegisterHandlers(server, articleHandler)
 	return &App{
-		Server:     server,
-		JobStarter: jobStart,
+		Server: server,
 	}
 }

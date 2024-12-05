@@ -4,7 +4,7 @@ import (
 	"codexie.com/w-book-article/internal/config"
 	dao "codexie.com/w-book-article/internal/dao/db"
 
-	"codexie.com/w-book-interact/api/pb/interact"
+	interactGrpc "codexie.com/w-book-interact/api/grpc"
 	"github.com/redis/go-redis/v9"
 	"github.com/zeromicro/go-zero/zrpc"
 	"gorm.io/gorm"
@@ -23,8 +23,8 @@ func NewServiceContext(c config.Config) *ServiceContext {
 	}
 }
 
-func CreateCodeRpcClient(c config.Config) interact.InteractionClient {
-	return interact.NewInteractionClient(zrpc.MustNewClient(c.InteractRpcConf).Conn())
+func CreateCodeRpcClient(c config.Config) interactGrpc.InteractionClient {
+	return interactGrpc.NewInteractionClient(zrpc.MustNewClient(c.InteractRpcConf).Conn())
 }
 
 func InitTables(db *gorm.DB) error {

@@ -38,7 +38,7 @@ func (cache *LocalArtTopCache) ReplaceTopN(ctx context.Context, arts []*domain.A
 	cache.rw.Lock()
 	defer cache.rw.Unlock()
 	if err := cache.localCache.Set(topKey, value); err != nil {
-		logx.Errorf("放入本地缓存失败:%s")
+		logx.Errorf("放入本地缓存失败:%s", err)
 		return errors.Wrapf(err, "[LocalArtTopCache_ReplaceTopN] 放入本地缓存失败:%s", err)
 	}
 
