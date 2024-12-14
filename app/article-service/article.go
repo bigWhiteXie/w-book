@@ -20,14 +20,15 @@ func main() {
 	conf.MustLoad(*configFile, &c)
 	cron := cron.New()
 	app, err := ioc.NewApp(cron, c, c.MySQLConf, c.RedisConf, c.KafkaConf)
+	jobStart, err := ioc.NewJob(c, c.MySQLConf, c.RedisConf, c.KafkaConf)
 	if err != nil {
 		panic(err)
 	}
 	defer func() {
 		app.Server.Stop()
-		app.JobStarter.Stop()
+		jobStart.Stop()
 	}()
-	app.JobStarter.Start()
+	jobStart.Start()
 	fmt.Printf("Starting server at %s:%d...\n", c.Host, c.Port)
 	app.Server.Start()
 }

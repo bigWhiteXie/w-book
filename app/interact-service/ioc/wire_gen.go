@@ -38,10 +38,15 @@ func NewInteractApp(config2 config.Config, mysqlConf ioc.MySQLConf, redisConf io
 	iCollectRepository := repo.NewCollectRepository(interactCache, collectionDao)
 	interactLogic := logic.NewInteractLogic(iLikeInfoRepository, iInteractRepo, iCollectRepository)
 	interactHandler := handler.NewInteractHandler(serviceContext, interactLogic)
+	server := InitServer(config2, interactHandler, client)
 	saramaClient := ioc.InitKafkaClient(kafkaConf)
-	batchConsumer := event.NewBatchReadEventListener(saramaClient, iInteractRepo)
+	readEvtListener := event.NewBatchReadEventListener(saramaClient, iInteractRepo)
 	createEventListener := event.NewCreateEventListener(saramaClient, iInteractRepo)
-	app := NewApp(config2, interactHandler, client, batchConsumer, createEventListener)
+	v := InitConsumers(readEvtListener, createEventListener)
+	app := &App{
+		Server:    server,
+		Consumers: v,
+	}
 	return app, nil
 }
 
@@ -59,13 +64,13 @@ func NewRpcApp(c config.Config, mysqlConf ioc.MySQLConf, redisConf ioc.RedisConf
 	collectionDao := db.NewCollectionDao(gormDB)
 	iCollectRepository := repo.NewCollectRepository(interactCache, collectionDao)
 	interactLogic := logic.NewInteractLogic(iLikeInfoRepository, iInteractRepo, iCollectRepository)
-	interactionServer := NewRpcServer(serviceContext, interactLogic)
+	interactionServer := InitRpcServer(serviceContext, interactLogic)
 	return interactionServer, nil
 }
 
 // wire.go:
 
-var ServerSet = wire.NewSet(NewApp, NewRpcServer)
+var ServerSet = wire.NewSet(InitServer, InitRpcServer)
 
 var HandlerSet = wire.NewSet(handler.NewInteractHandler)
 
@@ -81,6 +86,6 @@ var DbSet = wire.NewSet(ioc.InitGormDB, ioc.InitRedis, ioc.InitRedLock)
 
 var MessageSet = wire.NewSet(ioc.InitKafkaClient)
 
-var ListenerSet = wire.NewSet(event.NewBatchReadEventListener, event.NewCreateEventListener)
+var ListenerSet = wire.NewSet(InitConsumers, event.NewCreateEventListener, event.NewBatchReadEventListener)
 
 var WokerSet = wire.NewSet(worker.NewTopLikeWorker)

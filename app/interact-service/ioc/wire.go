@@ -19,7 +19,7 @@ import (
 	"github.com/google/wire"
 )
 
-var ServerSet = wire.NewSet(NewApp, NewRpcServer)
+var ServerSet = wire.NewSet(InitServer, InitRpcServer)
 
 var HandlerSet = wire.NewSet(handler.NewInteractHandler)
 
@@ -35,12 +35,13 @@ var DbSet = wire.NewSet(ioc.InitGormDB, ioc.InitRedis, ioc.InitRedLock)
 
 var MessageSet = wire.NewSet(ioc.InitKafkaClient)
 
-var ListenerSet = wire.NewSet(event.NewBatchReadEventListener, event.NewCreateEventListener)
+var ListenerSet = wire.NewSet(InitConsumers, event.NewCreateEventListener, event.NewBatchReadEventListener)
 
 var WokerSet = wire.NewSet(worker.NewTopLikeWorker)
 
 func NewInteractApp(config config.Config, mysqlConf ioc.MySQLConf, redisConf ioc.RedisConf, kafkaConf ioc.KafkaConf) (*App, error) {
 	panic(wire.Build(
+		wire.Struct(new(App), "Server", "Consumers"),
 		ServerSet,
 		HandlerSet,
 		LogicSet,

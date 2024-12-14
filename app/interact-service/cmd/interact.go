@@ -42,11 +42,8 @@ func main() {
 		s.Start()
 	}()
 
-	defer func() {
-		app.CreateEvtListener.Stop()
-		app.ReadEvtListener.Stop()
-		app.Server.Stop()
-	}()
+	//启动httpserver、消费者
+	app.Start()
+	defer app.Stop()
 	fmt.Printf("Starting server at %s:%d...\n", c.Host, c.Port)
-	app.Server.Start()
 }

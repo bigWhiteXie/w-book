@@ -5,7 +5,6 @@ import (
 	"codexie.com/w-book-common/metric"
 	"codexie.com/w-book-common/middleware"
 	"codexie.com/w-book-interact/internal/config"
-	"codexie.com/w-book-interact/internal/domain"
 	"codexie.com/w-book-interact/internal/event"
 	"codexie.com/w-book-interact/internal/handler"
 	"codexie.com/w-book-interact/internal/logic"
@@ -18,30 +17,44 @@ import (
 )
 
 type App struct {
-	Server            *rest.Server
-	ReadEvtListener   *consumer.BatchConsumer[domain.ReadEvent]
-	CreateEvtListener *event.CreateEventListener
-	TopLikeWorker     *worker.TopLikeWorker
+	Server        *rest.Server
+	Consumers     []consumer.Consumer
+	TopLikeWorker *worker.TopLikeWorker
 }
 
-func NewApp(c config.Config, articleHandler *handler.InteractHandler, redisClient *redis.Client, readListener *consumer.BatchConsumer[domain.ReadEvent], createListener *event.CreateEventListener) *App {
+func (app *App) Start() error {
+	for _, consumer := range app.Consumers {
+		consumer.Start()
+	}
+	app.Server.Start()
+	return nil
+}
+
+func (app *App) Stop() error {
+	for _, consumer := range app.Consumers {
+		consumer.Stop()
+	}
+	app.Server.Stop()
+	return nil
+}
+
+
+func InitServer(c config.Config, articleHandler *handler.InteractHandler, redisClient *redis.Client) *rest.Server {
 	metric.InitMessageMetric(c.MetricConf)
 	logx.Infof("读取指标配置:%v", c.MetricConf)
 	server := rest.MustNewServer(c.RestConf, rest.WithCors())
 	server.Use(middleware.NewJwtMiddleware(redisClient).Handle)
 	handler.RegisterHandlers(server, articleHandler)
-	readListener.StartListner()
-	createListener.StartListner()
-	// workerManager := worker.Manager{}
-	// workerManager.AddWorker(topLikeWorker)
-	// workerManager.Start()
-	return &App{
-		Server:            server,
-		ReadEvtListener:   readListener,
-		CreateEvtListener: createListener,
-	}
+	return server
 }
 
-func NewRpcServer(serviceContext *svc.ServiceContext, interactLogic *logic.InteractLogic) *server.InteractionServer {
+func InitConsumers(readListener *event.ReadEvtListener, createListener *event.CreateEventListener) []consumer.Consumer {
+	consumers := make([]consumer.Consumer, 0, 2)
+	consumers = append(consumers, readListener)
+	consumers = append(consumers, createListener)
+	return consumers
+}
+
+func InitRpcServer(serviceContext *svc.ServiceContext, interactLogic *logic.InteractLogic) *server.InteractionServer {
 	return server.NewInteractionServer(serviceContext, interactLogic)
 }

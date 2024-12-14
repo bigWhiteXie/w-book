@@ -35,6 +35,8 @@ var (
 
 type jobRun func()
 
+type Option func(job Job)
+
 type Job interface {
 	Name() string
 	Run() error
@@ -51,7 +53,7 @@ type JobBuilder struct {
 	redisClient  *redis.Client
 	timeout      time.Duration
 	ticker       *time.Ticker
-	localLockMap map[string]sync.Mutex
+	localLockMap map[string]*sync.Mutex
 	redLockMap   map[string]*rlock.Lock
 }
 
@@ -59,7 +61,7 @@ func NewJobBuilder(c *cron.Cron, redisClient *redis.Client, name string, timeout
 	Id := uuid.New().String()[:16]
 	rs := rlock.NewClient(redisClient)
 	ticker := time.NewTicker(30 * time.Second)
-	bd := &JobBuilder{cron: c, Id: Id, ticker: ticker, Name: name, lockClient: rs, redisClient: redisClient, localLockMap: make(map[string]sync.Mutex), redLockMap: make(map[string]*rlock.Lock), timeout: timeout}
+	bd := &JobBuilder{cron: c, Id: Id, ticker: ticker, Name: name, lockClient: rs, redisClient: redisClient, localLockMap: make(map[string]*sync.Mutex), redLockMap: make(map[string]*rlock.Lock), timeout: timeout}
 	go func() {
 		for _ = range ticker.C {
 			score := int32(bd.computeLoadBalance())
@@ -90,7 +92,7 @@ func (b *JobBuilder) AddJob(job Job, executeNow bool) error {
 }
 func (b *JobBuilder) build(job Job, executeNow bool) jobRun {
 	var (
-		localLock = sync.Mutex{}
+		localLock = &sync.Mutex{}
 	)
 	if executeNow {
 		job.Run()
@@ -249,6 +251,7 @@ func (b *JobBuilder) releaseLock(jobName string) error {
 	ctx, cancelFunc := context.WithTimeout(context.Background(), time.Second)
 	defer cancelFunc()
 	if err := redLock.Unlock(ctx); err != nil {
+		delete(b.redLockMap, jobName)
 		logx.Debugf("[%s] job(%s)释放分布式锁失败:%s", b.Name, jobName, err)
 		return err
 	}

@@ -38,7 +38,7 @@ func NewCreateEventListener(client sarama.Client, interactRepo repo.IInteractRep
 	}
 }
 
-func (s *CreateEventListener) StartListner() {
+func (s *CreateEventListener) Start() {
 
 	go func() {
 		defer s.client.Close()
