@@ -5,9 +5,10 @@ package ioc
 
 import (
 	"codexie.com/w-book-common/ioc"
+	repo2 "codexie.com/w-book-common/repo"
+
 	"codexie.com/w-book-interact/internal/config"
 	"codexie.com/w-book-interact/internal/dao/cache"
-	dao "codexie.com/w-book-interact/internal/dao/db"
 	"codexie.com/w-book-interact/internal/event"
 	"codexie.com/w-book-interact/internal/handler"
 	"codexie.com/w-book-interact/internal/logic"
@@ -21,15 +22,15 @@ import (
 
 var ServerSet = wire.NewSet(InitServer, InitRpcServer)
 
-var HandlerSet = wire.NewSet(handler.NewInteractHandler)
+var HandlerSet = wire.NewSet(handler.NewInteractHandler, handler, NewMaintainceHandler)
 
 var LogicSet = wire.NewSet(logic.NewInteractLogic)
 
 var SvcSet = wire.NewSet(svc.NewServiceContext)
 
-var RepoSet = wire.NewSet(repo.NewCollectRepository, repo.NewInteractRepository, repo.NewLikeInfoRepository)
+var RepoSet = wire.NewSet(repo.NewCollectRepository, repo.NewInteractRepository, repo.NewLikeInfoRepository, repo2.NewBaseRepo)
 
-var DaoSet = wire.NewSet(dao.NewCollectionDao, dao.NewInteractDao, dao.NewLikeInfoDao, dao.NewRecordDao, cache.NewInteractRedis, cache.NewBigCacheResourceCache)
+var DaoSet = wire.NewSet(cache.NewInteractRedis, cache.NewBigCacheResourceCache)
 
 var DbSet = wire.NewSet(ioc.InitGormDB, ioc.InitRedis, ioc.InitRedLock)
 

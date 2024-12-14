@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"codexie.com/w-book-common/repo"
 	"codexie.com/w-book-common/user"
 	"codexie.com/w-book-interact/internal/dao/cache"
 	"codexie.com/w-book-interact/internal/dao/db"
@@ -21,19 +22,23 @@ type ICollectRepository interface {
 	AddCollectionItem(ctx context.Context, col *domain.CollectionItem) (err error)
 	DelCollection(ctx context.Context, uid, cid int64) error
 	IsCollected(ctx context.Context, uid int64, biz string, bizId int64) (bool, error)
+	SetDB(db *gorm.DB)
 }
 
 type CollectRepository struct {
+	*repo.BaseRepo
+
 	interactCache cache.InteractCache
 	g             singleflight.Group
-	collectDao    *db.CollectionDao
 }
 
-func NewCollectRepository(cache cache.InteractCache, dao *db.CollectionDao) ICollectRepository {
-	return &CollectRepository{interactCache: cache, collectDao: dao}
+func NewCollectRepository(cache cache.InteractCache, baseRepo *repo.BaseRepo) ICollectRepository {
+	return &CollectRepository{interactCache: cache, BaseRepo: baseRepo}
 }
 
 func (repo *CollectRepository) AddCollection(ctx context.Context, col *domain.Collection) error {
+	collectDao := db.NewCollectionDao(repo.GetDB())
+
 	now := time.Now().UnixMilli()
 	entity := &db.Collection{
 		Name:  col.Name,
@@ -42,14 +47,16 @@ func (repo *CollectRepository) AddCollection(ctx context.Context, col *domain.Co
 		Ctime: now,
 		Utime: now,
 	}
-	return repo.collectDao.AddCollection(ctx, entity)
+	return collectDao.AddCollection(ctx, entity)
 }
 
 func (repo *CollectRepository) DelCollection(ctx context.Context, uid, cid int64) error {
-	return repo.collectDao.DelCollection(ctx, uid, cid)
+	collectDao := db.NewCollectionDao(repo.GetDB())
+	return collectDao.DelCollection(ctx, uid, cid)
 }
 
 func (repo *CollectRepository) AddCollectionItem(ctx context.Context, col *domain.CollectionItem) (err error) {
+	collectDao := db.NewCollectionDao(repo.GetDB())
 	uid := user.GetUidByCtx(ctx)
 	//todo: 查询收藏夹和资源的信息，若拿不到则返回error
 	now := time.Now().UnixMilli()
@@ -63,12 +70,12 @@ func (repo *CollectRepository) AddCollectionItem(ctx context.Context, col *domai
 	}
 	incre := -1
 	if col.Action == 1 {
-		_, err = repo.collectDao.AddCollectionItem(ctx, entity)
+		_, err = collectDao.AddCollectionItem(ctx, entity)
 		incre = 1
 	} else {
 		logx.Infof("删除数据 id:%d", col.Id)
 		entity.Id = col.Id
-		_, err = repo.collectDao.DelCollectionItem(ctx, entity)
+		_, err = collectDao.DelCollectionItem(ctx, entity)
 	}
 	if err != nil {
 		return err
@@ -77,7 +84,8 @@ func (repo *CollectRepository) AddCollectionItem(ctx context.Context, col *domai
 }
 
 func (repo *CollectRepository) IsCollected(ctx context.Context, uid int64, biz string, bizId int64) (bool, error) {
-	item, err := repo.collectDao.FindCollectionItem(ctx, uid, bizId, biz)
+	collectDao := db.NewCollectionDao(repo.GetDB())
+	item, err := collectDao.FindCollectionItem(ctx, uid, bizId, biz)
 	switch {
 	case errors.Cause(err) == gorm.ErrRecordNotFound:
 		return false, nil

@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"time"
 
+	"codexie.com/w-book-common/repo"
 	"codexie.com/w-book-interact/internal/dao/cache"
 	"codexie.com/w-book-interact/internal/dao/db"
 	"codexie.com/w-book-interact/internal/domain"
 	"github.com/IBM/sarama"
 	"github.com/zeromicro/go-zero/core/logx"
 	"golang.org/x/sync/singleflight"
+	"gorm.io/gorm"
 )
 
 type IInteractRepo interface {
@@ -25,24 +27,27 @@ type IInteractRepo interface {
 	GetTopResIdsByLike(ctx context.Context, resourceType string, limit int) ([]int64, error)
 	RefreshTopLikeRedis(ctx context.Context, resourceType string, limit int) error
 	RefreshTopLikeLocal(ctx context.Context, resourceType string, limit int) error
+
+	SetDB(db *gorm.DB)
 }
 
 type InteractRepository struct {
-	interactDao *db.InteractDao
-	recordDao   *db.RecordDao
-	cache       cache.InteractCache
-	localCache  cache.TopLikeCache
-	sg          singleflight.Group
-	isTx        bool
+	*repo.BaseRepo
+
+	cache      cache.InteractCache
+	localCache cache.TopLikeCache
+	sg         singleflight.Group
+	isTx       bool
 }
 
-func NewInteractRepository(readerDao *db.InteractDao, recordDao *db.RecordDao, cache cache.InteractCache, localCache cache.TopLikeCache) IInteractRepo {
-	return &InteractRepository{interactDao: readerDao, cache: cache, recordDao: recordDao, localCache: localCache}
+func NewInteractRepository(baseRepo *repo.BaseRepo, cache cache.InteractCache, localCache cache.TopLikeCache) IInteractRepo {
+	return &InteractRepository{BaseRepo: baseRepo, cache: cache, localCache: localCache}
 }
 
 func (repo *InteractRepository) RefreshTopLikeRedis(ctx context.Context, resourceType string, limit int) error {
 	return repo.cache.UpdateRedisZSet(ctx, resourceType, func() ([]*domain.Interaction, error) {
-		resources, err := repo.interactDao.GetTopResourcesByLikes("article", limit)
+		interactDao := db.NewInteractDao(repo.GetDB())
+		resources, err := interactDao.GetTopResourcesByLikes("article", limit)
 		if err != nil {
 			return nil, err
 		}
@@ -51,7 +56,8 @@ func (repo *InteractRepository) RefreshTopLikeRedis(ctx context.Context, resourc
 }
 
 func (repo *InteractRepository) GetInteractions(ctx context.Context, biz string, bizIds []int64) ([]*domain.Interaction, error) {
-	inters, err := repo.interactDao.GetInteractions(ctx, biz, bizIds)
+	interactDao := db.NewInteractDao(repo.GetDB())
+	inters, err := interactDao.GetInteractions(ctx, biz, bizIds)
 	if err != nil {
 		return nil, err
 	}
@@ -96,9 +102,10 @@ func (repo *InteractRepository) GetTopResIdsByLike(ctx context.Context, resource
 	}
 
 	// 从redis中获取
+	interactDao := db.NewInteractDao(repo.GetDB())
 	resourceIds, err := repo.cache.GetTopFromRedisZSet(ctx, resourceType, 100)
 	if len(resourceIds) == 0 || err != nil { // redis中获取不到或失败，走数据库
-		entities, err := repo.interactDao.GetTopResourcesByLikes(resourceType, limit)
+		entities, err := interactDao.GetTopResourcesByLikes(resourceType, limit)
 		if err != nil {
 			return nil, err
 		}
@@ -109,7 +116,7 @@ func (repo *InteractRepository) GetTopResIdsByLike(ctx context.Context, resource
 		//更新缓存
 		go func() {
 			repo.cache.UpdateRedisZSet(ctx, resourceType, func() ([]*domain.Interaction, error) {
-				resources, err := repo.interactDao.GetTopResourcesByLikes("article", limit)
+				resources, err := interactDao.GetTopResourcesByLikes("article", limit)
 				if err != nil {
 					return nil, err
 				}
@@ -137,9 +144,9 @@ func (repo *InteractRepository) GetInteraction(ctx context.Context, cntInfo *dom
 	}
 
 	logx.Infof("cnt_stat的缓存信息不存在")
-
+	interactDao := db.NewInteractDao(repo.GetDB())
 	result, err, _ := repo.sg.Do(key, func() (interface{}, error) {
-		entity, err := repo.interactDao.FindInteractByBiz(ctx, cntInfo.Biz, cntInfo.BizId)
+		entity, err := interactDao.FindInteractByBiz(ctx, cntInfo.Biz, cntInfo.BizId)
 		if err != nil {
 			return nil, err
 		}
@@ -166,12 +173,15 @@ func (repo *InteractRepository) HandleBatchReadV2(eventBatch []domain.ReadEvent,
 }
 
 func (repo *InteractRepository) AddReadCnt(ctx context.Context, biz string, bizId int64) error {
-	repo.interactDao.IncreRead(ctx, biz, bizId)
+	interactDao := db.NewInteractDao(repo.GetDB())
+	interactDao.IncreRead(ctx, biz, bizId)
 	return repo.cache.IncreCntIfExist(ctx, fmt.Sprintf(cntInfoKeyFmt, biz, bizId), domain.Read, 1)
 }
 
 // HandleBatchRead handles a batch of read events, updating the database and cache accordingly.
 func (repo *InteractRepository) HandleBatchRead(ctx context.Context, eventBatch []domain.ReadEvent) error {
+	interactDao := db.NewInteractDao(repo.GetDB())
+	recordDao := db.NewRecordDao(repo.GetDB())
 	bizs := make([]string, 0, len(eventBatch))
 	bizIds := make([]int64, 0, len(eventBatch))
 	uIds := make([]int64, 0, len(eventBatch))
@@ -181,11 +191,11 @@ func (repo *InteractRepository) HandleBatchRead(ctx context.Context, eventBatch 
 		bizIds = append(bizIds, evt.BizId)
 		uIds = append(uIds, evt.Uid)
 	}
-	if err := repo.interactDao.BatchIncreRead(ctx, bizs, bizIds); err != nil {
+	if err := interactDao.BatchIncreRead(ctx, bizs, bizIds); err != nil {
 		return err
 	}
 
-	if err := repo.recordDao.AddRecords(ctx, bizs, bizIds, uIds); err != nil {
+	if err := recordDao.AddRecords(ctx, bizs, bizIds, uIds); err != nil {
 		return err
 	}
 
@@ -201,11 +211,12 @@ func (repo *InteractRepository) HandleBatchRead(ctx context.Context, eventBatch 
 }
 
 func (repo *InteractRepository) CreateInteractData(ctx context.Context, readEvt *domain.ReadEvent) error {
+	interactDao := db.NewInteractDao(repo.GetDB())
 	var (
 		entity *db.Interaction
 		err    error
 	)
-	if entity, err = repo.interactDao.CrateCntData(ctx, readEvt.Biz, readEvt.BizId); err != nil {
+	if entity, err = interactDao.CrateCntData(ctx, readEvt.Biz, readEvt.BizId); err != nil {
 		return err
 	}
 

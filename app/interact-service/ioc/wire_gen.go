@@ -8,13 +8,13 @@ package ioc
 
 import (
 	"codexie.com/w-book-common/ioc"
+	"codexie.com/w-book-common/repo"
 	"codexie.com/w-book-interact/internal/config"
 	"codexie.com/w-book-interact/internal/dao/cache"
-	"codexie.com/w-book-interact/internal/dao/db"
 	"codexie.com/w-book-interact/internal/event"
 	"codexie.com/w-book-interact/internal/handler"
 	"codexie.com/w-book-interact/internal/logic"
-	"codexie.com/w-book-interact/internal/repo"
+	repo2 "codexie.com/w-book-interact/internal/repo"
 	"codexie.com/w-book-interact/internal/server"
 	"codexie.com/w-book-interact/internal/svc"
 	"codexie.com/w-book-interact/internal/worker"
@@ -28,17 +28,16 @@ func NewInteractApp(config2 config.Config, mysqlConf ioc.MySQLConf, redisConf io
 	client := ioc.InitRedis(redisConf)
 	redsync := ioc.InitRedLock(redisConf)
 	interactCache := cache.NewInteractRedis(client, redsync)
-	gormDB := ioc.InitGormDB(mysqlConf)
-	iLikeInfoRepository := repo.NewLikeInfoRepository(interactCache, gormDB)
-	interactDao := db.NewInteractDao(gormDB)
-	recordDao := db.NewRecordDao(gormDB)
+	db := ioc.InitGormDB(mysqlConf)
+	baseRepo := repo.NewBaseRepo(db)
+	iLikeInfoRepository := repo2.NewLikeInfoRepository(interactCache, baseRepo)
 	topLikeCache := cache.NewBigCacheResourceCache()
-	iInteractRepo := repo.NewInteractRepository(interactDao, recordDao, interactCache, topLikeCache)
-	collectionDao := db.NewCollectionDao(gormDB)
-	iCollectRepository := repo.NewCollectRepository(interactCache, collectionDao)
+	iInteractRepo := repo2.NewInteractRepository(baseRepo, interactCache, topLikeCache)
+	iCollectRepository := repo2.NewCollectRepository(interactCache, baseRepo)
 	interactLogic := logic.NewInteractLogic(iLikeInfoRepository, iInteractRepo, iCollectRepository)
 	interactHandler := handler.NewInteractHandler(serviceContext, interactLogic)
-	server := InitServer(config2, interactHandler, client)
+	maintainceHandler := handler.NewMaintainceHandler(baseRepo)
+	server := InitServer(config2, interactHandler, maintainceHandler, client)
 	saramaClient := ioc.InitKafkaClient(kafkaConf)
 	readEvtListener := event.NewBatchReadEventListener(saramaClient, iInteractRepo)
 	createEventListener := event.NewCreateEventListener(saramaClient, iInteractRepo)
@@ -55,14 +54,12 @@ func NewRpcApp(c config.Config, mysqlConf ioc.MySQLConf, redisConf ioc.RedisConf
 	client := ioc.InitRedis(redisConf)
 	redsync := ioc.InitRedLock(redisConf)
 	interactCache := cache.NewInteractRedis(client, redsync)
-	gormDB := ioc.InitGormDB(mysqlConf)
-	iLikeInfoRepository := repo.NewLikeInfoRepository(interactCache, gormDB)
-	interactDao := db.NewInteractDao(gormDB)
-	recordDao := db.NewRecordDao(gormDB)
+	db := ioc.InitGormDB(mysqlConf)
+	baseRepo := repo.NewBaseRepo(db)
+	iLikeInfoRepository := repo2.NewLikeInfoRepository(interactCache, baseRepo)
 	topLikeCache := cache.NewBigCacheResourceCache()
-	iInteractRepo := repo.NewInteractRepository(interactDao, recordDao, interactCache, topLikeCache)
-	collectionDao := db.NewCollectionDao(gormDB)
-	iCollectRepository := repo.NewCollectRepository(interactCache, collectionDao)
+	iInteractRepo := repo2.NewInteractRepository(baseRepo, interactCache, topLikeCache)
+	iCollectRepository := repo2.NewCollectRepository(interactCache, baseRepo)
 	interactLogic := logic.NewInteractLogic(iLikeInfoRepository, iInteractRepo, iCollectRepository)
 	interactionServer := InitRpcServer(serviceContext, interactLogic)
 	return interactionServer, nil
@@ -78,9 +75,9 @@ var LogicSet = wire.NewSet(logic.NewInteractLogic)
 
 var SvcSet = wire.NewSet(svc.NewServiceContext)
 
-var RepoSet = wire.NewSet(repo.NewCollectRepository, repo.NewInteractRepository, repo.NewLikeInfoRepository)
+var RepoSet = wire.NewSet(repo2.NewCollectRepository, repo2.NewInteractRepository, repo2.NewLikeInfoRepository, repo.NewBaseRepo)
 
-var DaoSet = wire.NewSet(db.NewCollectionDao, db.NewInteractDao, db.NewLikeInfoDao, db.NewRecordDao, cache.NewInteractRedis, cache.NewBigCacheResourceCache)
+var DaoSet = wire.NewSet(cache.NewInteractRedis, cache.NewBigCacheResourceCache)
 
 var DbSet = wire.NewSet(ioc.InitGormDB, ioc.InitRedis, ioc.InitRedLock)
 

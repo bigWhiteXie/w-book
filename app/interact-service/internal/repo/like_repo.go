@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"codexie.com/w-book-common/repo"
 	"codexie.com/w-book-interact/internal/dao/cache"
 	"codexie.com/w-book-interact/internal/dao/db"
 	"codexie.com/w-book-interact/internal/domain"
@@ -20,23 +21,25 @@ var (
 type ILikeInfoRepository interface {
 	Like(ctx context.Context, uid int64, biz string, bizId int64) error
 	IsLike(ctx context.Context, uid int64, biz string, bizId int64) (bool, error)
+	SetDB(db *gorm.DB)
 }
 
 type LikeInfoRepository struct {
+	*repo.BaseRepo
+
 	interactCache cache.InteractCache
 	g             singleflight.Group
-	db            *gorm.DB
 }
 
-func NewLikeInfoRepository(cache cache.InteractCache, db *gorm.DB) ILikeInfoRepository {
-	return &LikeInfoRepository{interactCache: cache, db: db}
+func NewLikeInfoRepository(cache cache.InteractCache, baseRepo *repo.BaseRepo) ILikeInfoRepository {
+	return &LikeInfoRepository{interactCache: cache, BaseRepo: baseRepo}
 }
 
 func (repo *LikeInfoRepository) Like(ctx context.Context, uid int64, biz string, bizId int64) error {
 	status := 0
 	incre := -1
 
-	err := repo.db.Transaction(func(tx *gorm.DB) error {
+	err := repo.GetDB().Transaction(func(tx *gorm.DB) error {
 		var err error
 		InteractDao := db.NewInteractDao(tx)
 		likeInfoDao := db.NewLikeInfoDao(tx)
@@ -76,7 +79,7 @@ func (repo *LikeInfoRepository) Like(ctx context.Context, uid int64, biz string,
 }
 
 func (repo *LikeInfoRepository) IsLike(ctx context.Context, uid int64, biz string, bizId int64) (bool, error) {
-	likeDao := db.NewLikeInfoDao(repo.db)
+	likeDao := db.NewLikeInfoDao(repo.GetDB())
 	likeInfo, err := likeDao.FindLikeInfo(ctx, uid, biz, bizId)
 	switch {
 	case errors.As(err, &gorm.ErrRecordNotFound):

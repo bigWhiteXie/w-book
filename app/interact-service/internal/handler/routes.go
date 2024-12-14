@@ -36,3 +36,18 @@ func RegisterHandlers(server *rest.Server, interactHandler *InteractHandler) {
 		rest.WithMaxBytes(1048576000),
 	)
 }
+
+func RegisterMaintainceHandlers(server *rest.Server, maintainceHandler *MaintainceHandler) {
+	server.AddRoutes(
+		[]rest.Route{
+			{
+				Method:  http.MethodPost,
+				Path:    "/maintance/dbchange",
+				Handler: maintainceHandler.ChangeDB,
+			},
+		},
+		rest.WithPrefix("/v1"),
+		rest.WithTimeout(3000*time.Millisecond),
+		rest.WithMaxBytes(1048576000),
+	)
+}

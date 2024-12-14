@@ -3,8 +3,8 @@ package repo
 import (
 	"context"
 
+	"codexie.com/w-book-common/repo"
 	"codexie.com/w-book-interact/internal/dao/cache"
-	"codexie.com/w-book-interact/internal/dao/db"
 	"codexie.com/w-book-interact/internal/domain"
 	"golang.org/x/sync/singleflight"
 )
@@ -16,13 +16,14 @@ type IRecordRepository interface {
 }
 
 type RecordRepository struct {
+	*repo.BaseRepo
+
 	interactCache cache.InteractCache
 	g             singleflight.Group
-	recordDao     *db.RecordDao
 }
 
-func NewRecordRepository(cache cache.InteractCache, dao *db.RecordDao) IRecordRepository {
-	return &RecordRepository{interactCache: cache, recordDao: dao}
+func NewRecordRepository(cache cache.InteractCache, baseRepo *repo.BaseRepo) IRecordRepository {
+	return &RecordRepository{interactCache: cache, BaseRepo: baseRepo}
 }
 
 func (repo *RecordRepository) AddRecord(ctx context.Context, event *domain.ReadEvent) error {

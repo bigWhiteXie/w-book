@@ -21,6 +21,7 @@ import (
 	"codexie.com/w-book-interact/internal/svc"
 	"codexie.com/w-book-interact/internal/types"
 
+	repo2 "codexie.com/w-book-common/repo"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -51,13 +52,11 @@ func (s *InteractHandlerSuite) SetupSuite() {
 	rs := svc.CreateRedSync(c)
 	interactCache := cache.NewInteractRedis(client, rs)
 	gormDB := svc.CreteDbClient(c)
-	iLikeInfoRepository := repo.NewLikeInfoRepository(interactCache, gormDB)
-	interactDao := db.NewInteractDao(gormDB)
-	recordDao := db.NewRecordDao(gormDB)
+	baseRepo := repo2.NewBaseRepo(gormDB)
+	iLikeInfoRepository := repo.NewLikeInfoRepository(interactCache, baseRepo)
 	localCache := cache.NewBigCacheResourceCache()
-	iInteractRepo := repo.NewInteractRepository(interactDao, recordDao, interactCache, localCache)
-	collectionDao := db.NewCollectionDao(gormDB)
-	iCollectRepository := repo.NewCollectRepository(interactCache, collectionDao)
+	iInteractRepo := repo.NewInteractRepository(baseRepo, interactCache, localCache)
+	iCollectRepository := repo.NewCollectRepository(interactCache, baseRepo)
 	interactLogic := logic.NewInteractLogic(iLikeInfoRepository, iInteractRepo, iCollectRepository)
 	interactHandler := NewInteractHandler(serviceContext, interactLogic)
 	s.db = gormDB

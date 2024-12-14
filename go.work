@@ -1,10 +1,9 @@
 go 1.22.1
 
 use (
-	./app/user-service
 	./app/article-service
-	./app/sms-service
 	./app/code-common
 	./app/interact-service
+	./app/sms-service
+	./app/user-service
 )
-
