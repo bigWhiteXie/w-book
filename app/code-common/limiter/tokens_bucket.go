@@ -35,18 +35,13 @@ type TokenBucketLimiter struct {
 	capacity        int64
 	updateTime      int64
 	tokensPerSecond int64
-	instanceCount   int64
 	biz             string
 
-	instanceKey      string
 	rateKey          string
 	timeKey          string
 	instanceCountKey string
 }
 
-// NewTokenBucketLimiter 初始化限流器
-
-// NewTokenBucketLimiter 函数更新
 func NewTokenBucketLimiter(redisClient *redis.Client, conf *TokenBucketRateConf) *TokenBucketLimiter {
 	logx.Infof("初始化限流器， tokensPerSecond:%d, capacity:%d, ")
 	limiter := &TokenBucketLimiter{
@@ -55,7 +50,6 @@ func NewTokenBucketLimiter(redisClient *redis.Client, conf *TokenBucketRateConf)
 
 		capacity:        conf.Capacity,
 		tokensPerSecond: conf.TokensPerSecond,
-		instanceCount:   1,
 
 		rateKey:          fmt.Sprintf("limit:rate:%s", conf.Biz),
 		timeKey:          fmt.Sprintf("limit:time:%s", conf.Biz),
