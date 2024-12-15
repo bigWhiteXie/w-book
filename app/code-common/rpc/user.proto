@@ -1,0 +1,24 @@
+syntax = "proto3"; // 使用 proto3 语法
+
+package rpc; // 定义包名
+option go_package = "./";
+
+// 定义 UserService 服务
+service UserService {
+  // 定义 GetUser 方法
+  rpc GetUser (GetUserReq) returns (GetUserResp);
+}
+
+// 定义 GetUser 方法的请求消息
+message GetUserReq {
+  string uid = 1; // 用户 ID
+}
+
+// 定义 GetUser 方法的响应消息
+message GetUserResp {
+  string uid = 1;       // 用户 ID
+  string name = 2;      // 用户名称
+  int32 age = 3;        // 用户年龄
+  string email = 4;     // 用户邮箱
+  string address = 5;   // 用户地址
+}
