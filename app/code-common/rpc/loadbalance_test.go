@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"codexie.com/w-book-code/api/pb"
-	"codexie.com/w-book-common/balancer"
+	"codexie.com/w-book-common/grpcx/balancer"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/naming/endpoints"
 	"go.etcd.io/etcd/client/v3/naming/resolver"

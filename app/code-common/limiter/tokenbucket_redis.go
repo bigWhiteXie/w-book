@@ -27,7 +27,7 @@ type TokenBucketRateConf struct {
 	Biz             string `json:",optional"`
 }
 
-type TokenBucketLimiter struct {
+type RedisTokenBucketLimiter struct {
 	redisClient *redis.Client
 	mutex       sync.Mutex
 
@@ -42,9 +42,9 @@ type TokenBucketLimiter struct {
 	instanceCountKey string
 }
 
-func NewTokenBucketLimiter(redisClient *redis.Client, conf *TokenBucketRateConf) *TokenBucketLimiter {
+func NewRedisTokenBucketLimiter(redisClient *redis.Client, conf *TokenBucketRateConf) *RedisTokenBucketLimiter {
 	logx.Infof("初始化限流器， tokensPerSecond:%d, capacity:%d, ")
-	limiter := &TokenBucketLimiter{
+	limiter := &RedisTokenBucketLimiter{
 		redisClient: redisClient,
 		localTokens: 0, // 本地初始令牌数量
 
@@ -65,7 +65,7 @@ func NewTokenBucketLimiter(redisClient *redis.Client, conf *TokenBucketRateConf)
 	return limiter
 }
 
-func (l *TokenBucketLimiter) UpdateInstanceCount(ctx context.Context, increment bool) error {
+func (l *RedisTokenBucketLimiter) UpdateInstanceCount(ctx context.Context, increment bool) error {
 	var err error
 	if increment {
 		err = l.redisClient.Incr(ctx, l.instanceCountKey).Err()
@@ -73,19 +73,19 @@ func (l *TokenBucketLimiter) UpdateInstanceCount(ctx context.Context, increment 
 		err = l.redisClient.Decr(ctx, l.instanceCountKey).Err()
 	}
 	if err != nil {
-		logx.Errorf("[TokenBucketLimiter_asdffvaf]更新实例数量失败: %v", err)
+		logx.Errorf("[RedisTokenBucketLimiter_asdffvaf]更新实例数量失败: %v", err)
 		return err
 	}
 	return nil
 }
 
 // Allow 是否允许通过
-func (l *TokenBucketLimiter) Allow(ctx context.Context) bool {
+func (l *RedisTokenBucketLimiter) Allow(ctx context.Context) (bool, error) {
 	// Step 1: 本地令牌计数原子操作
 	if atomic.AddInt64(&l.localTokens, -1) >= 0 {
 		logx.Infof("[Allow] 本地令牌限流通过,剩余令牌:%d", l.localTokens)
 		// 本地令牌足够，放行
-		return true
+		return true, nil
 	}
 
 	// Step 2: 获取锁避免多协程同时向 Redis 请求
@@ -96,9 +96,9 @@ func (l *TokenBucketLimiter) Allow(ctx context.Context) bool {
 	now := time.Now().Unix()
 	if l.updateTime == now {
 		if l.localTokens = l.localTokens - 1; l.localTokens >= 0 {
-			return true
+			return true, nil
 		}
-		return false
+		return false, nil
 	}
 	l.updateTime = now
 	// Step 4: 本地令牌不足，通过 Redis 获取批量令牌
@@ -107,7 +107,7 @@ func (l *TokenBucketLimiter) Allow(ctx context.Context) bool {
 }
 
 // fetchTokensFromRedis 从 Redis 中获取令牌
-func (l *TokenBucketLimiter) fetchTokensFromRedis(ctx context.Context, takeTokens int64) bool {
+func (l *RedisTokenBucketLimiter) fetchTokensFromRedis(ctx context.Context, takeTokens int64) (bool, error) {
 
 	luaScript := `
 		-- 定义传入的参数
@@ -148,22 +148,22 @@ func (l *TokenBucketLimiter) fetchTokensFromRedis(ctx context.Context, takeToken
 	result, err := l.redisClient.Eval(ctx, luaScript, []string{l.rateKey, l.timeKey, l.instanceCountKey}, l.updateTime, l.capacity, l.tokensPerSecond, takeTokens).Result()
 
 	if err != nil {
-		logx.Errorf("[TokenBucketLimiter_asdasd] 限流器从redis获取令牌失败,cause:", err)
-		return false
+		logx.Errorf("[RedisTokenBucketLimiter_asdasd] 限流器从redis获取令牌失败,cause:", err)
+		return false, err
 	}
 
 	tokens, ok := result.(int64)
 	l.localTokens = tokens
-	logx.Infof("[TokenBucketLimiter_DSGdgew] 拿到令牌数量：%d", tokens)
+	logx.Infof("[RedisTokenBucketLimiter_DSGdgew] 拿到令牌数量：%d", tokens)
 	if !ok || tokens <= 0 {
 		// Redis 中没有足够的令牌
-		logx.Alert("[TokenBucketLimiter_fdzggwg] 触发限流")
-		return false
+		logx.Alert("[RedisTokenBucketLimiter_fdzggwg] 触发限流")
+		return false, nil
 	}
 
 	// Step 3: 成功获取 Redis 令牌，更新本地令牌数量
 	l.localTokens = tokens - 1
 	logx.Infof("[Allow] 限流通过,剩余令牌:%d", l.localTokens)
 
-	return true
+	return true, nil
 }

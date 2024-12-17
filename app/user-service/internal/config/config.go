@@ -17,5 +17,4 @@ type Config struct {
 	CodeRpcConf    zrpc.RpcClientConf
 	MySQLConf      ioc.MySQLConf
 	RedisConf      ioc.RedisConf
-	IpRate         limiter.IpLimitConfig
 }

@@ -9,23 +9,39 @@ import (
 )
 
 type IpLimiterMiddleware struct {
-	lr *limiter.RateLimiter
+	ipLimiter map[string]*limiter.CounterLimiter
+	limit     int64
 }
 
 // NewCorsMiddleware 新建跨域请求处理中间件
-func NewLimiterMiddleware(lr *limiter.RateLimiter) *IpLimiterMiddleware {
-	return &IpLimiterMiddleware{lr: lr}
+func NewLimiterMiddleware(limit int64) *IpLimiterMiddleware {
+	return &IpLimiterMiddleware{
+		ipLimiter: make(map[string]*limiter.CounterLimiter),
+		limit:     limit,
+	}
 }
 
 func (m *IpLimiterMiddleware) Handle(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ip := getClientIP(r)
-		if m.lr.AllowIP(ip) {
-			next(w, r)
+		if l, ok := m.ipLimiter[ip]; ok {
+			if l.Allow(r.Context()) {
+				defer l.Release()
+				next(w, r)
+				return
+			}
 		} else {
-			logx.WithContext(r.Context()).Error("rate limit")
-			w.WriteHeader(http.StatusServiceUnavailable)
+			l := limiter.NewCounterLimiter(m.limit)
+			m.ipLimiter[ip] = l
+			if l.Allow(r.Context()) {
+				defer l.Release()
+				next(w, r)
+				return
+			}
 		}
+
+		logx.WithContext(r.Context()).Errorf("ip[%s]被限流", ip)
+		w.WriteHeader(http.StatusTooManyRequests)
 	}
 }
 

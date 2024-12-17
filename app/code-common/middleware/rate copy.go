@@ -18,11 +18,11 @@ func NewBucketLimiterMiddleware(lr *limiter.TokenBucketLimiter) *BucketLimiterMi
 
 func (m *BucketLimiterMiddleware) Handle(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if m.lr.Allow(r.Context()) {
-			next(w, r)
-		} else {
+		if allowed := m.lr.Allow(r.Context()); !allowed {
 			logx.WithContext(r.Context()).Error("rate limit")
-			w.WriteHeader(http.StatusServiceUnavailable)
+			w.WriteHeader(http.StatusTooManyRequests)
 		}
+
+		next(w, r)
 	}
 }
