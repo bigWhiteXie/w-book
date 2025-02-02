@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 
 	"codexie.com/w-book-common/codeerr"
@@ -22,6 +23,7 @@ type IUserRepository interface {
 	FindUserByEmail(ctx context.Context, email string) (*model.User, error)
 	FindUserById(ctx context.Context, id int) (*model.User, error)
 	FindOrCreate(ctx context.Context, phone string) (*model.User, error)
+	FindOrCreateByWechat(ctx context.Context, openID, nickname, avatarURL string) (*model.User, error)
 }
 
 type UserRepository struct {
@@ -98,5 +100,26 @@ func (d *UserRepository) FindOrCreate(ctx context.Context, phone string) (*model
 	if user, err = d.userDao.FindOne(ctx, &model.User{Phone: sql.StringToNullString(phone)}); err != nil {
 		return nil, errors.Wrap(codeerr.WithCode(codeerr.SystemErrCode, "[UserRepository_FindOrCreate] 使用phone=%s查找用户失败:%s", phone, err), "")
 	}
+	return user, nil
+}
+
+func (r *UserRepository) FindOrCreateByWechat(ctx context.Context, openID, nickname, avatarURL string) (*model.User, error) {
+	// 先尝试查找用户
+	user, err := r.userDao.FindByOpenID(ctx, openID)
+	if err == nil {
+		return user, nil
+	}
+
+	// 如果用户不存在，创建新用户
+	user = &model.User{
+		OpenID:    openID,
+		Nickname:  nickname,
+		AvatarURL: avatarURL,
+	}
+
+	if err := r.Create(ctx, user); err != nil {
+		return nil, fmt.Errorf("创建用户失败: %v", err)
+	}
+
 	return user, nil
 }

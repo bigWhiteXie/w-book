@@ -55,8 +55,8 @@ func NewAliPayLogic(aliPayConf config.AliPayConfig, paymentLogic *PaymentLogic, 
 
 func (l *AliPayLogic) PayCallback(ctx context.Context, req *types.AliPaymentMsg) error {
 	// 修改payment状态为已支付
-	bizParams := strings.Split(req.OutTradeNo, "-")
-	if err := l.payRepo.UpdatePaymentStatus(ctx, bizParams[0], bizParams[1], constant.SuceessPayStatus); err != nil {
+	bizParams := strings.SplitN(req.OutTradeNo, "-", 2)
+	if err := l.payRepo.UpdatePaymentStatus(ctx, bizParams[0], bizParams[1], l.getStatus(req.TradeStatus)); err != nil {
 		//todo: 此时用户已经付完钱了，但是修改状态失败，应该重试，若重试仍然不行则告警
 	}
 	topic := bizParams[0]
@@ -98,7 +98,7 @@ func (l *AliPayLogic) GetPayment(ctx context.Context, in *pb.QueryPaymentReq) (*
 
 func (l *AliPayLogic) QueryPayStatus(ctx context.Context, biz, outTradeNo string) (constant.PayStatus, error) {
 	resp, err := l.client.TradeQuery(ctx, alipay.TradeQuery{
-		TradeNo: outTradeNo,
+		TradeNo: biz + "-" + outTradeNo,
 	})
 	if err != nil {
 		return "", err
@@ -116,7 +116,7 @@ func (l *AliPayLogic) PrePay(ctx context.Context, in *pb.PrepayReq) (*pb.PrepayR
 	// 生成支付宝支付链接
 	req := alipay.TradePagePay{
 		Trade: alipay.Trade{
-			OutTradeNo: in.OutTradeNo,
+			OutTradeNo: in.Biz + "-" + in.OutTradeNo,
 			// NotifyURL: "http://127.0.0.1",
 			TotalAmount: in.TotalAmount,
 			Subject:     in.Subject,

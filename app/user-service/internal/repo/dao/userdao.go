@@ -51,3 +51,12 @@ func (d *UserDao) FindOne(ctx context.Context, user *model.User) (*model.User, e
 	}
 	return user, err
 }
+
+func (d *UserDao) FindByOpenID(ctx context.Context, openID string) (*model.User, error) {
+	var user model.User
+	err := d.db.WithContext(ctx).Where("open_id = ?", openID).First(&user).Error
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}

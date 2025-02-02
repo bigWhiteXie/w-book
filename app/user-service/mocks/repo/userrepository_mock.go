@@ -65,6 +65,21 @@ func (mr *MockIUserRepositoryMockRecorder) FindOrCreate(ctx, phone interface{}) 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindOrCreate", reflect.TypeOf((*MockIUserRepository)(nil).FindOrCreate), ctx, phone)
 }
 
+// FindOrCreateByWechat mocks base method.
+func (m *MockIUserRepository) FindOrCreateByWechat(ctx context.Context, openID, nickname, avatarURL string) (*model.User, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindOrCreateByWechat", ctx, openID, nickname, avatarURL)
+	ret0, _ := ret[0].(*model.User)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindOrCreateByWechat indicates an expected call of FindOrCreateByWechat.
+func (mr *MockIUserRepositoryMockRecorder) FindOrCreateByWechat(ctx, openID, nickname, avatarURL interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindOrCreateByWechat", reflect.TypeOf((*MockIUserRepository)(nil).FindOrCreateByWechat), ctx, openID, nickname, avatarURL)
+}
+
 // FindUserByEmail mocks base method.
 func (m *MockIUserRepository) FindUserByEmail(ctx context.Context, email string) (*model.User, error) {
 	m.ctrl.T.Helper()

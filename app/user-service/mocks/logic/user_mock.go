@@ -50,6 +50,37 @@ func (mr *MockIUserLogicMockRecorder) Edit(ctx, req interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Edit", reflect.TypeOf((*MockIUserLogic)(nil).Edit), ctx, req)
 }
 
+// GenerateWechatLoginQR mocks base method.
+func (m *MockIUserLogic) GenerateWechatLoginQR() (string, string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GenerateWechatLoginQR")
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(string)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// GenerateWechatLoginQR indicates an expected call of GenerateWechatLoginQR.
+func (mr *MockIUserLogicMockRecorder) GenerateWechatLoginQR() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GenerateWechatLoginQR", reflect.TypeOf((*MockIUserLogic)(nil).GenerateWechatLoginQR))
+}
+
+// HandleWechatCallback mocks base method.
+func (m *MockIUserLogic) HandleWechatCallback(ctx context.Context, code string) (*model.User, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "HandleWechatCallback", ctx, code)
+	ret0, _ := ret[0].(*model.User)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// HandleWechatCallback indicates an expected call of HandleWechatCallback.
+func (mr *MockIUserLogicMockRecorder) HandleWechatCallback(ctx, code interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HandleWechatCallback", reflect.TypeOf((*MockIUserLogic)(nil).HandleWechatCallback), ctx, code)
+}
+
 // Login mocks base method.
 func (m *MockIUserLogic) Login(ctx context.Context, req *types.LoginReq) (*model.User, error) {
 	m.ctrl.T.Helper()

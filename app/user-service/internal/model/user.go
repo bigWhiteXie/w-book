@@ -6,10 +6,13 @@ import (
 )
 
 type User struct {
-	Id       int            `gorm:"primaryKey,autoIncrement"`
-	Email    sql.NullString `gorm:"unique"`
-	Phone    sql.NullString `gorm:"unique"`
-	Password string
-	Ctime    time.Time
-	Utime    time.Time
+	Id        int            `gorm:"primaryKey,autoIncrement"`
+	Email     sql.NullString `gorm:"unique"`
+	Phone     sql.NullString `gorm:"unique"`
+	Password  string
+	Ctime     time.Time
+	Utime     time.Time
+	OpenID    string `gorm:"unique"`
+	Nickname  string
+	AvatarURL string
 }
