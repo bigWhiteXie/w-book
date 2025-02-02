@@ -1,7 +1,7 @@
 package ioc
 
 import (
-	"codexie.com/w-book-common/middleware"
+	middleware "codexie.com/w-book-common/middleware/auth"
 	"codexie.com/w-book-user/internal/config"
 	"codexie.com/w-book-user/internal/handler"
 	"github.com/redis/go-redis/v9"

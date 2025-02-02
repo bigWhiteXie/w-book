@@ -356,6 +356,7 @@ func startServer(index int, addr string) {
 	if err != nil {
 		log.Fatalf("监听失败: %v", err)
 	}
+
 	s := grpc.NewServer()
 	RegisterUserServiceServer(s, &server{index: index})
 	// 创建健康检查服务

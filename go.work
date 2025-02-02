@@ -6,4 +6,6 @@ use (
 	./app/interact-service
 	./app/sms-service
 	./app/user-service
+	./app/payment-service
+	./app/reward-service
 )

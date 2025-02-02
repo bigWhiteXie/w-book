@@ -1,0 +1,36 @@
+package logic
+
+import (
+	"log"
+	"testing"
+
+	"github.com/smartwalle/alipay/v3"
+)
+
+func TestAliPay(t *testing.T) {
+	var (
+		appID      = "9021000126661929"
+		privateKey = "MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQCzsjZwJH+jWuVur1i+he80ZiyTVm7R4nyIsrC5+EOU4vaDQYZv7RkzLD1E+LiMCOUrbhJj8cgZWVR1vnhWKx5W9Aa4tokUFpw0vKzZMnTURsdqgEmjeuJwFgYzPlHcLEFuGlYwL/EXmO5sgvuX+mf3kFqtzIC2mom2yb1WOI8gY9sF2BB0ixcEOKDVynht4j2hFSZHlnx+PWHYZ6vpEqX/ViOiEkJrAZ67/K0dh4E+bLx17iDYA6UsdsQIK9qvffx5PxHI/gK0eftXpbuH1f0++8PqK0C1j45lIG1uzSLR3a1I88IT/Y2A5ow4g5db/yyvurzs+Hhbowypo89WeHa1AgMBAAECggEAN0/6+8fwVgsrpkdpLLQzblCpFe08DXUG2lkOlx/5RYIbWUm5JQi5ggvzDCD3RXuTdyvZk1QgQNVDbz7i8bsyCpfw3biqNznCeWU+W1jxp0nmJj047Y5s1w2gePOM5RXmSgrnTsvjDV1wvowO/7f/eq+/idHyKMMm8tHkav7b557vKqvDojpZZ3lG97epI2fx4swWV6/JKkgvdsQlbYlTlw5Lq/QB3jyUPqv7fLWWti/7QPxV+FHvKfo9YYLAI8eHpt9LlOmqZcOVx5Bog8zMeynjHhiN7fJMk6SKopYJr9Ik3H1YJwDNT37tIyzbymvY9b+u0iFVHrlrzZXB4U2qYQKBgQD9tePKVnpUG8nXL8rC/9br5BO8Z3hx0X+6oG6xAX0ODXglQtWmLLLchM0zSQGWotna2UUf5oSdIEj/y5JDubkHiQ0nhDNCQY29pP/9lD8zWxI508fNOxWZ1bX+MkTFllilQ9xWBfpTLVw8WImSGO13EIq9/DVaeYFha+1h6IQ8bQKBgQC1UVabS1tsMqY2h9oCA7lzbyN8LXmxQjBwhjz4zVTVbJIIi+KTTm5m5/ub4ciPZ+ctSMHwx8We/H0QMN9dcPHmbaA5u3fHcs8PLG7k0a0/LIImBnQmrvkUUxj8L2pFrmTNW4wjgBKuOPBFHMANURVyv9tOhfWR5Y0PQ++3yyGmaQKBgEY3gvXK/Uwt7KzLo1hYqkja9MNd9624h5tFL515hfzPqYLWfn7hPBdgAdLBz9i69YRmQYVUrTs3Zjy1QKPR0O3O9n8LTYx2zB3Cfr7VurAh8mdiv5eDVLUgup/BldsBg0MqBt8gBGnk0fQ5pMl0cLRVNbDjDnkdy7sEvcwtJ/v5AoGAcl4d3NKJlhPUl6zVLFQhE9jUby1YByES4Mcrilwp2H0lF9L0VaoxJSPKpyahlSMaxIuSGUhJNOFaGW5aVdw6GPipCgFfqiSWyqFiSV6ggqqWZVnIxeW0IsfPiLJ3vAAmgQnvuSy9m7s6gr2BvmSYvMqbkEoa/a3nbeuSN0IftZECgYAGsCuCDkDisy6gHmJVarXTVlkEeBXrGgsJyEg1XlL825vRUUIjHOC7VrWJZBGFCk3iU3dCYgoq/+2DY4BPKqDx79zg3qsi5eUzxxb1LyBfFAHgje4TNhqeEPlZ6dsvyLgu3MsXEjcDQK0bEuGbzCk5kB2ob+bczbIekOkhJx/g/w=="
+	)
+	var client, err = alipay.New(appID, privateKey, false)
+	if err != nil {
+		panic(err)
+	}
+	req := alipay.TradePagePay{
+		Trade: alipay.Trade{
+			OutTradeNo: "2",
+			// NotifyURL: "http://127.0.0.1",
+			TotalAmount: "888.88",
+			Subject:     "test",
+			ProductCode: "FAST_INSTANT_TRADE_PAY",
+		},
+	}
+
+	resp, err := client.TradePagePay(req)
+	if err != nil {
+		panic(err)
+	}
+
+	log.Printf("pay presp:%v", resp)
+
+}

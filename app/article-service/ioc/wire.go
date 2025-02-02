@@ -8,7 +8,6 @@ import (
 	"codexie.com/w-book-article/internal/dao/cache"
 	dao "codexie.com/w-book-article/internal/dao/db"
 	"codexie.com/w-book-article/internal/handler"
-	"codexie.com/w-book-common/job"
 
 	"codexie.com/w-book-article/internal/logic"
 	"codexie.com/w-book-article/internal/repo"
@@ -20,7 +19,7 @@ import (
 	"github.com/robfig/cron/v3"
 )
 
-var AppSet = wire.NewSet(InitArticleApp)
+var ServerSet = wire.NewSet(InitServer)
 var JobSet = wire.NewSet(InitJobBuilder, InitRankingJob)
 
 var HandlerSet = wire.NewSet(handler.NewArticleHandler)
@@ -43,7 +42,9 @@ var RpcSet = wire.NewSet(svc.CreateCodeRpcClient)
 
 func NewApp(cron *cron.Cron, config config.Config, mysqlConf ioc.MySQLConf, redisConf ioc.RedisConf, kafkaConf ioc.KafkaConf) (*App, error) {
 	panic(wire.Build(
-		AppSet,
+		wire.Struct(new(App), "Server", "JobStarter"),
+		ServerSet,
+		JobSet,
 		HandlerSet,
 		LogicSet,
 		SvcSet,
@@ -52,18 +53,6 @@ func NewApp(cron *cron.Cron, config config.Config, mysqlConf ioc.MySQLConf, redi
 		CacheSet,
 		DbSet,
 		MessageSet,
-		RpcSet,
-	))
-}
-
-func NewJob(config config.Config, mysqlConf ioc.MySQLConf, redisConf ioc.RedisConf, kafkaConf ioc.KafkaConf) (*job.JobBuilder, error) {
-	panic(wire.Build(
-		JobSet,
-		LogicSet,
-		RepoSet,
-		DaoSet,
-		CacheSet,
-		DbSet,
 		RpcSet,
 	))
 }

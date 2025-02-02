@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+// proto 包名
+package api;
+// goctl rpc protoc payment.proto --go_out=./ --go-grpc_out=./ --zrpc_out=. --client=true
+// 生成 golang 代码后的包名
+option go_package = "./pb";
+
+// 发送验证码请求
+message PrepayReq {
+    string Biz = 1; // 业务类型
+    string OutTradeNo = 2;   // 业务订单号
+    string Subject = 3;      // 商品名称
+    string TotalAmount = 4;  // 金额
+    string Platform = 5;     // 平台
+}
+
+// 通用响应体
+message PrepayResp {
+    string PayUrl = 1;
+}
+
+// 校验验证码请求
+message QueryPaymentReq {
+  string Biz = 1; // 手机号码
+  string OutTradeNo = 2;   // 业务类型
+}
+
+// 校验验证码响应
+message QueryPaymentResp {
+  string Status = 1; // 支付状态
+}
+
+
+
+// 定义 Greet 服务
+service Payment {
+  rpc PrePay(PrepayReq) returns (PrepayResp);
+  rpc GetPayment(QueryPaymentReq) returns(QueryPaymentResp);
+}

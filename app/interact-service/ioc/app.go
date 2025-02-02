@@ -3,7 +3,7 @@ package ioc
 import (
 	"codexie.com/w-book-common/kafka/consumer"
 	"codexie.com/w-book-common/metric"
-	"codexie.com/w-book-common/middleware"
+	middleware "codexie.com/w-book-common/middleware/auth"
 	"codexie.com/w-book-interact/internal/config"
 	"codexie.com/w-book-interact/internal/event"
 	"codexie.com/w-book-interact/internal/handler"

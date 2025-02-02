@@ -1,0 +1,40 @@
+2025-02-01 04:07:20,051 [myid:] - INFO  [main:QuorumPeerConfig@103] - Reading configuration from: /root/zookeeper-3.4.6/bin/../conf/zoo.cfg
+2025-02-01 04:07:20,061 [myid:] - INFO  [main:DatadirCleanupManager@78] - autopurge.snapRetainCount set to 3
+2025-02-01 04:07:20,061 [myid:] - INFO  [main:DatadirCleanupManager@79] - autopurge.purgeInterval set to 0
+2025-02-01 04:07:20,061 [myid:] - INFO  [main:DatadirCleanupManager@101] - Purge task is not scheduled.
+2025-02-01 04:07:20,062 [myid:] - WARN  [main:QuorumPeerMain@113] - Either no config or no quorum defined in config, running  in standalone mode
+2025-02-01 04:07:20,080 [myid:] - INFO  [main:QuorumPeerConfig@103] - Reading configuration from: /root/zookeeper-3.4.6/bin/../conf/zoo.cfg
+2025-02-01 04:07:20,081 [myid:] - INFO  [main:ZooKeeperServerMain@95] - Starting server
+2025-02-01 04:07:20,093 [myid:] - INFO  [main:Environment@100] - Server environment:zookeeper.version=3.4.6-1569965, built on 02/20/2014 09:09 GMT
+2025-02-01 04:07:20,093 [myid:] - INFO  [main:Environment@100] - Server environment:host.name=master
+2025-02-01 04:07:20,094 [myid:] - INFO  [main:Environment@100] - Server environment:java.version=1.8.0_412
+2025-02-01 04:07:20,094 [myid:] - INFO  [main:Environment@100] - Server environment:java.vendor=Red Hat, Inc.
+2025-02-01 04:07:20,094 [myid:] - INFO  [main:Environment@100] - Server environment:java.home=/usr/lib/jvm/java-1.8.0-openjdk-1.8.0.412.b08-1.el7_9.x86_64/jre
+2025-02-01 04:07:20,094 [myid:] - INFO  [main:Environment@100] - Server environment:java.class.path=/root/zookeeper-3.4.6/bin/../build/classes:/root/zookeeper-3.4.6/bin/../build/lib/*.jar:/root/zookeeper-3.4.6/bin/../lib/slf4j-log4j12-1.6.1.jar:/root/zookeeper-3.4.6/bin/../lib/slf4j-api-1.6.1.jar:/root/zookeeper-3.4.6/bin/../lib/netty-3.7.0.Final.jar:/root/zookeeper-3.4.6/bin/../lib/log4j-1.2.16.jar:/root/zookeeper-3.4.6/bin/../lib/jline-0.9.94.jar:/root/zookeeper-3.4.6/bin/../zookeeper-3.4.6.jar:/root/zookeeper-3.4.6/bin/../src/java/lib/*.jar:/root/zookeeper-3.4.6/bin/../conf:
+2025-02-01 04:07:20,094 [myid:] - INFO  [main:Environment@100] - Server environment:java.library.path=/usr/java/packages/lib/amd64:/usr/lib64:/lib64:/lib:/usr/lib
+2025-02-01 04:07:20,094 [myid:] - INFO  [main:Environment@100] - Server environment:java.io.tmpdir=/tmp
+2025-02-01 04:07:20,095 [myid:] - INFO  [main:Environment@100] - Server environment:java.compiler=<NA>
+2025-02-01 04:07:20,096 [myid:] - INFO  [main:Environment@100] - Server environment:os.name=Linux
+2025-02-01 04:07:20,096 [myid:] - INFO  [main:Environment@100] - Server environment:os.arch=amd64
+2025-02-01 04:07:20,097 [myid:] - INFO  [main:Environment@100] - Server environment:os.version=3.10.0-1160.119.1.el7.x86_64
+2025-02-01 04:07:20,098 [myid:] - INFO  [main:Environment@100] - Server environment:user.name=root
+2025-02-01 04:07:20,098 [myid:] - INFO  [main:Environment@100] - Server environment:user.home=/root
+2025-02-01 04:07:20,098 [myid:] - INFO  [main:Environment@100] - Server environment:user.dir=/usr/local/go_project/w-book
+2025-02-01 04:07:20,107 [myid:] - INFO  [main:ZooKeeperServer@755] - tickTime set to 2000
+2025-02-01 04:07:20,108 [myid:] - INFO  [main:ZooKeeperServer@764] - minSessionTimeout set to -1
+2025-02-01 04:07:20,108 [myid:] - INFO  [main:ZooKeeperServer@773] - maxSessionTimeout set to -1
+2025-02-01 04:07:20,144 [myid:] - INFO  [main:NIOServerCnxnFactory@94] - binding to port 0.0.0.0/0.0.0.0:2181
+2025-02-01 04:07:20,146 [myid:] - ERROR [main:ZooKeeperServerMain@63] - Unexpected exception, exiting abnormally
+java.net.BindException: 地址已在使用
+	at sun.nio.ch.Net.bind0(Native Method)
+	at sun.nio.ch.Net.bind(Net.java:461)
+	at sun.nio.ch.Net.bind(Net.java:453)
+	at sun.nio.ch.ServerSocketChannelImpl.bind(ServerSocketChannelImpl.java:222)
+	at sun.nio.ch.ServerSocketAdaptor.bind(ServerSocketAdaptor.java:85)
+	at sun.nio.ch.ServerSocketAdaptor.bind(ServerSocketAdaptor.java:78)
+	at org.apache.zookeeper.server.NIOServerCnxnFactory.configure(NIOServerCnxnFactory.java:95)
+	at org.apache.zookeeper.server.ZooKeeperServerMain.runFromConfig(ZooKeeperServerMain.java:111)
+	at org.apache.zookeeper.server.ZooKeeperServerMain.initializeAndRun(ZooKeeperServerMain.java:86)
+	at org.apache.zookeeper.server.ZooKeeperServerMain.main(ZooKeeperServerMain.java:52)
+	at org.apache.zookeeper.server.quorum.QuorumPeerMain.initializeAndRun(QuorumPeerMain.java:116)
+	at org.apache.zookeeper.server.quorum.QuorumPeerMain.main(QuorumPeerMain.java:78)

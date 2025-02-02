@@ -2,7 +2,6 @@ package job
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -43,31 +42,33 @@ type Job interface {
 	TimeExper() string
 }
 
-type JobBuilder struct {
+type JobCron struct {
 	Name string
 	Id   string
 
-	loadScore    int32
-	cron         *cron.Cron
-	lockClient   *rlock.Client
-	redisClient  *redis.Client
-	timeout      time.Duration
-	ticker       *time.Ticker
-	localLockMap map[string]*sync.Mutex
-	redLockMap   map[string]*rlock.Lock
+	loadScore   int32
+	cron        *cron.Cron
+	lockClient  *rlock.Client
+	redisClient *redis.Client
+	timeout     time.Duration
+	ticker      *time.Ticker
+	localLock   sync.Mutex
+	redLockMap  map[string]*rlock.Lock
 }
 
-func NewJobBuilder(c *cron.Cron, redisClient *redis.Client, name string, timeout time.Duration) *JobBuilder {
+func NewJobCron(c *cron.Cron, redisClient *redis.Client, name string, timeout time.Duration) *JobCron {
 	Id := uuid.New().String()[:16]
 	rs := rlock.NewClient(redisClient)
 	ticker := time.NewTicker(30 * time.Second)
-	bd := &JobBuilder{cron: c, Id: Id, ticker: ticker, Name: name, lockClient: rs, redisClient: redisClient, localLockMap: make(map[string]*sync.Mutex), redLockMap: make(map[string]*rlock.Lock), timeout: timeout}
+	bd := &JobCron{cron: c, Id: Id, ticker: ticker, Name: name, lockClient: rs, redisClient: redisClient, redLockMap: make(map[string]*rlock.Lock), timeout: timeout}
+
+	//定时计算负载并保持当前实例存活
 	go func() {
 		for _ = range ticker.C {
 			score := int32(bd.computeLoadBalance())
 			atomic.StoreInt32(&bd.loadScore, score)
 			logx.Infof("[%s] 当前负载分数:%d", name+"-"+Id, bd.loadScore)
-			// 向zset发送负载均衡并保持存活状态
+
 			if err := redisClient.ZAdd(context.Background(), jobLoadPrefix+name, redis.Z{Score: float64(bd.loadScore), Member: Id}).Err(); err != nil {
 				logx.Errorf("Job[%s]更新负载分数失败:%s", err)
 			}
@@ -84,40 +85,31 @@ func NewJobBuilder(c *cron.Cron, redisClient *redis.Client, name string, timeout
 	return bd
 }
 
-func (b *JobBuilder) AddJob(job Job, executeNow bool) error {
+func (b *JobCron) AddJob(job Job, executeNow bool) error {
 	run := b.build(job, executeNow)
 	_, err := b.cron.AddFunc(job.TimeExper(), run)
 
 	return err
 }
-func (b *JobBuilder) build(job Job, executeNow bool) jobRun {
-	var (
-		localLock = &sync.Mutex{}
-	)
+func (b *JobCron) build(job Job, executeNow bool) jobRun {
 	if executeNow {
 		job.Run()
 	}
-	b.localLockMap[job.Name()] = localLock
 	return func() {
-		//续约和定时任务可能同时访问共享资源，因此使用锁
-		localLock.Lock()
-		lock, ok := b.redLockMap[job.Name()]
-		localLock.Unlock()
-
+		redLock := b.getRLock(job.Name())
 		//分布式锁不存在，尝试获取锁
-		if !ok || lock == nil {
+		if redLock == nil {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
-			lock, err := b.tryLockOnOverload(ctx, job.Name())
-			if err != nil {
-				logx.Errorf("[%s] 获取分布式锁失败, 丢弃该任务", job.Name(), err)
+			if redLock = b.tryLockOnOverload(ctx, job.Name()); redLock == nil {
 				return
 			}
+
 			//开启协程进行续约，考虑协程主动退出
 			go func() {
 				//阻塞操作，锁释放或则redis连接不上会退出
-				//当redis连接不上时会取消续期，就算此时锁没过期，等过期后还是能够被争抢
-				err := lock.AutoRefresh(b.timeout/2, 2*time.Second)
+				//当redis连接不上时会取消续期，就算此时锁没过期，等过期后还是能够被其它线程抢占
+				err := redLock.AutoRefresh(b.timeout/2, 2*time.Second)
 				if err != nil {
 					logx.Errorf("[%s] 续约锁失败:%s", job.Name(), err)
 				}
@@ -140,20 +132,29 @@ func (b *JobBuilder) build(job Job, executeNow bool) jobRun {
 	}
 }
 
-func (b *JobBuilder) tryLockOnOverload(ctx context.Context, jobName string) (*rlock.Lock, error) {
+func (b *JobCron) tryLockOnOverload(ctx context.Context, jobName string) *rlock.Lock {
 	if overLoadTimes >= 3 {
-		return nil, OverLoadErr
+		logx.Infow("当前实例负载过高，放弃执行任务",
+			logx.LogField{Key: "CronName", Value: b.Name},
+			logx.LogField{Key: "CronId", Value: b.Id},
+			logx.LogField{Key: "JobName", Value: jobName},
+		)
+		return nil
 	}
-	localLock := b.localLockMap[jobName]
-	localLock.Lock()
-	defer localLock.Unlock()
+
 	//todo 若该任务存在指定实例且不是当前实例则放弃
 	id, err := b.redisClient.Get(ctx, jobSpecPrefix+jobName).Result()
 	if err != nil && err != redis.Nil {
-		return nil, err
+		return nil
 	}
 	if id != "" && id != b.Id {
-		return nil, errors.New(fmt.Sprintf("job[%s]已经指定实例%s", jobName, b.Name+id))
+		logx.Infow("该job已经指定实例,放弃获取该任务的分布式锁",
+			logx.LogField{Key: "CronName", Value: b.Name},
+			logx.LogField{Key: "CronId", Value: b.Id},
+			logx.LogField{Key: "JobName", Value: jobName},
+			logx.LogField{Key: "SpecificId", Value: id},
+		)
+		return nil
 	}
 
 	lock, err := b.lockClient.Lock(ctx, jobLockPrefix+jobName, b.timeout, &rlock.FixIntervalRetry{
@@ -161,43 +162,38 @@ func (b *JobBuilder) tryLockOnOverload(ctx context.Context, jobName string) (*rl
 		Max:      3,
 	}, time.Second)
 	if err != nil {
-		return nil, err
-	}
-	logx.Infof("[%s] 抢占到job %s 的分布式锁", b.Name+b.Id, jobName)
-	b.redLockMap[jobName] = lock
-	return lock, nil
-}
-
-func (b *JobBuilder) unLockOnOverload(ctx context.Context, jobName string, express string) error {
-	var (
-		zsetKey   = jobLoadPrefix + b.Name
-		localLock = b.localLockMap[jobName]
-	)
-
-	localLock.Lock()
-	redLock, ok := b.redLockMap[jobName]
-	localLock.Unlock()
-	if !ok {
-		logx.Infof("[%s] job %s 已经释放了分布式锁", b.Name+b.Id, jobName)
+		logx.Errorw("获取job的redis分布式锁失败",
+			logx.LogField{Key: "CronName", Value: b.Name},
+			logx.LogField{Key: "CronId", Value: b.Id},
+			logx.LogField{Key: "JobName", Value: jobName},
+			logx.LogField{Key: "Cause", Value: err.Error()},
+		)
 		return nil
 	}
+	logx.Infof("[%s] 抢占到job %s 的分布式锁", b.Name+b.Id, jobName)
 
-	if atomic.LoadInt32(&overLoadTimes) >= 3 {
-		logx.Infof("[%s] 当前实例%s负载过大,释放job", jobName, b.Name+"-"+b.Id)
-		return redLock.Unlock(ctx)
-	}
+	b.localLock.Lock()
+	defer b.localLock.Unlock()
+	b.redLockMap[jobName] = lock
+	return lock
+}
+
+func (b *JobCron) unLockOnOverload(ctx context.Context, jobName string, express string) error {
+	var zsetKey = jobLoadPrefix + b.Name
+
 	// 从zset中取出所有元素及分数，由低到高排列，进行遍历
 	zRangeByScore := &redis.ZRangeBy{
 		Min:    "-inf",
 		Max:    "+inf",
 		Offset: 0,
-		Count:  10, // 限制数量，防止大范围查询导致性能问题
+		Count:  0, // 不限制数量
 	}
 
 	elements, err := b.redisClient.ZRangeByScoreWithScores(ctx, zsetKey, zRangeByScore).Result()
 	if err != nil {
-		redLock.Unlock(ctx)
-		return errors.Wrap(err, "failed to fetch zset elements from Redis")
+		b.releaseLock(jobName)
+		logx.Errorf("[%s] 从redis中获取job实例的负载失败:%s", jobName, err)
+		return err
 	}
 	logx.Debugf("[%s] 当前job多个实例的负载情况:%v", jobName, elements)
 	// 若元素等于自身id则直接返回nil，否则比较其是否小于自身负载分数超过20分，是的话则释放锁
@@ -208,16 +204,18 @@ func (b *JobBuilder) unLockOnOverload(ctx context.Context, jobName string, expre
 		if instanceID == b.Id {
 			return nil
 		}
+
 		logx.Debugf("[%s]判断实例%s是否存活,key:%s", b.Name+b.Id, instanceID, jobAlivePrefix+instanceID)
 		score := atomic.LoadInt32(&b.loadScore)
 		if err := b.redisClient.Get(ctx, jobAlivePrefix+instanceID).Err(); score-int32(instanceScore) > 0 && err == nil {
+			//找到一个负载最低且存活的实例，准备释放锁并指定该实例获得
 			logx.Debugf("[%s] 发现实例%s负载很低, 准备释放锁让其抢占", jobName, instanceID)
 			if err := b.releaseLock(jobName); err != nil {
 				return err
 			}
 			schedule, _ := cron.ParseStandard(express)
 			now := time.Now()
-			nextTime := schedule.Next(now)
+			nextTime := schedule.Next(schedule.Next(now))
 			if err := b.redisClient.Set(ctx, jobSpecPrefix+jobName, instanceID, nextTime.Sub(now)); err != nil {
 				logx.Errorf("[%s] 指定实例%s执行任务%s失败", b.Name, b.Name+instanceID, jobName)
 			}
@@ -225,8 +223,8 @@ func (b *JobBuilder) unLockOnOverload(ctx context.Context, jobName string, expre
 		} else if err == redis.Nil {
 			logx.Debugf("[%s] 实例%s不存活了", b.Name+b.Id, b.Name+instanceID)
 			b.redisClient.ZRem(ctx, zsetKey, instanceID) //清空不存活的实例
-		} else if err != nil {
-			redLock.Unlock(ctx)
+		} else if err != nil { // 此时redis连接异常
+			b.releaseLock(jobName)
 			logx.Errorf("[%s] 从redis中获取实例 %s 存活状态失败:%s", jobName, b.Name+b.Id, err)
 			return err
 		}
@@ -235,14 +233,13 @@ func (b *JobBuilder) unLockOnOverload(ctx context.Context, jobName string, expre
 	return nil
 }
 
-func (b *JobBuilder) computeLoadBalance() int {
+func (b *JobCron) computeLoadBalance() int {
 	return rand.Intn(30)
 }
 
-func (b *JobBuilder) releaseLock(jobName string) error {
-	localLock := b.localLockMap[jobName]
-	localLock.Lock()
-	defer localLock.Unlock()
+func (b *JobCron) releaseLock(jobName string) error {
+	b.localLock.Lock()
+	defer b.localLock.Unlock()
 	redLock, ok := b.redLockMap[jobName]
 	if !ok {
 		logx.Debugf("[%s] job(%s)分布式锁已经被释放", b.Name, jobName)
@@ -259,11 +256,17 @@ func (b *JobBuilder) releaseLock(jobName string) error {
 	return nil
 }
 
-func (b *JobBuilder) Start() {
+func (b *JobCron) getRLock(jobName string) *rlock.Lock {
+	b.localLock.Lock()
+	defer b.localLock.Unlock()
+	return b.redLockMap[jobName]
+}
+
+func (b *JobCron) Start() {
 	b.cron.Start()
 }
 
-func (b *JobBuilder) Stop() {
+func (b *JobCron) Stop() {
 	now := time.Now()
 	logx.Info("==========job准备退出==============")
 	ctx := b.cron.Stop()

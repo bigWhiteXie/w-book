@@ -15,7 +15,6 @@ import (
 	"codexie.com/w-book-article/internal/repo"
 	"codexie.com/w-book-article/internal/svc"
 	"codexie.com/w-book-common/ioc"
-	"codexie.com/w-book-common/job"
 	"codexie.com/w-book-common/kafka/producer"
 	"github.com/google/wire"
 	"github.com/robfig/cron/v3"
@@ -42,30 +41,19 @@ func NewApp(cron2 *cron.Cron, config2 config.Config, mysqlConf ioc.MySQLConf, re
 	redsync := ioc.InitRedLock(redisConf)
 	rankingLogic := logic.NewRankingLogic(iReaderRepository, rankRepo, redsync, interactionClient)
 	articleHandler := handler.NewArticleHandler(serviceContext, articleLogic, rankingLogic)
-	app := InitArticleApp(config2, articleHandler, client)
-	return app, nil
-}
-
-func NewJob(config2 config.Config, mysqlConf ioc.MySQLConf, redisConf ioc.RedisConf, kafkaConf ioc.KafkaConf) (*job.JobBuilder, error) {
-	gormDB := ioc.InitGormDB(mysqlConf)
-	readerDao := db.NewReaderDao(gormDB)
-	client := ioc.InitRedis(redisConf)
-	articleCache := cache.NewArticleRedis(client)
-	iReaderRepository := repo.NewReaderRepository(readerDao, articleCache)
-	localArtTopCache := cache.NewLocalArtTopCache()
-	redisArtTopNCache := cache.NewRankCacheRedis(client)
-	rankRepo := repo.NewRankRepo(localArtTopCache, redisArtTopNCache)
-	redsync := ioc.InitRedLock(redisConf)
-	interactionClient := svc.CreateCodeRpcClient(config2)
-	rankingLogic := logic.NewRankingLogic(iReaderRepository, rankRepo, redsync, interactionClient)
+	server := InitServer(config2, articleHandler, client)
 	rankingJob := InitRankingJob(rankingLogic)
-	jobBuilder := InitJobBuilder(rankingJob, client)
-	return jobBuilder, nil
+	jobCron := InitJobBuilder(rankingJob, client)
+	app := &App{
+		Server:     server,
+		JobStarter: jobCron,
+	}
+	return app, nil
 }
 
 // wire.go:
 
-var AppSet = wire.NewSet(InitArticleApp)
+var ServerSet = wire.NewSet(InitServer)
 
 var JobSet = wire.NewSet(InitJobBuilder, InitRankingJob)
 

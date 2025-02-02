@@ -140,7 +140,7 @@ func (p *weightedRoundRobinPicker) Pick(info balancer.PickInfo) (balancer.PickRe
 						pickNode.setAvaliable(StatusTemporary)
 						pickNode.curWeight = minWeightThresoldTimes * pickNode.initWeight
 					case codes.Unavailable:
-						log.Printf("节点%v熔断,设置成暂不考虑\n", pickNode)
+						log.Printf("节点%v熔断,后续通过健康探测恢复正常\n", pickNode)
 						pickNode.setAvaliable(StatusUnavailable)
 					}
 				}

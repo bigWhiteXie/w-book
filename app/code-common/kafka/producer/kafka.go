@@ -3,6 +3,7 @@ package producer
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/IBM/sarama"
 	"github.com/pkg/errors"
@@ -10,8 +11,10 @@ import (
 )
 
 type KafkaProducer struct {
-	syncProducer  sarama.SyncProducer
-	asyncProducer sarama.AsyncProducer
+	syncProducer     sarama.SyncProducer
+	asyncProducer    sarama.AsyncProducer
+	isListenAsyncErr bool
+	lock             sync.RWMutex
 }
 
 func NewKafkaProducer(client sarama.Client) Producer {
@@ -23,6 +26,7 @@ func NewKafkaProducer(client sarama.Client) Producer {
 	if err != nil {
 		panic("fail to init kafka producer,cause:" + err.Error())
 	}
+
 	return &KafkaProducer{syncProducer: sc, asyncProducer: asc}
 }
 
@@ -42,28 +46,26 @@ func (p *KafkaProducer) SendSync(ctx context.Context, topic string, msg string, 
 }
 
 func (p *KafkaProducer) SendAsync(ctx context.Context, topic string, msg string, onError func(error), opts ...ProducerOption) {
+	p.lock.Lock()
+	if !p.isListenAsyncErr {
+		go func() {
+			for {
+				select {
+				case success := <-p.asyncProducer.Successes():
+					logx.Infof("[kafka producer] 发送成功, topic:%s, partition:%d, offset: %d", topic, success.Partition, success.Partition)
+				case err := <-p.asyncProducer.Errors():
+					fmt.Printf("Error sending message: %v\n", err)
+				}
+			}
+		}()
+	}
+	p.lock.Unlock()
 	message, err := p.buildMessage(ctx, topic, msg, opts...)
 	if err != nil {
 		onError(err)
 		return
 	}
-
-	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				logx.WithContext(ctx).Errorf("[KafkaProducer] 异步发送消息时发生panic: %v", r)
-				if onError != nil {
-					onError(fmt.Errorf("panic: %v", r))
-				}
-			}
-		}()
-		partition, offset, err := p.syncProducer.SendMessage(message)
-		if err != nil {
-			onError(err)
-			return
-		}
-		logx.Infof("[kafka producer] 发送成功, topic:%s, partition:%d, offset: %d", topic, partition, offset)
-	}()
+	p.asyncProducer.Input() <- message
 }
 
 func (p *KafkaProducer) buildMessage(ctx context.Context, topic string, msg string, opts ...ProducerOption) (*sarama.ProducerMessage, error) {

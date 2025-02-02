@@ -9,8 +9,8 @@ import (
 	"github.com/robfig/cron/v3"
 )
 
-func InitJobStarter(cron *cron.Cron, rankingJob *artJob.RankingJob, redisClient *redis.Client) *job.JobBuilder {
-	jb := job.NewJobBuilder(cron, redisClient, "article", 60*time.Second)
+func InitJobStarter(cron *cron.Cron, rankingJob *artJob.RankingJob, redisClient *redis.Client) *job.JobCron {
+	jb := job.NewJobCron(cron, redisClient, "article", 60*time.Second)
 	jb.AddJob(rankingJob, true)
 	return jb
 }

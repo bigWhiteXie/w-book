@@ -11,7 +11,7 @@ import (
 
 type App struct {
 	Server     *rest.Server
-	JobStarter *job.JobBuilder
+	JobStarter *job.JobCron
 }
 
 func NewArticleApp(c config.Config, articleHandler *handler.ArticleHandler, redisClient *redis.Client) *App {
