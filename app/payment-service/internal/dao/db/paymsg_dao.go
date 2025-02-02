@@ -51,7 +51,7 @@ func (dao *PayMsgDao) FindByLastId(lastId int64, limit int) ([]PayMsg, error) {
 }
 
 func (dao *PayMsgDao) DeleteByIds(ids []int64) error {
-	result := dao.db.Where("id IN ?", ids).Delete(&PayMsg{})
+	result := dao.db.Where("id IN (?)", ids).Delete(&PayMsg{})
 	if result.Error != nil {
 		return result.Error
 	}
