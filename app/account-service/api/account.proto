@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package api;
+
+option go_package = "./pb";
+
+// 账户类型枚举
+enum AccountType {
+  UNKNOWN = 0;
+  Reward = 1;    // 打赏账户
+}
+
+// 分账项
+message CreditItem {
+  int64 uid = 1;           // 用户ID
+  int64 account = 2;       // 账号
+  AccountType account_type = 3;  // 账户类型
+  int64 amt = 4;          // 金额
+  string currency = 5;     // 币种
+}
+
+// 分账请求
+message CreditRequest {
+  string biz = 1;         // 业务类型
+  string out_trade_no = 2;  // 业务订单号
+  repeated CreditItem credit_items = 3;  // 分账项列表
+}
+
+// 分账响应
+message CreditResponse {
+  int32 code = 1;     // 响应码
+  string message = 2;  // 响应信息
+}
+
+// 账户服务
+service Account {
+  // 分账接口
+  rpc Credit(CreditRequest) returns (CreditResponse);
+} 
