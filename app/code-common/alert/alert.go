@@ -23,14 +23,11 @@ type AlertService struct {
 
 // Alert 告警结构体
 type Alert struct {
-	Labels      map[string]string `json:"labels"`      // 告警标签
-	Annotations map[string]string `json:"annotations"` // 告警注释
-	StartsAt    time.Time         `json:"startsAt"`    // 告警开始时间
-}
-
-// AlertManagerRequest AlertManager 请求结构体
-type AlertManagerRequest struct {
-	Alerts []Alert `json:"alerts"`
+	Labels       map[string]string `json:"labels"`                 // 告警标签（必填）
+	Annotations  map[string]string `json:"annotations,omitempty"`  // 告警注释（选填）
+	StartsAt     time.Time         `json:"startsAt,omitempty"`     // 告警开始时间（选填）
+	EndsAt       time.Time         `json:"endsAt,omitempty"`       // 告警结束时间（选填）
+	GeneratorURL string            `json:"generatorURL,omitempty"` // 告警来源URL（选填）
 }
 
 var (
@@ -58,12 +55,9 @@ func getClient(timeout int) *http.Client {
 // TriggerAlert 触发告警
 func (a *AlertService) TriggerAlert(ctx context.Context, alerts []Alert) error {
 	// 构建请求体
-	reqBody := AlertManagerRequest{
-		Alerts: alerts,
-	}
 
 	// 序列化请求体
-	jsonData, err := json.Marshal(reqBody)
+	jsonData, err := json.Marshal(alerts)
 	if err != nil {
 		logx.Errorf("序列化告警请求失败: %v", err)
 		return err

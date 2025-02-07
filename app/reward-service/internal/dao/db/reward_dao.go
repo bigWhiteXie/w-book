@@ -14,15 +14,17 @@ var (
 )
 
 type RewardRecord struct {
-	Id         int64  `json:"",gorm:"primaryKey,autoIncrement"`
-	Uid        int64  `json:""`
-	Biz        string `json:"", gorm:"uniqueIndex:idx_biz_resourceId"`
-	ResourceId int64  `json:"", gorm:"uniqueIndex:idx_biz_resourcrId"`
-	OutTradeNo string `json:"", gorm:"uniqueIndex:idx_tradeNo"`
-	Platform   string `json:""`
-	Status     string `json:""`
-	Ctime      int64  `json:""`
-	Utime      int64  `json:"",gorm:"index:idx_uid_uptime"`
+	Id         int64  `json:"",gorm:"primaryKey,autoIncrement"`        // 主键，自增
+	Uid        int64  `json:""`                                        // 打赏人ID
+	AuthorId   int64  `json:""`                                        // 作者ID
+	Amt        int64  `json:""`                                        // 金额
+	Biz        string `json:"", gorm:"uniqueIndex:idx_biz_resourceId"` // 资源类型，唯一索引
+	ResourceId int64  `json:"", gorm:"uniqueIndex:idx_biz_resourcrId"` // 资源ID，唯一索引
+	OutTradeNo string `json:"", gorm:"uniqueIndex:idx_tradeNo"`        // 外贸编号，唯一索引
+	Platform   string `json:""`                                        // 平台
+	Status     string `json:""`                                        // 状态
+	Ctime      int64  `json:""`                                        // 创建时间
+	Utime      int64  `json:"",gorm:"index:idx_uid_uptime"`            // 更新时间，索引
 }
 
 type RewardDao struct {
@@ -52,4 +54,12 @@ func (dao *RewardDao) UpdateRewardById(reward *RewardRecord) error {
 	}
 
 	return nil
+}
+
+func (dao *RewardDao) GetRewardByOutTradeNo(outTradeNo string) (*RewardRecord, error) {
+	var reward RewardRecord
+	if result := dao.db.Where("out_trade_no = ?", outTradeNo).First(&reward); result.Error != nil {
+		return nil, result.Error
+	}
+	return &reward, nil
 }

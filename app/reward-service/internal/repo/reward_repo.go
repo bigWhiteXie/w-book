@@ -14,6 +14,7 @@ import (
 type IRewardRepository interface {
 	CreateReward(ctx context.Context, reward *domain.RewardRecord) (int64, error)
 	UpdateReward(ctx context.Context, reward *domain.RewardRecord) error
+	GetRewardByOutTradeNo(ctx context.Context, outTradeNo string) (*domain.RewardRecord, error)
 }
 
 type RewardRepository struct {
@@ -40,6 +41,16 @@ func (r *RewardRepository) UpdateReward(ctx context.Context, reward *domain.Rewa
 	return rewardDao.UpdateRewardById(ToRewardEntity(reward))
 }
 
+// 根据outTradeNo获得打赏记录
+func (r *RewardRepository) GetRewardByOutTradeNo(ctx context.Context, outTradeNo string) (*domain.RewardRecord, error) {
+	rewardDao := db.NewRewardDao(ctx, r.GetDB())
+	reward, err := rewardDao.GetRewardByOutTradeNo(outTradeNo)
+	if err != nil {
+		return nil, err
+	}
+	return FromReward(reward), nil
+}
+
 func FromReward(reward *db.RewardRecord) *domain.RewardRecord {
 	return &domain.RewardRecord{
 		Id:         reward.Id,
@@ -48,6 +59,7 @@ func FromReward(reward *db.RewardRecord) *domain.RewardRecord {
 		ResourceId: reward.ResourceId,
 		Status:     reward.Status,
 		OutTradeNo: reward.OutTradeNo,
+		AuthorId:   reward.AuthorId,
 	}
 }
 

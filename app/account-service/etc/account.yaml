@@ -9,7 +9,7 @@ Etcd:
 MySQLConf:
   Enable: true
   User: root
-  Password: j3391111!
+  Password: j3391111
   Host: 192.168.126.100
   Port: 3306
   Database: w-book-account

@@ -20,3 +20,6 @@ sudo chronyc makestep
 
 # 容器需要代理时
 vi ~/.docker/config.json
+
+# 启动alertmanager
+cd /root/alertmanager-0.25.0.linux-amd64 && ./alertmanager --web.listen-address=:19094 --config.file=alertmanager.yml

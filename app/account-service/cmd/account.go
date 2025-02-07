@@ -14,7 +14,7 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
-var configFile = flag.String("f", "etc/account.yaml", "the config file")
+var configFile = flag.String("f", "/usr/local/go_project/w-book/app/account-service/etc/account.yaml", "the config file")
 
 func main() {
 	flag.Parse()
