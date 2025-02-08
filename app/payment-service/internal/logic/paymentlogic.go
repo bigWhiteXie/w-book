@@ -47,6 +47,7 @@ func (l *PaymentLogic) InitPayment(ctx context.Context, in *pb.PrepayReq) error 
 		OutTradeNo: in.OutTradeNo,
 		Subject:    in.Subject,
 		Amt:        int64(amt),
+		Status:     constant.InitPayStatus,
 		Currency:   constant.CNY,
 	}); err != nil {
 		logger.Errorf("create payment failed, err: %v", err)

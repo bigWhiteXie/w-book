@@ -9,6 +9,7 @@ package ioc
 import (
 	"codexie.com/w-book-common/ioc"
 	"codexie.com/w-book-reward/internal/config"
+	"codexie.com/w-book-reward/internal/event"
 	"codexie.com/w-book-reward/internal/handler"
 	"codexie.com/w-book-reward/internal/logic"
 	"codexie.com/w-book-reward/internal/repo"
@@ -23,15 +24,23 @@ func NewApp(config2 config.Config) (*App, error) {
 	mySQLConf := config.GetMySQLConf(config2)
 	db := ioc.InitGormDB(mySQLConf)
 	rewardRepository := repo.NewRewardRepository(db)
-	rpcClientConf := config.GetPaymentRpcConf(config2)
-	paymentClient := InitPaymentRpcClient(rpcClientConf)
-	rewardLogic := logic.NewRewardLogic(rewardRepository, paymentClient)
+	paymentRpcConf := config.GetPaymentRpcConf(config2)
+	paymentClient := InitPaymentRpcClient(paymentRpcConf)
+	accountRpcConf := config.GetAccountRpcConf(config2)
+	accountClient := InitAccountRpcClient(accountRpcConf)
+	rewardLogic := logic.NewRewardLogic(rewardRepository, paymentClient, accountClient)
 	rewardHandler := handler.NewRewardHandler(serviceContext, rewardLogic)
 	redisConf := config.GetRedisConf(config2)
 	client := ioc.InitRedis(redisConf)
 	server := InitServer(config2, rewardHandler, client)
+	kafkaConf := config.GetKafkaConf(config2)
+	saramaClient := ioc.InitKafkaClient(kafkaConf)
+	messageRepository := repo.NewMessageRepository(db)
+	windowedRedisBloomFilter := InitRedisBloomFilter(client)
+	payCallbackEvtListener := event.NewPayCallbackEventListener(saramaClient, accountClient, rewardLogic, messageRepository, windowedRedisBloomFilter)
 	app := &App{
-		Server: server,
+		Server:                 server,
+		PayCallbackEvtListener: payCallbackEvtListener,
 	}
 	return app, nil
 }
@@ -46,10 +55,14 @@ var LogicSet = wire.NewSet(logic.NewRewardLogic)
 
 var SvcSet = wire.NewSet(svc.NewServiceContext)
 
-var RepoSet = wire.NewSet(repo.NewRewardRepository)
+var RepoSet = wire.NewSet(repo.NewRewardRepository, repo.NewMessageRepository)
 
 var DbSet = wire.NewSet(ioc.InitGormDB, ioc.InitRedis, ioc.InitRedLock)
 
-var RpcSet = wire.NewSet(InitPaymentRpcClient)
+var MessageSet = wire.NewSet(ioc.InitKafkaClient, event.NewPayCallbackEventListener)
 
-var ConfSet = wire.NewSet(config.GetKafkaConf, config.GetMySQLConf, config.GetPaymentRpcConf, config.GetRedisConf)
+var RpcSet = wire.NewSet(InitPaymentRpcClient, InitAccountRpcClient)
+
+var ConfSet = wire.NewSet(config.GetKafkaConf, config.GetMySQLConf, config.GetPaymentRpcConf, config.GetRedisConf, config.GetAccountRpcConf)
+
+var OtherDepsSet = wire.NewSet(InitRedisBloomFilter)

@@ -10,7 +10,7 @@ type ProducerOption func(*ProducerOptions)
 // ProducerOptions 包含可选参数，如 Key 和 Headers
 type ProducerOptions struct {
 	Key     string
-	Headers map[string]string
+	Headers map[string]string // 分区算法
 }
 
 // Producer 消息队列生产者接口

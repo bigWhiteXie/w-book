@@ -15,6 +15,7 @@ type IRewardRepository interface {
 	CreateReward(ctx context.Context, reward *domain.RewardRecord) (int64, error)
 	UpdateReward(ctx context.Context, reward *domain.RewardRecord) error
 	GetRewardByOutTradeNo(ctx context.Context, outTradeNo string) (*domain.RewardRecord, error)
+	UpStatusByOutTradeNo(ctx context.Context, outTradeNo string, status string) error
 }
 
 type RewardRepository struct {
@@ -41,6 +42,11 @@ func (r *RewardRepository) UpdateReward(ctx context.Context, reward *domain.Rewa
 	return rewardDao.UpdateRewardById(ToRewardEntity(reward))
 }
 
+func (r *RewardRepository) UpStatusByOutTradeNo(ctx context.Context, outTradeNo string, status string) error {
+	rewardDao := db.NewRewardDao(ctx, r.GetDB())
+	return rewardDao.UpdateRewardStatus(outTradeNo, status)
+}
+
 // 根据outTradeNo获得打赏记录
 func (r *RewardRepository) GetRewardByOutTradeNo(ctx context.Context, outTradeNo string) (*domain.RewardRecord, error) {
 	rewardDao := db.NewRewardDao(ctx, r.GetDB())
@@ -54,12 +60,14 @@ func (r *RewardRepository) GetRewardByOutTradeNo(ctx context.Context, outTradeNo
 func FromReward(reward *db.RewardRecord) *domain.RewardRecord {
 	return &domain.RewardRecord{
 		Id:         reward.Id,
-		Uid:        reward.Uid,
 		Biz:        reward.Biz,
+		Uid:        reward.Uid,
 		ResourceId: reward.ResourceId,
-		Status:     reward.Status,
-		OutTradeNo: reward.OutTradeNo,
 		AuthorId:   reward.AuthorId,
+		Status:     reward.PayStatus,
+		OutTradeNo: reward.OutTradeNo,
+		Amt:        reward.Amt,
+		Platform:   reward.Platform,
 	}
 }
 
@@ -68,9 +76,13 @@ func ToRewardEntity(reward *domain.RewardRecord) *db.RewardRecord {
 	return &db.RewardRecord{
 		Id:         reward.Id,
 		Biz:        reward.Biz,
+		Uid:        reward.Uid,
 		ResourceId: reward.ResourceId,
-		Status:     reward.Status,
+		AuthorId:   reward.AuthorId,
+		PayStatus:  reward.Status,
 		OutTradeNo: reward.OutTradeNo,
+		Amt:        reward.Amt,
+		Platform:   reward.Platform,
 		Ctime:      now,
 		Utime:      now,
 	}

@@ -8,6 +8,7 @@ package ioc
 
 import (
 	"codexie.com/w-book-account/internal/config"
+	"codexie.com/w-book-account/internal/repo"
 	"codexie.com/w-book-account/internal/service"
 	"codexie.com/w-book-account/internal/svc"
 	"codexie.com/w-book-common/ioc"
@@ -20,7 +21,8 @@ func NewAccountApp(config2 config.Config) (*App, error) {
 	serviceContext := svc.NewServiceContext(config2)
 	mySQLConf := config.GetMySQLConf(config2)
 	db := InitDB(mySQLConf)
-	accountService := service.NewAccountService(db)
+	accountRepo := repo.NewAccountRepository(db)
+	accountService := service.NewAccountService(accountRepo)
 	accountServer := InitRpcServer(serviceContext, accountService)
 	app := &App{
 		RpcServer: accountServer,

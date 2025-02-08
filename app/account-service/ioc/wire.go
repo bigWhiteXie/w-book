@@ -5,6 +5,7 @@ package ioc
 
 import (
 	"codexie.com/w-book-account/internal/config"
+	"codexie.com/w-book-account/internal/repo"
 	"codexie.com/w-book-account/internal/service"
 	"codexie.com/w-book-account/internal/svc"
 	"codexie.com/w-book-common/ioc"
@@ -18,7 +19,7 @@ var LogicSet = wire.NewSet(service.NewAccountService)
 
 var SvcSet = wire.NewSet(svc.NewServiceContext)
 
-// var RepoSet = wire.NewSet(repo.NewAccountRepository)
+var RepoSet = wire.NewSet(repo.NewAccountRepository)
 
 var DbSet = wire.NewSet(InitDB, ioc.InitRedis)
 
@@ -36,7 +37,7 @@ func NewPaymentApp(config config.Config) (*App, error) {
 		AppSet,
 		LogicSet,
 		SvcSet,
-		// RepoSet,
+		RepoSet,
 		DbSet,
 		ConfSet,
 	))

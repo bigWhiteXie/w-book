@@ -6,17 +6,25 @@ import (
 	"github.com/zeromicro/go-zero/zrpc"
 )
 
+type AccountRpcConf zrpc.RpcClientConf
+type PaymentRpcConf zrpc.RpcClientConf
+
 type Config struct {
 	rest.RestConf
 
-	PaymentRpcConf zrpc.RpcClientConf
+	PaymentRpcConf PaymentRpcConf
+	AccountRpcConf AccountRpcConf
 	MySQLConf      ioc.MySQLConf
 	KafkaConf      ioc.KafkaConf
 	RedisConf      ioc.RedisConf
 }
 
-func GetPaymentRpcConf(c Config) zrpc.RpcClientConf {
+func GetPaymentRpcConf(c Config) PaymentRpcConf {
 	return c.PaymentRpcConf
+}
+
+func GetAccountRpcConf(c Config) AccountRpcConf {
+	return c.AccountRpcConf
 }
 
 func GetMySQLConf(c Config) ioc.MySQLConf {

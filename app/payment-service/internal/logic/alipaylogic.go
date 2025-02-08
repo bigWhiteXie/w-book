@@ -39,6 +39,7 @@ type AliPayLogic struct {
 	*PaymentLogic
 	client        alipay.Client
 	kafkaProducer producer.Producer
+	conf          config.AliPayConfig
 }
 
 func NewAliPayLogic(aliPayConf config.AliPayConfig, paymentLogic *PaymentLogic, p producer.Producer) *AliPayLogic {
@@ -52,13 +53,14 @@ func NewAliPayLogic(aliPayConf config.AliPayConfig, paymentLogic *PaymentLogic, 
 	return &AliPayLogic{
 		PaymentLogic:  paymentLogic,
 		client:        *client,
+		conf:          aliPayConf,
 		kafkaProducer: p,
 	}
 }
 
 func (l *AliPayLogic) PrePay(ctx context.Context, in *pb.PrepayReq) (*pb.PrepayResp, error) {
 	logger := logx.WithContext(ctx)
-	// 支付记录落库
+	// 初始化支付记录，确保支付记录存在
 	if err := l.InitPayment(ctx, in); err != nil {
 		return nil, err
 	}
@@ -66,8 +68,8 @@ func (l *AliPayLogic) PrePay(ctx context.Context, in *pb.PrepayReq) (*pb.PrepayR
 	// 生成支付宝支付链接
 	req := alipay.TradePagePay{
 		Trade: alipay.Trade{
-			OutTradeNo: in.Biz + "-" + in.OutTradeNo,
-			// NotifyURL: "http://127.0.0.1",
+			OutTradeNo:  in.Biz + "-" + in.OutTradeNo,
+			NotifyURL:   l.conf.NotifyUrl,
 			TotalAmount: in.TotalAmount,
 			Subject:     in.Subject,
 			ProductCode: string(WEB_PC),
@@ -76,11 +78,13 @@ func (l *AliPayLogic) PrePay(ctx context.Context, in *pb.PrepayReq) (*pb.PrepayR
 
 	resp, err := l.client.TradePagePay(req)
 	if err != nil {
+		// todo:监控该异常
 		logger.Errorf("fail to invoke prepay of ali, err: %v", err)
 		// 更新数据库失败也没关系，会有定时任务继续更新，保持最终和支付宝平台的状态一致
 		l.payRepo.UpdatePaymentStatus(ctx, in.Biz, in.OutTradeNo, constant.FailPayStatus)
 		return nil, err
 	}
+
 	return &pb.PrepayResp{
 		PayUrl: resp.String(),
 	}, nil
@@ -90,7 +94,7 @@ func (l *AliPayLogic) PayCallback(ctx context.Context, req *types.AliPaymentMsg)
 	// 修改payment状态为已支付
 	bizParams := strings.SplitN(req.OutTradeNo, "-", 2)
 	if err := l.payRepo.UpdatePaymentStatus(ctx, bizParams[0], bizParams[1], l.getStatus(req.TradeStatus)); err != nil {
-		//todo: 此时用户已经付完钱了，但是修改状态失败，应该重试，若重试仍然不行则告警
+		//todo: 此时用户已经付完钱了，但是修改状态失败，执行异步重试，若重试仍然不行则告警
 	}
 
 	//在本地消息表中创建记录，并发送消息到消息队列，保证消息一定发出
@@ -102,7 +106,7 @@ func (l *AliPayLogic) PayCallback(ctx context.Context, req *types.AliPaymentMsg)
 	})
 
 	topic := fmt.Sprintf("%s-payment-callback", bizParams[0])
-	if err := l.kafkaProducer.SendSync(ctx, topic, string(msg)); err != nil {
+	if err := l.kafkaProducer.SendSync(ctx, topic, string(msg), producer.WithKey(req.OutTradeNo)); err != nil {
 		//todo: 监控告警, 若短时间内发送失败多次则触发告警
 		logx.Errorw("发送支付回调消息失败",
 			logx.LogField{Key: "cause", Value: err.Error()},

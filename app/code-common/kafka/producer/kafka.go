@@ -92,5 +92,6 @@ func (p *KafkaProducer) buildMessage(ctx context.Context, topic string, msg stri
 	if options.Key != "" {
 		message.Key = sarama.StringEncoder(options.Key)
 	}
+
 	return message, nil
 }

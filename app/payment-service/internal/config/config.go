@@ -41,4 +41,5 @@ type AliPayConfig struct {
 	AppId        string `json:",optional"`
 	PrivateKey   string `json:",optional"`
 	IsProduction bool   `json:",optional"`
+	NotifyUrl    string `json:",optional"`
 }

@@ -6,52 +6,31 @@ import (
 	"codexie.com/w-book-account/api/pb"
 	"codexie.com/w-book-account/internal/domain"
 	"codexie.com/w-book-account/internal/repo"
-	"gorm.io/gorm"
 )
 
 type AccountService struct {
 	pb.UnimplementedAccountServer
-	db *gorm.DB
+	accountRepo repo.IAccountRepository
 }
 
-func NewAccountService(db *gorm.DB) *AccountService {
+func NewAccountService(accountRepo repo.IAccountRepository) *AccountService {
 	return &AccountService{
-		db: db,
+		accountRepo: accountRepo,
 	}
 }
 
 func (s *AccountService) Credit(ctx context.Context, req *pb.CreditRequest) (*pb.CreditResponse, error) {
-	err := s.db.Transaction(func(tx *gorm.DB) error {
-		accountRepo := repo.NewAccountRepository(tx)
-
-		for _, item := range req.CreditItems {
-			accountType := domain.GetAccountType(item.AccountType)
-			// 更新账户余额
-			err := accountRepo.UpdateBalance(ctx, item.Uid, item.Account, accountType, item.Amt)
-			if err != nil {
-				return err
-			}
-
-			// 创建账户活动记录
-			activity := &domain.AccountActivity{
-				Uid:         item.Uid,
-				Account:     item.Account,
-				AccountType: accountType,
-				Biz:         req.Biz,
-				OutTradeNo:  req.OutTradeNo,
-				Amount:      item.Amt,
-				Currency:    item.Currency,
-			}
-
-			err = accountRepo.CreateActivity(ctx, activity)
-			if err != nil {
-				return err
-			}
+	creditItems := make([]*domain.CreditItem, len(req.CreditItems))
+	for i, item := range req.CreditItems {
+		creditItems[i] = &domain.CreditItem{
+			Uid:         item.Uid,
+			AccountType: domain.AccountType(item.AccountType),
+			Amount:      item.Amt,
+			Currency:    item.Currency,
 		}
-		return nil
-	})
+	}
 
-	if err != nil {
+	if err := s.accountRepo.ProcessCredits(ctx, req.Biz, req.OutTradeNo, creditItems); err != nil {
 		return nil, err
 	}
 

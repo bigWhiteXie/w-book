@@ -49,6 +49,7 @@ func InitGormDB(mysqlConf MySQLConf) *gorm.DB {
 		mysqlConf.TimeZone)
 
 	db, err := gorm.Open(mysql.Open(datasource), &gorm.Config{
+		// SkipDefaultTransaction: true, // 禁用默认事务
 		NamingStrategy: schema.NamingStrategy{
 			TablePrefix:   mysqlConf.Gorm.TablePrefix,   // such as: prefix_tableName
 			SingularTable: mysqlConf.Gorm.SingularTable, // such as zero_user, not zero_users

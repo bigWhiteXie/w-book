@@ -4,15 +4,18 @@
 package types
 
 type RewardReq struct {
-	Id 		int64  `json:"id,optional"`
-	Biz   string `json:"biz"`
-	ResourceId string `json:""`
-	Amt     int64 `json:""`
-	Platform string `json:""`
+	Id         int64  `json:"id,optional"`
+	Biz        string `json:"biz"`
+	ResourceId int64  `json:"resource_id"`
+	AuthorId   int64 `json:"author_id"`
+	Amt        int64  `json:"amt"`
+	Platform   string `json:"platform"`
+
 }
 
 type RewardResp struct {
 	PayUrl string `json:"pay_url"`
+	OutTradeNo string `json:"out_trade_no"`
 }
 
 

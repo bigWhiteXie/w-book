@@ -24,6 +24,7 @@ func main() {
 	defer func() {
 		app.Server.Stop()
 	}()
+	app.PayCallbackEvtListener.Start()
 	fmt.Printf("Starting server at %s:%d...\n", c.Host, c.Port)
 	app.Server.Start()
 }

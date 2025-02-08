@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"codexie.com/w-book-common/user"
+	"codexie.com/w-book-payment/pkg/constant"
 	"codexie.com/w-book-reward/internal/domain"
 	"codexie.com/w-book-reward/internal/logic"
 	"codexie.com/w-book-reward/internal/svc"
@@ -33,18 +34,21 @@ func (h *RewardHandler) Reward(w http.ResponseWriter, r *http.Request) {
 	}
 	uid := user.GetUidByCtx(r.Context())
 	rewardDomain := &domain.RewardRecord{
-		Id:       int64(req.Id),
-		Uid:      uid,
-		Biz:      req.Biz,
-		Platform: req.Platform,
-		Amt:      req.Amt,
+		Id:         int64(req.Id),
+		Uid:        uid,
+		AuthorId:   req.AuthorId,
+		ResourceId: req.ResourceId,
+		Biz:        req.Biz,
+		Platform:   req.Platform,
+		Amt:        req.Amt,
+		Status:     constant.InitPayStatus,
 	}
 
-	payUrl, err := h.rewardLogic.RewardPcWEB(r.Context(), rewardDomain)
+	resp, err := h.rewardLogic.RewardPcWEB(r.Context(), rewardDomain)
 	if err != nil {
 		httpx.Error(w, err)
 		return
 	}
 
-	httpx.OkJson(w, &types.RewardResp{PayUrl: payUrl})
+	httpx.OkJson(w, resp)
 }

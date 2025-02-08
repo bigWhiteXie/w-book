@@ -1,12 +1,17 @@
 Name: reward
 Host: 0.0.0.0
-Port: 20870
+Port: 20871
 
 PaymentRpcConf:
   Etcd:
     Hosts:
       - 192.168.126.100:2479
     Key: payment.rpc
+AccountRpcConf:
+  Etcd:
+    Hosts:
+      - 192.168.126.100:2479
+    Key: account.rpc
 
 Prometheus:
   Host: 0.0.0.0

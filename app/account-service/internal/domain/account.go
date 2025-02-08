@@ -40,7 +40,6 @@ type UpdateBalanceRequest struct {
 type AccountActivity struct {
 	Id          int64
 	Uid         int64
-	Account     int64
 	AccountType AccountType
 	Biz         string
 	OutTradeNo  string
@@ -51,7 +50,6 @@ type AccountActivity struct {
 // CreditItem 分账项
 type CreditItem struct {
 	Uid         int64
-	Account     int64
 	AccountType AccountType
 	Amount      int64
 	Currency    string

@@ -32,6 +32,8 @@ func NewBatchConsumer[T any](topic string, client sarama.Client, group string, b
 	if err != nil {
 		panic(err)
 	}
+
+	metric.InitMessageMetric(metric.ConstMetricLabelsConf{})
 	return &BatchConsumer[T]{
 		client:    consumerClient,
 		topic:     topic,
@@ -65,13 +67,9 @@ func (s *BatchConsumer[T]) Stop() {
 func (BatchConsumer[T]) Setup(_ sarama.ConsumerGroupSession) error   { return nil }
 func (BatchConsumer[T]) Cleanup(_ sarama.ConsumerGroupSession) error { return nil }
 func (h BatchConsumer[T]) ConsumeClaim(sess sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
-	var (
-		msgs []*sarama.ConsumerMessage
-		objs []T
-	)
 	for {
-		msgs = make([]*sarama.ConsumerMessage, 0, h.batchSize)
-		objs = make([]T, 0, h.batchSize)
+		msgs := make([]*sarama.ConsumerMessage, 0, h.batchSize)
+		objs := make([]T, 0, h.batchSize)
 		ctx, cancelFun := context.WithTimeout(context.Background(), time.Second)
 		timeReached := false
 		defer cancelFun()
@@ -96,14 +94,11 @@ func (h BatchConsumer[T]) ConsumeClaim(sess sarama.ConsumerGroupSession, claim s
 		}
 
 		//批量消费消息
-		// todo: 埋点prometheus
 		if len(msgs) > 0 {
-			metric.ConsumeCountCounter.WithLabelValues(h.topic, h.group).Add(float64(len(msgs)))
-			start := time.Now()
-			if err := h.handler(objs, msgs); err != nil {
-				metric.ConsumeErrCounter.WithLabelValues(h.topic, h.group, err.Error()).Add(float64(len(msgs)))
-			}
-			metric.ConsumeTimeHistogram.WithLabelValues(h.topic, h.group).Observe(float64(time.Since(start).Milliseconds()))
+			// 该闭包引用objs,msgs变量，因此objs和msgs必须声明在for循环内部，否则当异步执行时objs和msgs的值会被重置
+			go func() {
+				h.handler(objs, msgs)
+			}()
 		}
 	}
 }
