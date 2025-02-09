@@ -15,7 +15,7 @@ type IPaymentRepository interface {
 	CreatePayment(ctx context.Context, payment *domain.Payment) error
 	UpdatePaymentStatus(ctx context.Context, biz string, outTradeNo string, status constant.PayStatus) error
 	FindPaymentByBizAndOutTradeNo(ctx context.Context, biz string, outTradeNo string) (*domain.Payment, error)
-	FindInitPayments(ctx context.Context, lastId int64, limit int) ([]*domain.Payment, error)
+	FindInitPaymentsByCtime(ctx context.Context, minCtime, maxCtime int64, limit int) ([]*domain.Payment, error)
 	UpdateStatusByIds(ctx context.Context, ids []int64, status constant.PayStatus) error
 }
 
@@ -73,10 +73,10 @@ func (r *PaymentRepository) FindPaymentByBizAndOutTradeNo(ctx context.Context, b
 	return paymentRecordToDomain(record), nil
 }
 
-func (r *PaymentRepository) FindInitPayments(ctx context.Context, lastId int64, limit int) ([]*domain.Payment, error) {
+func (r *PaymentRepository) FindInitPaymentsByCtime(ctx context.Context, minCtime, maxCtime int64, limit int) ([]*domain.Payment, error) {
 	var payments []*domain.Payment
 	payDao := db.NewPaymentDao(ctx, r.GetDB())
-	records, err := payDao.FindInitPaymentsByLastId(lastId, limit)
+	records, err := payDao.FindInitPaymentsByLastId(limit, minCtime, maxCtime)
 	if err != nil {
 		return nil, err
 	}
@@ -102,6 +102,9 @@ func paymentRecordToDomain(record *db.PaymentRecord) *domain.Payment {
 		Subject:    record.Subject,
 		Amt:        record.Amt,
 		Currency:   record.Currency,
+		Status:     constant.PayStatus(record.Status),
+		Ctime:      record.Ctime,
+		Utime:      record.Utime,
 	}
 }
 
@@ -113,5 +116,8 @@ func paymentDomainToRecord(payment *domain.Payment) *db.PaymentRecord {
 		Subject:    payment.Subject,
 		Amt:        payment.Amt,
 		Currency:   payment.Currency,
+		Status:     string(payment.Status),
+		Ctime:      payment.Ctime,
+		Utime:      payment.Utime,
 	}
 }

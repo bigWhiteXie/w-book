@@ -2,8 +2,13 @@ package job
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	"codexie.com/w-book-common/job"
+	"codexie.com/w-book-payment/internal/dao/db"
+	"codexie.com/w-book-payment/internal/domain"
+	"codexie.com/w-book-payment/internal/logic"
 	"codexie.com/w-book-payment/internal/repo"
 	"codexie.com/w-book-payment/internal/svc"
 	"codexie.com/w-book-payment/pkg/constant"
@@ -15,16 +20,18 @@ var (
 )
 
 type PayStatusJob struct {
-	svcCtx    *svc.ServiceContext
-	payRepo   repo.IPaymentRepository
-	timeExper string
+	svcCtx       *svc.ServiceContext
+	payRepo      repo.IPaymentRepository
+	paymentLogic *logic.PaymentLogic
+	timeExper    string
 }
 
-func NewPayStatusJob(svcCtx *svc.ServiceContext, repo *repo.PaymentRepository, opts ...job.Option) *PayStatusJob {
+func NewPayStatusJob(svcCtx *svc.ServiceContext, repo *repo.PaymentRepository, paymentLogic *logic.PaymentLogic, opts ...job.Option) *PayStatusJob {
 	payStatusJob := &PayStatusJob{
-		svcCtx:    svcCtx,
-		payRepo:   repo,
-		timeExper: defaultTimeExper,
+		svcCtx:       svcCtx,
+		payRepo:      repo,
+		paymentLogic: paymentLogic,
+		timeExper:    defaultTimeExper,
 	}
 	for _, opt := range opts {
 		opt(payStatusJob)
@@ -34,11 +41,13 @@ func NewPayStatusJob(svcCtx *svc.ServiceContext, repo *repo.PaymentRepository, o
 }
 
 func (job *PayStatusJob) Run() error {
-	lastId := int64(0)
+	size := 1000
+	maxCtime := time.Now().UnixMilli()
+	minCtime := maxCtime - 15*60*1000
 	for {
 		ctx := context.Background()
-		statusMap := make(map[constant.PayStatus][]int64)
-		payments, err := job.payRepo.FindInitPayments(ctx, lastId, 1000)
+		statusChangedPayments := make([]*domain.Payment, 0)
+		payments, err := job.payRepo.FindInitPaymentsByCtime(ctx, minCtime, maxCtime, size)
 		if err != nil || len(payments) == 0 {
 			return err
 		}
@@ -59,22 +68,31 @@ func (job *PayStatusJob) Run() error {
 			if status == constant.InitPayStatus {
 				continue
 			}
-			if _, ok := statusMap[status]; !ok {
-				statusMap[status] = make([]int64, 0)
-			}
-			statusMap[status] = append(statusMap[status], payment.Id)
+			payment.Status = status
+			statusChangedPayments = append(statusChangedPayments, payment)
 		}
 
-		for status, ids := range statusMap {
-			if err := job.payRepo.UpdateStatusByIds(ctx, ids, status); err != nil {
-				logx.Errorw("更新订单状态异常",
-					logx.LogField{Key: "status", Value: status},
-					logx.LogField{Key: "ids", Value: ids},
+		for _, pay := range statusChangedPayments {
+			if err := job.payRepo.UpdatePaymentStatus(ctx, pay.Biz, pay.OutTradeNo, pay.Status); err != nil {
+				if err == db.NoRowsAffectedErr {
+					continue
+				}
+
+				logx.Errorw("更新支付记录状态异常",
+					logx.LogField{Key: "status", Value: pay.Status},
+					logx.LogField{Key: "id", Value: pay.Id},
 				)
 			}
+			topic := fmt.Sprintf("%s-payment-callback", pay.Biz)
+			job.paymentLogic.SendPayCallbackMsg(ctx, topic, &domain.Payment{
+				Biz:        pay.Biz,
+				OutTradeNo: pay.OutTradeNo,
+				Status:     pay.Status,
+				Amt:        pay.Amt,
+			})
 		}
-		lastId = payments[len(payments)-1].Id
-		if len(payments) < 1000 {
+		maxCtime = payments[len(payments)-1].Ctime
+		if len(payments) < size {
 			return nil
 		}
 	}

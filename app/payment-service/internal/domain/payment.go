@@ -18,6 +18,11 @@ type Payment struct {
 	Currency string
 	// 支付状态
 	Status constant.PayStatus
+
+	// 创建时间
+	Ctime int64
+	// 更新时间
+	Utime int64
 }
 
 type PaymentCallback struct {

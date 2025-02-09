@@ -8,6 +8,7 @@ import (
 	"codexie.com/w-book-payment/internal/config"
 	"codexie.com/w-book-payment/internal/handler"
 	payJob "codexie.com/w-book-payment/internal/job"
+	"codexie.com/w-book-payment/internal/logic"
 	"codexie.com/w-book-payment/internal/repo"
 	"codexie.com/w-book-payment/internal/server"
 	"codexie.com/w-book-payment/internal/svc"
@@ -55,6 +56,6 @@ func InitJobCron(payStatusJob *payJob.PayStatusJob, redisClient *redis.Client) *
 	return jb
 }
 
-func InitPayStatusJob(svcCtx *svc.ServiceContext, repo *repo.PaymentRepository) *payJob.PayStatusJob {
-	return payJob.NewPayStatusJob(svcCtx, repo)
+func InitPayStatusJob(svcCtx *svc.ServiceContext, repo *repo.PaymentRepository, paymentLogic *logic.PaymentLogic) *payJob.PayStatusJob {
+	return payJob.NewPayStatusJob(svcCtx, repo, paymentLogic)
 }

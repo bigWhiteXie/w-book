@@ -3,8 +3,6 @@ package db
 import (
 	"context"
 
-	"time"
-
 	"codexie.com/w-book-payment/pkg/constant"
 	"github.com/pkg/errors"
 	"github.com/zeromicro/go-zero/core/logx"
@@ -58,13 +56,14 @@ func (dao *PaymentDao) UpdateStatusByBizAndOutTradeNo(biz, outTradeNo, status st
 	return nil
 }
 
-func (dao *PaymentDao) FindInitPaymentsByLastId(lastId int64, limit int) ([]*PaymentRecord, error) {
+func (dao *PaymentDao) FindInitPaymentsByLastId(limit int, minCtime, maxCtime int64) ([]*PaymentRecord, error) {
 	var payments []*PaymentRecord
-	currentTime := time.Now().Unix()
-	result := dao.db.Where("status = ? AND ctime < ? AND id > ?", constant.InitPayStatus, currentTime-30, lastId).
+	result := dao.db.Where("status = ? AND ctime >= ? AND ctime <= ?", constant.InitPayStatus, minCtime, maxCtime).
 		Limit(limit).
+		Order("ctime desc").
 		Find(&payments)
-	if result.Error != nil {
+
+	if result.Error != nil && result.Error != gorm.ErrRecordNotFound {
 		return nil, result.Error
 	}
 	return payments, nil

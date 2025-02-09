@@ -30,6 +30,12 @@ const (
 	ArtEditOtherERR = 400001
 )
 
+// 支付服务错误码
+const (
+	//修改数据库支付状态失败
+	PayDBStatusErr = 500001
+)
+
 func init() {
 	MustRegister(SystemErrCode, 200, "系统内部错误")
 

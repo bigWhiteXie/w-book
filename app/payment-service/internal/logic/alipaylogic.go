@@ -2,15 +2,14 @@ package logic
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 
-	"codexie.com/w-book-common/kafka/producer"
 	"codexie.com/w-book-payment/api/pb"
 	"codexie.com/w-book-payment/internal/config"
+	"codexie.com/w-book-payment/internal/domain"
 	"codexie.com/w-book-payment/internal/types"
 	"codexie.com/w-book-payment/pkg/constant"
 
@@ -37,12 +36,11 @@ type PayMessage struct {
 
 type AliPayLogic struct {
 	*PaymentLogic
-	client        alipay.Client
-	kafkaProducer producer.Producer
-	conf          config.AliPayConfig
+	client alipay.Client
+	conf   config.AliPayConfig
 }
 
-func NewAliPayLogic(aliPayConf config.AliPayConfig, paymentLogic *PaymentLogic, p producer.Producer) *AliPayLogic {
+func NewAliPayLogic(aliPayConf config.AliPayConfig, paymentLogic *PaymentLogic) *AliPayLogic {
 	appId := aliPayConf.AppId
 	privateSecret := aliPayConf.PrivateKey
 	isProduction := aliPayConf.IsProduction
@@ -51,10 +49,9 @@ func NewAliPayLogic(aliPayConf config.AliPayConfig, paymentLogic *PaymentLogic, 
 		panic(err)
 	}
 	return &AliPayLogic{
-		PaymentLogic:  paymentLogic,
-		client:        *client,
-		conf:          aliPayConf,
-		kafkaProducer: p,
+		PaymentLogic: paymentLogic,
+		client:       *client,
+		conf:         aliPayConf,
 	}
 }
 
@@ -97,27 +94,14 @@ func (l *AliPayLogic) PayCallback(ctx context.Context, req *types.AliPaymentMsg)
 		//todo: 此时用户已经付完钱了，但是修改状态失败，执行异步重试，若重试仍然不行则告警
 	}
 
-	//在本地消息表中创建记录，并发送消息到消息队列，保证消息一定发出
 	amt, _ := strconv.Atoi(req.TotalAmount)
-	msg, _ := json.Marshal(&PayMessage{
-		OutTradeNo: req.OutTradeNo,
-		Status:     string(l.getStatus(req.TradeStatus)),
+	topic := fmt.Sprintf("%s-payment-callback", bizParams[0])
+	l.SendPayCallbackMsg(ctx, topic, &domain.Payment{
+		Biz:        bizParams[0],
+		OutTradeNo: bizParams[1],
+		Status:     l.getStatus(req.TradeStatus),
 		Amt:        int64(amt),
 	})
-
-	topic := fmt.Sprintf("%s-payment-callback", bizParams[0])
-	if err := l.kafkaProducer.SendSync(ctx, topic, string(msg), producer.WithKey(req.OutTradeNo)); err != nil {
-		//todo: 监控告警, 若短时间内发送失败多次则触发告警
-		logx.Errorw("发送支付回调消息失败",
-			logx.LogField{Key: "cause", Value: err.Error()},
-			logx.LogField{Key: "msg", Value: msg},
-		)
-
-		// 针对少量消息发送失败使用本地消息表记录
-		if err := l.msgRepo.CreateMsg(ctx, topic, string(msg)); err != nil {
-			//todo: 异步重试，若失败则立即告警(消息队列支付回调消息发送失败且本地消息表记录失败)
-		}
-	}
 
 	return nil
 }
@@ -145,18 +129,4 @@ func (l *AliPayLogic) QueryPayStatus(ctx context.Context, biz, outTradeNo string
 		return "", err
 	}
 	return l.getStatus(string(resp.TradeStatus)), nil
-}
-
-func (l *AliPayLogic) getStatus(status string) constant.PayStatus {
-	switch status {
-	case TradeInit:
-		return constant.InitPayStatus
-	case TradeClosed:
-		return constant.ClosePayStatus
-	case TradeSucess, TradeFinish:
-		return constant.SuceessPayStatus
-	default:
-		logx.Errorf("缺乏%s对应的PayStatus", status)
-		return ""
-	}
 }
