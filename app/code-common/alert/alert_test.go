@@ -14,12 +14,12 @@ import (
 func TestTriggerAlert(t *testing.T) {
 	tests := []struct {
 		name    string
-		alerts  []Alert
+		alerts  []AlertMsg
 		wantErr bool
 	}{
 		{
 			name: "successful alert",
-			alerts: []Alert{
+			alerts: []AlertMsg{
 				{
 					Labels: map[string]string{
 						"alertname": "TestAlert12",
@@ -36,7 +36,7 @@ func TestTriggerAlert(t *testing.T) {
 		},
 		{
 			name: "minimal alert",
-			alerts: []Alert{
+			alerts: []AlertMsg{
 				{
 					Labels: map[string]string{
 						"alertname": "MinimalTestAlert12",

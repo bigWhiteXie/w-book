@@ -34,10 +34,10 @@ func (h *AliPayHandler) Callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	payLogic, _ := h.ctx.GetPayLogic(constant.ZFB)
-	// if err := payLogic.VerifySign(r); err != nil {
-	// 	httpx.Error(w, err)
-	// 	return
-	// }
+	if err := payLogic.VerifySign(r); err != nil {
+		httpx.Error(w, err)
+		return
+	}
 	payLogic.PayCallback(r.Context(), &req)
 
 	httpx.Ok(w)

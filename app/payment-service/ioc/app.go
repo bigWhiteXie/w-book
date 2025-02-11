@@ -3,6 +3,7 @@ package ioc
 import (
 	"time"
 
+	"codexie.com/w-book-common/alert"
 	"codexie.com/w-book-common/job"
 	middleware "codexie.com/w-book-common/middleware/auth"
 	"codexie.com/w-book-payment/internal/config"
@@ -42,6 +43,7 @@ func InitServer(c config.Config, payHandler *handler.AliPayHandler, redisClient 
 	server.Use(middleware.NewJwtMiddleware(redisClient).Handle)
 	handler.RegisterHandlers(server, payHandler)
 
+	alert.Init(c.AlertConf)
 	return server
 }
 

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"codexie.com/w-book-common/alert"
 	"codexie.com/w-book-common/ioc"
 	"github.com/zeromicro/go-zero/rest"
 	"github.com/zeromicro/go-zero/zrpc"
@@ -14,6 +15,7 @@ type Config struct {
 	KafkaConf    ioc.KafkaConf
 	MySQLConf    ioc.MySQLConf
 	RedisConf    ioc.RedisConf
+	AlertConf    alert.AlertConf
 	// MetricConf metric.ConstMetricLabelsConf
 }
 

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"codexie.com/w-book-common/codeerr"
 	"codexie.com/w-book-common/kafka/producer"
 	"codexie.com/w-book-payment/api/pb"
 	"codexie.com/w-book-payment/internal/domain"
@@ -38,12 +39,7 @@ func NewPaymentLogic(repo *repo.PaymentRepository, msgRepo *repo.PayMsgRepo, kaf
 }
 
 func (l *PaymentLogic) InitPayment(ctx context.Context, in *pb.PrepayReq) error {
-	logger := logx.WithContext(ctx)
-	amt, err := strconv.Atoi(in.TotalAmount)
-	if err != nil {
-		logger.Errorf("convert total amount to int failed, err: %v", err)
-		return err
-	}
+	amt, _ := strconv.Atoi(in.TotalAmount)
 
 	if err := l.payRepo.CreatePayment(ctx, &domain.Payment{
 		Platform:   in.Platform,
@@ -54,15 +50,18 @@ func (l *PaymentLogic) InitPayment(ctx context.Context, in *pb.PrepayReq) error 
 		Status:     constant.InitPayStatus,
 		Currency:   constant.CNY,
 	}); err != nil {
-		logger.Errorf("create payment failed, err: %v", err)
-		return err
+		return codeerr.LogCodeError(ctx, strconv.Itoa(codeerr.PayDBCreateErr), err, "create payment failed")
 	}
 
 	return nil
 }
 
 func (l *PaymentLogic) UpdatePaymentStatus(ctx context.Context, biz, outTradeNo string, status constant.PayStatus) error {
-	return l.payRepo.UpdatePaymentStatus(ctx, biz, outTradeNo, status)
+	if err := l.payRepo.UpdatePaymentStatus(ctx, biz, outTradeNo, status); err != nil {
+		return codeerr.LogCodeError(ctx, strconv.Itoa(codeerr.PayDBStatusErr), err, "update payment status failed")
+	}
+
+	return nil
 }
 
 func (l *PaymentLogic) SendPayCallbackMsg(ctx context.Context, topic string, payment *domain.Payment) {
@@ -74,14 +73,12 @@ func (l *PaymentLogic) SendPayCallbackMsg(ctx context.Context, topic string, pay
 
 	if err := l.kafkaProducer.SendSync(ctx, topic, string(msg), producer.WithKey(payment.OutTradeNo)); err != nil {
 		//todo: 监控告警, 若短时间内发送失败多次则触发告警
-		logx.Errorw("发送支付回调消息失败",
-			logx.LogField{Key: "cause", Value: err.Error()},
-			logx.LogField{Key: "msg", Value: msg},
-		)
+		codeerr.LogCodeError(ctx, strconv.Itoa(codeerr.PayMsgProdErr), err, "send payment callback message failed")
 
 		// 针对少量消息发送失败使用本地消息表记录,定时任务补偿
 		if err := l.msgRepo.CreateMsg(ctx, topic, string(msg)); err != nil {
 			//todo: 异步重试，若失败则立即告警(消息队列支付回调消息发送失败且本地消息表记录失败)
+			codeerr.LogCodeError(ctx, strconv.Itoa(codeerr.PayMsgProdErr), err, "send payment callback message failed")
 		}
 	}
 }

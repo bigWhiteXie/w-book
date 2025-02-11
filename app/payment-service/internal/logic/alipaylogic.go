@@ -6,7 +6,11 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
+	"codexie.com/w-book-common/alert"
+	"codexie.com/w-book-common/codeerr"
+	"codexie.com/w-book-common/retry"
 	"codexie.com/w-book-payment/api/pb"
 	"codexie.com/w-book-payment/internal/config"
 	"codexie.com/w-book-payment/internal/domain"
@@ -14,7 +18,6 @@ import (
 	"codexie.com/w-book-payment/pkg/constant"
 
 	"github.com/smartwalle/alipay/v3"
-	"github.com/zeromicro/go-zero/core/logx"
 )
 
 type AliProductCode string
@@ -56,7 +59,6 @@ func NewAliPayLogic(aliPayConf config.AliPayConfig, paymentLogic *PaymentLogic) 
 }
 
 func (l *AliPayLogic) PrePay(ctx context.Context, in *pb.PrepayReq) (*pb.PrepayResp, error) {
-	logger := logx.WithContext(ctx)
 	// 初始化支付记录，确保支付记录存在
 	if err := l.InitPayment(ctx, in); err != nil {
 		return nil, err
@@ -76,10 +78,9 @@ func (l *AliPayLogic) PrePay(ctx context.Context, in *pb.PrepayReq) (*pb.PrepayR
 	resp, err := l.client.TradePagePay(req)
 	if err != nil {
 		// todo:监控该异常
-		logger.Errorf("fail to invoke prepay of ali, err: %v", err)
 		// 更新数据库失败也没关系，会有定时任务继续更新，保持最终和支付宝平台的状态一致
 		l.payRepo.UpdatePaymentStatus(ctx, in.Biz, in.OutTradeNo, constant.FailPayStatus)
-		return nil, err
+		return nil, codeerr.LogCodeError(ctx, strconv.Itoa(codeerr.AliPrePayErr), err, fmt.Sprintf("fail to invoke prepay of ali, req: %v", req))
 	}
 
 	return &pb.PrepayResp{
@@ -90,8 +91,17 @@ func (l *AliPayLogic) PrePay(ctx context.Context, in *pb.PrepayReq) (*pb.PrepayR
 func (l *AliPayLogic) PayCallback(ctx context.Context, req *types.AliPaymentMsg) error {
 	// 修改payment状态为已支付
 	bizParams := strings.SplitN(req.OutTradeNo, "-", 2)
-	if err := l.payRepo.UpdatePaymentStatus(ctx, bizParams[0], bizParams[1], l.getStatus(req.TradeStatus)); err != nil {
-		//todo: 此时用户已经付完钱了，但是修改状态失败，执行异步重试，若重试仍然不行则告警
+	if err := l.UpdatePaymentStatus(ctx, bizParams[0], bizParams[1], l.getStatus(req.TradeStatus)); err != nil {
+		retry.AsyncRetry(time.Second*5, 3, func() error {
+			return l.UpdatePaymentStatus(ctx, bizParams[0], bizParams[1], l.getStatus(req.TradeStatus))
+		}, func(err error) {
+			alert.Alert(alert.AlertMsg{
+				Labels: map[string]string{"msg": "更新数据库中支付记录状态异常", "errcode": strconv.Itoa(codeerr.PayDBStatusErr)},
+				Annotations: map[string]string{
+					"cause": err.Error(),
+				},
+			})
+		})
 	}
 
 	amt, _ := strconv.Atoi(req.TotalAmount)
@@ -107,7 +117,10 @@ func (l *AliPayLogic) PayCallback(ctx context.Context, req *types.AliPaymentMsg)
 }
 
 func (l *AliPayLogic) VerifySign(r *http.Request) error {
-	return l.client.VerifySign(r.Form)
+	if err := l.client.VerifySign(r.Form); err != nil {
+		return codeerr.LogCodeError(r.Context(), strconv.Itoa(codeerr.AliPaySignErr), err, fmt.Sprintf("fail to verify sign of ali, req: %v", r.Form))
+	}
+	return nil
 }
 
 func (l *AliPayLogic) GetPayment(ctx context.Context, in *pb.QueryPaymentReq) (*pb.QueryPaymentResp, error) {

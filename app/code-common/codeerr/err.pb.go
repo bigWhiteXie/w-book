@@ -90,14 +90,15 @@ func HandleErr(ctx context.Context, err error) *response.Response {
 	return response.Fail(coder.Code(), coder.String())
 }
 
+// StackTrace 获取调用该方法所在位置的调用栈(不包含该方法)
 func (e *WithCodeErr) StackTrace() errors.StackTrace {
-	// Get full stack trace
+	// 设置为stackErr，此时调用栈栈顶为e.StackTrace()
 	stack := errors.WithStack(e).(interface {
 		StackTrace() errors.StackTrace
 	}).StackTrace()
 
-	// Remove the top frame (which corresponds to the `WithCodeErrErr` call)
-	return stack[2:] // Skip the first stack frame
+	// 移除的栈帧： 1. errors.WithStack 2. WithCodeErr.StackTrace
+	return stack[2:] 
 }
 
 func (w *WithCodeErr) Error() string { return w.Msg }

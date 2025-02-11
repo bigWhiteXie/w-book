@@ -11,6 +11,37 @@ import (
 	"github.com/zeromicro/go-zero/core/logx"
 )
 
+var (
+	service     *AlertService
+	serviceOnce sync.Once
+)
+
+func Init(config AlertConf) *AlertService {
+	serviceOnce.Do(func() {
+		service = &AlertService{
+			// 根据 config 初始化服务
+			// 例如: httpClient: &http.Client{Timeout: config.Timeout},
+		}
+	})
+	return service
+}
+
+// Alert 对外暴露的告警方法
+func Alert(alertMsg AlertMsg) {
+	if service == nil {
+		return
+	}
+	service.TriggerAlert(context.Background(), []AlertMsg{alertMsg})
+}
+
+// AlertWithContext 带上下文的告警
+func AlertWithContext(ctx context.Context, alertMsg AlertMsg) {
+	if service == nil {
+		return
+	}
+	service.TriggerAlert(ctx, []AlertMsg{alertMsg})
+}
+
 type AlertConf struct {
 	AlertManagerURL string `json:"alertManagerURL"` // AlertManager 地址
 	Timeout         int    `json:"timeout"`         // 请求超时时间（秒）
@@ -21,8 +52,8 @@ type AlertService struct {
 	AlertConf // 请求超时时间（秒）
 }
 
-// Alert 告警结构体
-type Alert struct {
+// AlertMsg 告警结构体
+type AlertMsg struct {
 	Labels       map[string]string `json:"labels"`                 // 告警标签（必填）
 	Annotations  map[string]string `json:"annotations,omitempty"`  // 告警注释（选填）
 	StartsAt     time.Time         `json:"startsAt,omitempty"`     // 告警开始时间（选填）
@@ -42,18 +73,8 @@ func NewAlertService(conf AlertConf) *AlertService {
 	}
 }
 
-// getClient 获取单例的 HTTP 客户端
-func getClient(timeout int) *http.Client {
-	clientOnce.Do(func() {
-		client = &http.Client{
-			Timeout: time.Duration(timeout) * time.Second,
-		}
-	})
-	return client
-}
-
 // TriggerAlert 触发告警
-func (a *AlertService) TriggerAlert(ctx context.Context, alerts []Alert) error {
+func (a *AlertService) TriggerAlert(ctx context.Context, alerts []AlertMsg) error {
 	// 构建请求体
 
 	// 序列化请求体
@@ -90,4 +111,14 @@ func (a *AlertService) TriggerAlert(ctx context.Context, alerts []Alert) error {
 
 	logx.Info("告警触发成功")
 	return nil
+}
+
+// getClient 获取单例的 HTTP 客户端
+func getClient(timeout int) *http.Client {
+	clientOnce.Do(func() {
+		client = &http.Client{
+			Timeout: time.Duration(timeout) * time.Second,
+		}
+	})
+	return client
 }

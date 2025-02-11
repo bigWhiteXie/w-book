@@ -39,7 +39,9 @@ MySQLConf:
 RedisConf:
   Host: 192.168.126.100:6379
   PASS: ""
-
+AlertConf:
+  AlertManagerURL: http://127.0.0.1:19094/api/v2/alerts
+  Timeout: 5
 KafkaConf:
   brokers:
   - 192.168.126.100:9092
