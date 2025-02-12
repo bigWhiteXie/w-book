@@ -12,6 +12,8 @@ import (
 
 var (
 	ArticleStatusPublished = 1
+
+	NoRowsAffected = errors.New("no rows affected")
 )
 
 type LikeInfo struct {
@@ -63,6 +65,10 @@ func (d *LikeInfoDao) UpdateLikeInfo(ctx context.Context, uid int64, biz string,
 
 	if res.Error != nil {
 		return errors.Wrapf(res.Error, "[LikeInfoDao_UpdateLikeInfo] 插入点赞信息失败")
+	}
+
+	if res.RowsAffected == 0 {
+		return NoRowsAffected
 	}
 	return nil
 }

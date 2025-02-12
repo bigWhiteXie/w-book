@@ -5,7 +5,9 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
+	"codexie.com/w-book-interact/internal/domain"
 	"gorm.io/gorm"
 )
 
@@ -60,20 +62,14 @@ func (dao *CommentDAO) GetRecentComments(ctx context.Context, biz string, bizID 
 	return rootComments, nil
 }
 
-func (dao *CommentDAO) GetChildCommentsByRootIDs(ctx context.Context, rootIDs []int64, m int) ([]*Comment, error) {
+// GetChildCommentsByRootIDs 获取子评论，按root_id分组，按created_at倒序，取前m条
+func (dao *CommentDAO) GetChildCommentsByRootIDs(ctx context.Context, rootId int64, m int) ([]*Comment, error) {
 	var subComments []*Comment
-	if err := dao.db.WithContext(ctx).Raw(`
-		SELECT * FROM (
-			SELECT *,
-				ROW_NUMBER() OVER (
-					PARTITION BY root_id 
-					ORDER BY created_at DESC
-				) AS rn
-			FROM comment
-			WHERE root_id IN ?
-				AND parent_id IS NOT NULL
-		) t WHERE rn <= ?
-	`, rootIDs, m).Scan(&subComments).Error; err != nil {
+	if err := dao.db.WithContext(ctx).
+		Where("root_id = ? and parent_id is not null", rootId).
+		Order("created_at DESC").
+		Limit(m).
+		Find(&subComments).Error; err != nil {
 		return nil, err
 	}
 	return subComments, nil
@@ -166,6 +162,12 @@ func (dao *CommentDAO) CreateCommentV2(ctx context.Context, comment *Comment) er
 	if err := dao.db.WithContext(ctx).Create(comment).Error; err != nil {
 		return fmt.Errorf("创建评论失败: %w", err)
 	}
+	if comment.RootID == 0 {
+		comment.RootID = comment.ID
+		if err := dao.db.WithContext(ctx).Model(comment).Update("root_id", comment.ID).Error; err != nil {
+			return err
+		}
+	}
 
 	return nil
 }
@@ -194,8 +196,8 @@ func (dao *CommentDAO) GetRootCommentsByScore(ctx context.Context, biz string, b
 func (dao *CommentDAO) GetChildCommentsByTime(ctx context.Context, rootId int64, lastTime int64, pageSize int) ([]*Comment, error) {
 	var comments []*Comment
 	query := dao.db.WithContext(ctx).
-		Where("root_id = ? AND id != ?", rootId, rootId, lastTime). // 排除根评论自身
-		Order("created_at DESC").                                   // 按创建时间倒序
+		Where("root_id = ? AND id != ?", rootId, rootId). // 排除根评论自身
+		Order("created_at DESC").                         // 按创建时间倒序
 		Limit(pageSize)
 
 	if lastTime > 0 {
@@ -206,4 +208,56 @@ func (dao *CommentDAO) GetChildCommentsByTime(ctx context.Context, rootId int64,
 		return nil, err
 	}
 	return comments, nil
+}
+
+func (dao *CommentDAO) LikeComment(ctx context.Context, id int64, isLike bool) error {
+	return dao.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// 1. 查询评论是否存在
+		var comment Comment
+		if err := tx.First(&comment, id).Error; err != nil {
+			return err
+		}
+
+		// 2. 更新点赞数
+		var updateValue int
+		if isLike {
+			updateValue = 1
+		} else {
+			updateValue = -1
+		}
+
+		// 3. 执行更新
+		if err := tx.Model(&comment).
+			UpdateColumn("like_cnt", gorm.Expr("like_cnt + ?", updateValue)).Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
+}
+
+func CommentDo2Domain(ctx context.Context, comment *Comment) *domain.Comment {
+	return &domain.Comment{
+		ID:       comment.ID,
+		Uid:      comment.Uid,
+		ChildNum: comment.ChildNum,
+		LikeCnt:  comment.LikeCnt,
+		Content:  comment.Content,
+		Childs:   []*domain.Comment{},
+		Ctime:    time.UnixMilli(comment.Ctime),
+		Score:    comment.Score,
+		RootID:   comment.RootID,
+	}
+}
+
+func CommentDomain2Do(ctx context.Context, comment *domain.Comment) *Comment {
+	return &Comment{
+		ID:       comment.ID,
+		Uid:      comment.Uid,
+		ChildNum: comment.ChildNum,
+		LikeCnt:  comment.LikeCnt,
+		Content:  comment.Content,
+		Score:    comment.Score,
+		RootID:   comment.RootID,
+	}
 }

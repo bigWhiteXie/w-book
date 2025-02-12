@@ -95,7 +95,7 @@ func (repo *InteractRepository) GetTopResIdsByLike(ctx context.Context, resource
 	// 先从本地缓存获取
 	localRes, err := repo.localCache.GetTopResources(resourceType)
 	if err != nil {
-		logx.Infof("获取Resource[%s]本地缓存失败:%s", err)
+		logx.Infof("获取Resource[%s]本地缓存失败:%s", resourceType, err)
 	}
 	if len(localRes) >= limit {
 		return localRes[:limit], nil
@@ -129,6 +129,7 @@ func (repo *InteractRepository) GetTopResIdsByLike(ctx context.Context, resource
 
 	return resourceIds, nil
 }
+
 func (repo *InteractRepository) GetInteraction(ctx context.Context, cntInfo *domain.Interaction) (*domain.Interaction, error) {
 	logger := logx.WithContext(ctx)
 	key := fmt.Sprintf(cntInfoKeyFmt, cntInfo.Biz, cntInfo.BizId)
