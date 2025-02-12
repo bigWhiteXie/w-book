@@ -15,6 +15,9 @@ type Comment struct {
 	BizID    int64         `gorm:"column:biz_id;not null;index:idx_biz_bizid_root,priority:2"`
 	RootID   int64         `gorm:"column:root_id;not null;index:idx_biz_bizid_root,priority:3;index:idx_root_ctime,priority:1"`
 	ParentID sql.NullInt64 `gorm:"column:parent_id"`
+	ChildNum int64         `gorm:"column:child_num;default:0"` // 子评论数量(根节点有)
+	Status   int           `gorm:"column:status;default:1"`    // 是否可见
+	Score    int64         `gorm:"column:score;default:0"`     // 根评论分数
 	Content  string        `gorm:"column:content;not null"`
 	Ctime    int64         `gorm:"column:created_at;not null;index:idx_root_ctime,priority:2"`
 }
@@ -52,14 +55,10 @@ func (dao *CommentDAO) GetRecentComments(ctx context.Context, biz string, bizID 
 		return nil, nil
 	}
 
-	// 2. 获取所有根评论的ID
-	rootIDs := make([]int64, len(rootComments))
-	for i, c := range rootComments {
-		rootIDs[i] = c.ID
-	}
+	return rootComments, nil
+}
 
-	// 3. 查询子评论
-	// 3. 使用窗口函数查询子评论
+func (dao *CommentDAO) GetChildCommentsByRootIDs(ctx context.Context, rootIDs []int64, m int) ([]*Comment, error) {
 	var subComments []*Comment
 	if err := dao.db.WithContext(ctx).Raw(`
 		SELECT * FROM (
@@ -75,73 +74,73 @@ func (dao *CommentDAO) GetRecentComments(ctx context.Context, biz string, bizID 
 	`, rootIDs, m).Scan(&subComments).Error; err != nil {
 		return nil, err
 	}
+	return subComments, nil
+}
 
-	result := append(rootComments, subComments...)
-	return result, nil
+func (dao *CommentDAO) GetCommentByID(ctx context.Context, id int64) (*Comment, error) {
+	var comment Comment
+	if err := dao.db.WithContext(ctx).Where("id = ?", id).First(&comment).Error; err != nil {
+		return nil, err
+	}
+	return &comment, nil
 }
 
 // DeleteComment 删除评论
+// 若为根评论则删除所有子评论，否则仅将自己的status设置为0
 func (dao *CommentDAO) DeleteComment(ctx context.Context, id int64) error {
 	return dao.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		// 1. 先获取目标评论的root_id
-		var targetRootID int64
-		if err := tx.Model(&Comment{}).
-			Select("root_id").
-			Where("id = ?", id).
-			Scan(&targetRootID).Error; err != nil {
-			return fmt.Errorf("查询root_id失败: %w", err)
-		}
-		if targetRootID == 0 {
-			return nil
+		// 1. 获取评论信息
+		var target Comment
+		if err := tx.First(&target, id).Error; err != nil {
+			return err
 		}
 
-		// 2. 锁定整个子树范围
-		if err := tx.Exec(`
-            SELECT * FROM comment 
-            WHERE root_id = ?
-            FOR UPDATE
-        `, targetRootID).Error; err != nil {
-			return fmt.Errorf("锁定失败: %w", err)
-		}
-
-		// 3. 执行递归查询获取所有子节点
-		var commentIDs []int64
-		if err := tx.Raw(`
-            WITH RECURSIVE comment_tree AS (
-                SELECT id FROM comment WHERE id = ?
-                UNION ALL
-                SELECT c.id 
-                FROM comment c
-                INNER JOIN comment_tree ct ON c.parent_id = ct.id
-            )
-            SELECT id FROM comment_tree;
-        `, id).Scan(&commentIDs).Error; err != nil {
-			return fmt.Errorf("查询评论树失败: %w", err)
-		}
-
-		// 4. 执行删除
-		if err := tx.Where("id IN ?", commentIDs).Delete(&Comment{}).Error; err != nil {
-			return fmt.Errorf("删除失败: %w", err)
+		// 2. 判断是否为根评论
+		if target.RootID == target.ID { // 根评论
+			// 删除所有root_id指向它的评论
+			if err := tx.Where("root_id = ?", target.ID).
+				Delete(&Comment{}).Error; err != nil {
+				return err
+			}
+		} else { // 子评论
+			// 仅将当前评论的status设置为0
+			if err := tx.Model(&target).
+				UpdateColumn("status", 0).Error; err != nil {
+				return err
+			}
 		}
 
 		return nil
 	})
 }
 
-// CreateComment 创建评论
+// CreateComment 创建评论,若根评论不存在则插入失败
 func (dao *CommentDAO) CreateComment(ctx context.Context, comment *Comment) error {
 	return dao.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// 1. 如果是子评论，验证父评论存在性并设置RootID
 		if comment.ParentID.Valid {
 			var parent Comment
-			if err := tx.First(&parent, comment.ParentID.Int64).Error; err != nil {
+			// 查询父节点，同时检查status=1
+			if err := tx.Where("id = ? AND status = 1", comment.ParentID.Int64).First(&parent).Error; err != nil {
 				if errors.Is(err, gorm.ErrRecordNotFound) {
-					return fmt.Errorf("父评论不存在: %d", comment.ParentID.Int64)
+					return fmt.Errorf("父评论不存在或已被删除: %d", comment.ParentID.Int64)
 				}
 				return err
 			}
+
 			// 设置RootID为父评论的RootID
 			comment.RootID = parent.RootID
+
+			// 更新根评论的child_num，并检查rowsAffected
+			result := tx.Model(&Comment{}).
+				Where("id = ?", comment.RootID).
+				UpdateColumn("child_num", gorm.Expr("child_num + 1"))
+			if result.Error != nil {
+				return fmt.Errorf("更新子评论数量失败: %w", result.Error)
+			}
+			if result.RowsAffected == 0 {
+				return fmt.Errorf("根评论不存在或已被删除: %d", comment.RootID)
+			}
 		}
 
 		// 2. 创建评论
@@ -159,4 +158,12 @@ func (dao *CommentDAO) CreateComment(ctx context.Context, comment *Comment) erro
 
 		return nil
 	})
+}
+
+func (dao *CommentDAO) CreateCommentV2(ctx context.Context, comment *Comment) error {
+	if err := dao.db.WithContext(ctx).Create(comment).Error; err != nil {
+		return fmt.Errorf("创建评论失败: %w", err)
+	}
+
+	return nil
 }
