@@ -97,7 +97,7 @@ func (e *WithCodeErr) StackTrace() errors.StackTrace {
 		StackTrace() errors.StackTrace
 	}).StackTrace()
 
-	// 移除的栈帧： 1. errors.WithStack 2. WithCodeErr.StackTrace
+	// 移除的栈帧：  1. StackTrace栈帧 2. 调用StackTrace方法的栈帧
 	return stack[2:] 
 }
 
