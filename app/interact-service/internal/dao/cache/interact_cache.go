@@ -16,7 +16,7 @@ type InteractCache interface {
 	//缓存资源计数信息
 	CacheStatCnt(ctx context.Context, key string, info *domain.Interaction) error
 
-	//更新资源top的zset
+	//更新资源top的交互信息
 	UpdateRedisZSet(ctx context.Context, resourceType string, fn func() ([]*domain.Interaction, error)) error
 
 	//增加zset中资源点赞数

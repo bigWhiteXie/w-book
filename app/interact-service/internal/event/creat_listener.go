@@ -17,6 +17,8 @@ import (
 
 var (
 	createConsumer = "create-evt-consumer-group"
+
+	batchSize = 1000
 )
 
 // ：kafka-topics.sh --bootstrap-server 192.168.126.100:9092 --topic create-evt-topic --create --partitions 1 --replication-factor 1

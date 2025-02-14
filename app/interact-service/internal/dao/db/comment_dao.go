@@ -11,13 +11,15 @@ import (
 
 type Comment struct {
 	ID       int64         `gorm:"column:id;primary_key;auto_increment"`
+	Uid      int64         `gorm:"column:uid;not null"`
 	Biz      string        `gorm:"column:biz;not null;index:idx_biz_bizid_root,priority:1"`
 	BizID    int64         `gorm:"column:biz_id;not null;index:idx_biz_bizid_root,priority:2"`
 	RootID   int64         `gorm:"column:root_id;not null;index:idx_biz_bizid_root,priority:3;index:idx_root_ctime,priority:1"`
 	ParentID sql.NullInt64 `gorm:"column:parent_id"`
 	ChildNum int64         `gorm:"column:child_num;default:0"` // 子评论数量(根节点有)
-	Status   int           `gorm:"column:status;default:1"`    // 是否可见
-	Score    int64         `gorm:"column:score;default:0"`     // 根评论分数
+	Status   int           `gorm:"column:status;default:0"`
+	LikeCnt  int           `gorm:"column:like_cnt;default:0"`
+	Score    int64         `gorm:"column:score;default:0"` // 根评论分数
 	Content  string        `gorm:"column:content;not null"`
 	Ctime    int64         `gorm:"column:created_at;not null;index:idx_root_ctime,priority:2"`
 }
@@ -105,7 +107,7 @@ func (dao *CommentDAO) DeleteComment(ctx context.Context, id int64) error {
 		} else { // 子评论
 			// 仅将当前评论的status设置为0
 			if err := tx.Model(&target).
-				UpdateColumn("status", 0).Error; err != nil {
+				UpdateColumn("status", 2).Error; err != nil {
 				return err
 			}
 		}
@@ -166,4 +168,42 @@ func (dao *CommentDAO) CreateCommentV2(ctx context.Context, comment *Comment) er
 	}
 
 	return nil
+}
+
+// GetRootCommentsByScore 分页获取根评论（按score倒序）
+// lastScore 上次查询的最小score，首次查询传0表示从最大score开始
+func (dao *CommentDAO) GetRootCommentsByScore(ctx context.Context, biz string, bizID int64, lastScore int64, pageSize int) ([]*Comment, error) {
+	var comments []*Comment
+	query := dao.db.WithContext(ctx).
+		Where("biz = ? AND biz_id = ? AND parent_id IS NULL", biz, bizID).
+		Order("score DESC").
+		Limit(pageSize)
+
+	if lastScore > 0 {
+		query = query.Where("score < ?", lastScore)
+	}
+
+	if err := query.Find(&comments).Error; err != nil {
+		return nil, fmt.Errorf("分页查询根评论失败: %w", err)
+	}
+	return comments, nil
+}
+
+// GetChildCommentsByTime 分页获取子评论（按时间倒序）
+// lastTime 上次查询的最早时间戳，首次查询传0表示从最新开始
+func (dao *CommentDAO) GetChildCommentsByTime(ctx context.Context, rootId int64, lastTime int64, pageSize int) ([]*Comment, error) {
+	var comments []*Comment
+	query := dao.db.WithContext(ctx).
+		Where("root_id = ? AND id != ?", rootId, rootId, lastTime). // 排除根评论自身
+		Order("created_at DESC").                                   // 按创建时间倒序
+		Limit(pageSize)
+
+	if lastTime > 0 {
+		query = query.Where("created_at < ?", lastTime)
+	}
+
+	if err := query.Find(&comments).Error; err != nil {
+		return nil, err
+	}
+	return comments, nil
 }
