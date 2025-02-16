@@ -77,6 +77,21 @@ func (d *LikeInfoDao) UpdateLikeInfo(ctx context.Context, uid int64, biz string,
 	return nil
 }
 
+func (d *LikeInfoDao) GetLikeStatus(ctx context.Context, biz string, bizId int64) ([]int64, error) {
+	likeInfos := make([]*LikeInfo, 0)
+	res := d.db.Where("biz=? and biz_id = ?", biz, bizId).Find(&likeInfos)
+	if res.Error != nil {
+		return nil, errors.Wrapf(res.Error, "[LikeInfoDao_GetLikeStatus] 查询点赞状态失败")
+	}
+
+	result := make([]int64, 0, len(likeInfos))
+	for _, likeInfo := range likeInfos {
+		result = append(result, likeInfo.Uid)
+	}
+
+	return result, nil
+}
+
 func (d *LikeInfoDao) Like(ctx context.Context, uid int64, biz string, bizId int64) error {
 	now := time.Now().UnixMilli()
 	likeInfo := &LikeInfo{

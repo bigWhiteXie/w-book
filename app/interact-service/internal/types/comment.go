@@ -21,3 +21,8 @@ type GetChildCommentsReq struct {
 	Offset    int   `json:"offset"`     // 分页偏移
 	Size      int   `json:"size"`       // 分页大小
 }
+
+type LikeCommentReq struct {
+	CommentID int64 `json:"comment_id"` // 评论ID
+	IsLike    bool  `json:"is_like"`    // 是否点赞
+}

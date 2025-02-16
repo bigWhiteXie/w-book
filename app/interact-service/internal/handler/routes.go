@@ -7,7 +7,7 @@ import (
 	"github.com/zeromicro/go-zero/rest"
 )
 
-func RegisterHandlers(server *rest.Server, interactHandler *InteractHandler) {
+func RegisterHandlers(server *rest.Server, interactHandler *InteractHandler, commentHandler *CommentHandler) {
 	server.AddRoutes(
 		[]rest.Route{
 			{
@@ -29,6 +29,33 @@ func RegisterHandlers(server *rest.Server, interactHandler *InteractHandler) {
 				Method:  http.MethodGet,
 				Path:    "/resource/top/:biz",
 				Handler: interactHandler.TopLikeResource,
+			},
+		},
+		rest.WithPrefix("/v1"),
+		rest.WithTimeout(3000*time.Millisecond),
+		rest.WithMaxBytes(1048576000),
+	)
+	server.AddRoutes(
+		[]rest.Route{
+			{
+				Method:  http.MethodPost,
+				Path:    "/comment/like",
+				Handler: commentHandler.LikeComment,
+			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/comment/root",
+				Handler: commentHandler.RootCommentsPage,
+			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/comment/child",
+				Handler: commentHandler.ChildCommentPage,
+			},
+			{
+				Method:  http.MethodPost,
+				Path:    "/comment/publish",
+				Handler: commentHandler.PublishComment,
 			},
 		},
 		rest.WithPrefix("/v1"),

@@ -130,13 +130,3 @@ func (s *InteractionServer) GetCommentList(ctx context.Context, req *interactGrp
 		Comments: commentInfos,
 	}, nil
 }
-
-func (s *InteractionServer) LikeComment(ctx context.Context, req *interactGrpc.LikeCommentReq) (*interactGrpc.LikeCommentResp, error) {
-	err := s.commentLogic.LikeComment(ctx, req.CommentId)
-	if err != nil {
-		return nil, err
-	}
-	return &interactGrpc.LikeCommentResp{
-		Msg: "ok",
-	}, nil
-}

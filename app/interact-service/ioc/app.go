@@ -44,12 +44,12 @@ func (app *App) Stop() error {
 	return nil
 }
 
-func InitServer(c config.Config, articleHandler *handler.InteractHandler, maintainceHandler *handler.MaintainceHandler, redisClient *redis.Client) *rest.Server {
+func InitServer(c config.Config, interactHandler *handler.InteractHandler, commentHandler *handler.CommentHandler, maintainceHandler *handler.MaintainceHandler, redisClient *redis.Client) *rest.Server {
 	metric.InitMessageMetric(c.MetricConf)
 	logx.Infof("读取指标配置:%v", c.MetricConf)
 	server := rest.MustNewServer(c.RestConf, rest.WithCors())
 	server.Use(middleware.NewJwtMiddleware(redisClient).Handle)
-	handler.RegisterHandlers(server, articleHandler)
+	handler.RegisterHandlers(server, interactHandler, commentHandler)
 	handler.RegisterMaintainceHandlers(server, maintainceHandler)
 	return server
 }

@@ -22,7 +22,7 @@ import (
 
 var ServerSet = wire.NewSet(InitServer, InitRpcServer)
 
-var HandlerSet = wire.NewSet(handler.NewInteractHandler, handler.NewMaintainceHandler)
+var HandlerSet = wire.NewSet(handler.NewInteractHandler, handler.NewCommentHandler, handler.NewMaintainceHandler)
 
 var LogicSet = wire.NewSet(logic.NewInteractLogic, logic.NewCommentLogic)
 

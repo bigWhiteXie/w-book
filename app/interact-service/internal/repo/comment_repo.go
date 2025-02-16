@@ -27,7 +27,8 @@ type ICommentRepo interface {
 	HandleCommentCreateEvent(ctx context.Context, commentID, rootID int64) error
 	HandleLikeCommentEvent(ctx context.Context, commentID int64) error
 	RefreshCommentScore(ctx context.Context, rootID int64) error
-	GetLikeStatus(ctx context.Context, uid int64, commentIDs []int64) (map[int64]bool, error)
+	GetLikeStatusByUid(ctx context.Context, uid int64, commentIDs []int64) (map[int64]bool, error)
+	GetCommentLikeUserIDs(ctx context.Context, commentID int64) ([]int64, error)
 }
 
 type commentRepo struct {
@@ -285,8 +286,14 @@ func (r *commentRepo) RefreshCommentScore(ctx context.Context, rootID int64) err
 		Update("score", gorm.Expr("like_cnt * 2 + child_num")).Error
 }
 
-// 点赞状态查询
-func (r *commentRepo) GetLikeStatus(ctx context.Context, uid int64, commentIDs []int64) (map[int64]bool, error) {
+// 查询该评论的点赞用户id
+func (r *commentRepo) GetCommentLikeUserIDs(ctx context.Context, commentID int64) ([]int64, error) {
+	likeInfoDao := db.NewLikeInfoDao(r.GetDB())
+	return likeInfoDao.GetLikeStatus(ctx, domain.CommentBiz, commentID)
+}
+
+// 查询该用户在关于批评论的点赞状态
+func (r *commentRepo) GetLikeStatusByUid(ctx context.Context, uid int64, commentIDs []int64) (map[int64]bool, error) {
 	// 1. 从缓存获取已存在的点赞状态
 	cachedStatus, err := r.cache.GetLikesStatus(ctx, uid, commentIDs)
 	if err != nil {

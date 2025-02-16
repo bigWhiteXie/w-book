@@ -36,16 +36,17 @@ func NewInteractApp(config2 config.Config, mysqlConf ioc.MySQLConf, redisConf io
 	iCollectRepository := repo2.NewCollectRepository(interactCache, baseRepo)
 	interactLogic := logic.NewInteractLogic(iLikeInfoRepository, iInteractRepo, iCollectRepository)
 	interactHandler := handler.NewInteractHandler(serviceContext, interactLogic)
-	maintainceHandler := handler.NewMaintainceHandler(baseRepo)
-	server := InitServer(config2, interactHandler, maintainceHandler, client)
+	commentCache := cache.NewCommentRedisCache(client)
+	iCommentRepo := repo2.NewCommentRepo(db, commentCache)
 	saramaClient := ioc.InitKafkaClient(kafkaConf)
+	producerProducer := producer.NewKafkaProducer(saramaClient)
+	commentLogic := logic.NewCommentLogic(iCommentRepo, producerProducer,client)
+	commentHandler := handler.NewCommentHandler(serviceContext, commentLogic)
+	maintainceHandler := handler.NewMaintainceHandler(baseRepo)
+	server := InitServer(config2, interactHandler, commentHandler, maintainceHandler, client)
 	readEvtListener := event.NewBatchReadEventListener(saramaClient, iInteractRepo)
 	createEventListener := event.NewCreateEventListener(saramaClient, iInteractRepo)
 	v := InitConsumers(readEvtListener, createEventListener)
-	commentCache := cache.NewCommentRedisCache(client)
-	iCommentRepo := repo2.NewCommentRepo(db, commentCache)
-	producerProducer := producer.NewKafkaProducer(saramaClient)
-	commentLogic := logic.NewCommentLogic(iCommentRepo, producerProducer)
 	commentJob := InitCommentJob(commentLogic, commentCache)
 	jobCron := InitJobCron(commentJob, client)
 	app := &App{
@@ -72,7 +73,7 @@ func NewRpcApp(c config.Config, mysqlConf ioc.MySQLConf, redisConf ioc.RedisConf
 	iCommentRepo := repo2.NewCommentRepo(db, commentCache)
 	saramaClient := ioc.InitKafkaClient(kafkaConf)
 	producerProducer := producer.NewKafkaProducer(saramaClient)
-	commentLogic := logic.NewCommentLogic(iCommentRepo, producerProducer)
+	commentLogic := logic.NewCommentLogic(iCommentRepo, producerProducer,client)
 	interactionServer := InitRpcServer(serviceContext, interactLogic, commentLogic)
 	return interactionServer, nil
 }
@@ -81,7 +82,7 @@ func NewRpcApp(c config.Config, mysqlConf ioc.MySQLConf, redisConf ioc.RedisConf
 
 var ServerSet = wire.NewSet(InitServer, InitRpcServer)
 
-var HandlerSet = wire.NewSet(handler.NewInteractHandler, handler.NewMaintainceHandler)
+var HandlerSet = wire.NewSet(handler.NewInteractHandler, handler.NewCommentHandler, handler.NewMaintainceHandler)
 
 var LogicSet = wire.NewSet(logic.NewInteractLogic, logic.NewCommentLogic)
 
