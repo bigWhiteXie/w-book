@@ -12,13 +12,15 @@ import (
 type InteractionServer struct {
 	svcCtx *svc.ServiceContext
 	interactGrpc.UnimplementedInteractionServer
-	logic *logic.InteractLogic
+	logic        *logic.InteractLogic
+	commentLogic *logic.CommentLogic
 }
 
-func NewInteractionServer(svcCtx *svc.ServiceContext, interactLogic *logic.InteractLogic) *InteractionServer {
+func NewInteractionServer(svcCtx *svc.ServiceContext, interactLogic *logic.InteractLogic, commentLogic *logic.CommentLogic) *InteractionServer {
 	return &InteractionServer{
-		svcCtx: svcCtx,
-		logic:  interactLogic,
+		svcCtx:       svcCtx,
+		logic:        interactLogic,
+		commentLogic: commentLogic,
 	}
 }
 
@@ -81,5 +83,60 @@ func (s *InteractionServer) TopLike(ctx context.Context, in *interactGrpc.TopLik
 	}
 	return &interactGrpc.TopLikeResp{
 		Items: ids,
+	}, nil
+}
+
+func (s *InteractionServer) PublishComment(ctx context.Context, req *interactGrpc.PublishCommentReq) (*interactGrpc.CommentInfo, error) {
+	comment, err := s.commentLogic.AddComment(ctx, &types.AddCommentReq{
+		Biz:      req.Biz,
+		BizID:    req.BizId,
+		ParentID: req.ParentId,
+		Content:  req.Content,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &interactGrpc.CommentInfo{
+		Id:         comment.ID,
+		Uid:        comment.Uid,
+		Content:    comment.Content,
+		CreateTime: comment.Ctime.UnixMilli(),
+	}, nil
+}
+
+func (s *InteractionServer) GetCommentList(ctx context.Context, req *interactGrpc.CommentListReq) (*interactGrpc.CommentListResp, error) {
+	comments, err := s.commentLogic.GetRootComments(ctx, &types.GetRootCommentsReq{
+		Biz:       req.Biz,
+		BizID:     req.BizId,
+		Offset:    (int(req.Page) - 1) * int(req.PageSize),
+		Size:      int(req.PageSize),
+		LastScore: req.LastSort,
+	})
+	commentInfos := make([]*interactGrpc.CommentInfo, 0, len(comments))
+	for _, comment := range comments {
+		commentInfos = append(commentInfos, &interactGrpc.CommentInfo{
+			Id:         comment.ID,
+			Uid:        comment.Uid,
+			Content:    comment.Content,
+			CreateTime: comment.Ctime.UnixMilli(),
+		})
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &interactGrpc.CommentListResp{
+		Comments: commentInfos,
+	}, nil
+}
+
+func (s *InteractionServer) LikeComment(ctx context.Context, req *interactGrpc.LikeCommentReq) (*interactGrpc.LikeCommentResp, error) {
+	err := s.commentLogic.LikeComment(ctx, req.CommentId)
+	if err != nil {
+		return nil, err
+	}
+	return &interactGrpc.LikeCommentResp{
+		Msg: "ok",
 	}, nil
 }

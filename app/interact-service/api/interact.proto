@@ -4,6 +4,7 @@ syntax = "proto3";
 package api;
 
 // goctl rpc protoc interact.proto --go_out=. --go-grpc_out=. --zrpc_out=. --client=true
+// protoc  --go_out=./ --go-grpc_out=./ interact.proto
 option go_package = "./grpc";
 
 // 查询交互计数请求
@@ -50,6 +51,40 @@ message CommonResult {
   string Msg = 1;
 }
 
+message PublishCommentReq {
+  string Biz = 1;   //业务类型
+  int64 BizId = 2;  //id
+  string Content = 3; //内容
+  int64 ParentId = 4; //父级id
+}
+
+message CommentInfo {
+  int64 Id = 1;
+  int64 Uid = 2;
+  string Content = 3;
+  int64 CreateTime = 4;
+}
+
+message CommentListReq {
+  string Biz = 1;   //业务类型
+  int64 BizId = 2;  //id
+  int64 Page = 3; //页码
+  int64 PageSize = 4; //每页条数
+  int64 LastSort = 5; //最后一条评论热度
+}
+
+message CommentListResp {
+  repeated CommentInfo Comments = 1;
+}
+
+message LikeCommentReq {
+  int64 CommentId = 3; //评论id
+}
+
+message LikeCommentResp {
+  string Msg = 1;
+}
+
 
 // 定义 Greet 服务
 service Interaction {
@@ -58,4 +93,8 @@ service Interaction {
 
   rpc IncreReadCnt(AddReadCntReq) returns(CommonResult);
   rpc TopLike(TopLikeReq) returns(TopLikeResp);
+
+  rpc PublishComment(PublishCommentReq) returns(CommentInfo);
+  rpc GetCommentList(CommentListReq) returns(CommentListResp);
+  rpc LikeComment(LikeCommentReq) returns(LikeCommentResp);
 }

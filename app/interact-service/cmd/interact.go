@@ -26,11 +26,11 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
+	app.JobCron.Start()
 	//启动rpc服务
 	go func() {
 		s := zrpc.MustNewServer(c.Grpc, func(grpcServer *grpc.Server) {
-			server, _ := ioc.NewRpcApp(c, c.MySQLConf, c.RedisConf)
+			server, _ := ioc.NewRpcApp(c, c.MySQLConf, c.RedisConf, c.KafkaConf)
 			interactGrpc.RegisterInteractionServer(grpcServer, server)
 			if c.Mode == service.DevMode || c.Mode == service.TestMode {
 				reflection.Register(grpcServer)

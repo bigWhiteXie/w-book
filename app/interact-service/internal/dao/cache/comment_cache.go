@@ -24,6 +24,10 @@ type CommentCache interface {
 	DelRootComments(ctx context.Context, biz string, bizID int64) error
 	// 删除子评论缓存
 	DelChildComments(ctx context.Context, rootID int64) error
+	// 获取点赞状态
+	GetLikesStatus(ctx context.Context, uid int64, commentIDs []int64) (map[int64]bool, error)
+	// 设置点赞状态
+	SetLikesStatus(ctx context.Context, uid int64, commentIDs []int64, statusMap map[int64]bool) error
 }
 
 type CommentRedisCache struct {
@@ -117,4 +121,51 @@ func (c *CommentRedisCache) setCommentsToCache(ctx context.Context, key string, 
 	}
 
 	return nil
+}
+
+const userLikeKeyPrefix = "user:like:"
+
+func (c *CommentRedisCache) GetLikesStatus(ctx context.Context, uid int64, commentIDs []int64) (map[int64]bool, error) {
+	key := userLikeKey(uid)
+	pipe := c.client.Pipeline()
+
+	// 批量查询
+	cmds := make([]*redis.BoolCmd, len(commentIDs))
+	for i, id := range commentIDs {
+		cmds[i] = pipe.SIsMember(ctx, key, id)
+	}
+
+	if _, err := pipe.Exec(ctx); err != nil {
+		return nil, errors.Wrap(err, "批量查询点赞状态失败")
+	}
+
+	result := make(map[int64]bool, len(commentIDs))
+	for i, cmd := range cmds {
+		result[commentIDs[i]] = cmd.Val()
+	}
+	return result, nil
+}
+
+func (c *CommentRedisCache) SetLikesStatus(ctx context.Context, uid int64, commentIDs []int64, statusMap map[int64]bool) error {
+	key := userLikeKey(uid)
+	pipe := c.client.Pipeline()
+
+	// 只处理评论类型的点赞
+	for _, id := range commentIDs {
+		if status, exists := statusMap[id]; exists {
+			if status {
+				pipe.SAdd(ctx, key, id)
+			} else {
+				pipe.SRem(ctx, key, id)
+			}
+		}
+	}
+	pipe.Expire(ctx, key, 7*24*time.Hour)
+
+	_, err := pipe.Exec(ctx)
+	return errors.Wrap(err, "更新点赞状态失败")
+}
+
+func userLikeKey(uid int64) string {
+	return fmt.Sprintf("%s%d", userLikeKeyPrefix, uid)
 }

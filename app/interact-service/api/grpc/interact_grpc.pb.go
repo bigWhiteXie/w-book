@@ -25,15 +25,24 @@ const (
 	Interaction_QueryInteractionsInfo_FullMethodName = "/api.Interaction/QueryInteractionsInfo"
 	Interaction_IncreReadCnt_FullMethodName          = "/api.Interaction/IncreReadCnt"
 	Interaction_TopLike_FullMethodName               = "/api.Interaction/TopLike"
+	Interaction_PublishComment_FullMethodName        = "/api.Interaction/PublishComment"
+	Interaction_GetCommentList_FullMethodName        = "/api.Interaction/GetCommentList"
+	Interaction_LikeComment_FullMethodName           = "/api.Interaction/LikeComment"
 )
 
-
-//go:generate mockgen -source=interact_grpc.pb.go -package grpc -destination mock_interact_grpc.go InteractionClient 
+// InteractionClient is the client API for Interaction service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+//
+// 定义 Greet 服务
 type InteractionClient interface {
 	QueryInteractionInfo(ctx context.Context, in *QueryInteractionReq, opts ...grpc.CallOption) (*InteractionResult, error)
 	QueryInteractionsInfo(ctx context.Context, in *QueryInteractionsReq, opts ...grpc.CallOption) (*InteractionsInfo, error)
 	IncreReadCnt(ctx context.Context, in *AddReadCntReq, opts ...grpc.CallOption) (*CommonResult, error)
 	TopLike(ctx context.Context, in *TopLikeReq, opts ...grpc.CallOption) (*TopLikeResp, error)
+	PublishComment(ctx context.Context, in *PublishCommentReq, opts ...grpc.CallOption) (*CommentInfo, error)
+	GetCommentList(ctx context.Context, in *CommentListReq, opts ...grpc.CallOption) (*CommentListResp, error)
+	LikeComment(ctx context.Context, in *LikeCommentReq, opts ...grpc.CallOption) (*LikeCommentResp, error)
 }
 
 type interactionClient struct {
@@ -84,6 +93,36 @@ func (c *interactionClient) TopLike(ctx context.Context, in *TopLikeReq, opts ..
 	return out, nil
 }
 
+func (c *interactionClient) PublishComment(ctx context.Context, in *PublishCommentReq, opts ...grpc.CallOption) (*CommentInfo, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CommentInfo)
+	err := c.cc.Invoke(ctx, Interaction_PublishComment_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *interactionClient) GetCommentList(ctx context.Context, in *CommentListReq, opts ...grpc.CallOption) (*CommentListResp, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CommentListResp)
+	err := c.cc.Invoke(ctx, Interaction_GetCommentList_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *interactionClient) LikeComment(ctx context.Context, in *LikeCommentReq, opts ...grpc.CallOption) (*LikeCommentResp, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(LikeCommentResp)
+	err := c.cc.Invoke(ctx, Interaction_LikeComment_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // InteractionServer is the server API for Interaction service.
 // All implementations must embed UnimplementedInteractionServer
 // for forward compatibility.
@@ -94,6 +133,9 @@ type InteractionServer interface {
 	QueryInteractionsInfo(context.Context, *QueryInteractionsReq) (*InteractionsInfo, error)
 	IncreReadCnt(context.Context, *AddReadCntReq) (*CommonResult, error)
 	TopLike(context.Context, *TopLikeReq) (*TopLikeResp, error)
+	PublishComment(context.Context, *PublishCommentReq) (*CommentInfo, error)
+	GetCommentList(context.Context, *CommentListReq) (*CommentListResp, error)
+	LikeComment(context.Context, *LikeCommentReq) (*LikeCommentResp, error)
 	mustEmbedUnimplementedInteractionServer()
 }
 
@@ -115,6 +157,15 @@ func (UnimplementedInteractionServer) IncreReadCnt(context.Context, *AddReadCntR
 }
 func (UnimplementedInteractionServer) TopLike(context.Context, *TopLikeReq) (*TopLikeResp, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method TopLike not implemented")
+}
+func (UnimplementedInteractionServer) PublishComment(context.Context, *PublishCommentReq) (*CommentInfo, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method PublishComment not implemented")
+}
+func (UnimplementedInteractionServer) GetCommentList(context.Context, *CommentListReq) (*CommentListResp, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetCommentList not implemented")
+}
+func (UnimplementedInteractionServer) LikeComment(context.Context, *LikeCommentReq) (*LikeCommentResp, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method LikeComment not implemented")
 }
 func (UnimplementedInteractionServer) mustEmbedUnimplementedInteractionServer() {}
 func (UnimplementedInteractionServer) testEmbeddedByValue()                     {}
@@ -209,6 +260,60 @@ func _Interaction_TopLike_Handler(srv interface{}, ctx context.Context, dec func
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Interaction_PublishComment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PublishCommentReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(InteractionServer).PublishComment(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Interaction_PublishComment_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(InteractionServer).PublishComment(ctx, req.(*PublishCommentReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Interaction_GetCommentList_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CommentListReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(InteractionServer).GetCommentList(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Interaction_GetCommentList_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(InteractionServer).GetCommentList(ctx, req.(*CommentListReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Interaction_LikeComment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LikeCommentReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(InteractionServer).LikeComment(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Interaction_LikeComment_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(InteractionServer).LikeComment(ctx, req.(*LikeCommentReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Interaction_ServiceDesc is the grpc.ServiceDesc for Interaction service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -231,6 +336,18 @@ var Interaction_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "TopLike",
 			Handler:    _Interaction_TopLike_Handler,
+		},
+		{
+			MethodName: "PublishComment",
+			Handler:    _Interaction_PublishComment_Handler,
+		},
+		{
+			MethodName: "GetCommentList",
+			Handler:    _Interaction_GetCommentList_Handler,
+		},
+		{
+			MethodName: "LikeComment",
+			Handler:    _Interaction_LikeComment_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

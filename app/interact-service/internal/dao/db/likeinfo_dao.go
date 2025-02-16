@@ -34,6 +34,10 @@ func (a *LikeInfo) UnmarshalBinary(data []byte) error {
 	return json.Unmarshal(data, a)
 }
 
+func (a *LikeInfo) TableName() string {
+	return "like_info"
+}
+
 type LikeInfoDao struct {
 	// go get github.com/DATA-DOG/go-sqlmock
 	db *gorm.DB
@@ -81,4 +85,33 @@ func (d *LikeInfoDao) FindLikeInfo(ctx context.Context, uid int64, biz string, b
 	}
 
 	return likeInfo, nil
+}
+
+// 批量查询点赞状态
+func (d *LikeInfoDao) BatchFindLikeInfo(ctx context.Context, uid int64, biz string, bizIds []int64) (map[int64]bool, error) {
+	likeInfos := make([]*LikeInfo, 0, len(bizIds))
+
+	// 使用IN查询批量获取点赞状态
+	err := d.db.WithContext(ctx).
+		Model(&LikeInfo{}).
+		Select("biz_id, status").
+		Where("uid = ? AND biz = ? AND biz_id IN (?)", uid, biz, bizIds).
+		Find(&likeInfos).Error
+
+	if err != nil {
+		return nil, errors.Wrapf(err, "[LikeInfoDao_BatchFindLikeInfo] 批量查询失败")
+	}
+
+	// 初始化结果集，默认未点赞
+	result := make(map[int64]bool, len(bizIds))
+	for _, id := range bizIds {
+		result[id] = false
+	}
+
+	// 标记已点赞的资源
+	for _, like := range likeInfos {
+		result[like.BizId] = like.Status == 1
+	}
+
+	return result, nil
 }

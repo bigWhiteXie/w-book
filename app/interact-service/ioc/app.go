@@ -1,10 +1,14 @@
 package ioc
 
 import (
+	"time"
+
+	"codexie.com/w-book-common/job"
 	"codexie.com/w-book-common/kafka/consumer"
 	"codexie.com/w-book-common/metric"
 	middleware "codexie.com/w-book-common/middleware/auth"
 	"codexie.com/w-book-interact/internal/config"
+	"codexie.com/w-book-interact/internal/dao/cache"
 	"codexie.com/w-book-interact/internal/event"
 	"codexie.com/w-book-interact/internal/handler"
 	"codexie.com/w-book-interact/internal/logic"
@@ -12,6 +16,7 @@ import (
 	"codexie.com/w-book-interact/internal/svc"
 	"codexie.com/w-book-interact/internal/worker"
 	"github.com/redis/go-redis/v9"
+	"github.com/robfig/cron/v3"
 	"github.com/zeromicro/go-zero/core/logx"
 	"github.com/zeromicro/go-zero/rest"
 )
@@ -20,6 +25,7 @@ type App struct {
 	Server        *rest.Server
 	Consumers     []consumer.Consumer
 	TopLikeWorker *worker.TopLikeWorker
+	JobCron       *job.JobCron
 }
 
 func (app *App) Start() error {
@@ -55,6 +61,17 @@ func InitConsumers(readListener *event.ReadEvtListener, createListener *event.Cr
 	return consumers
 }
 
-func InitRpcServer(serviceContext *svc.ServiceContext, interactLogic *logic.InteractLogic) *server.InteractionServer {
-	return server.NewInteractionServer(serviceContext, interactLogic)
+func InitRpcServer(serviceContext *svc.ServiceContext, interactLogic *logic.InteractLogic, commentLogic *logic.CommentLogic) *server.InteractionServer {
+	return server.NewInteractionServer(serviceContext, interactLogic, commentLogic)
+}
+
+func InitJobCron(commentJob *worker.CommentJob, redisClient *redis.Client) *job.JobCron {
+	cron := cron.New()
+	jb := job.NewJobCron(cron, redisClient, commentJob.Name(), 60*time.Second)
+	jb.AddJob(commentJob, false)
+	return jb
+}
+
+func InitCommentJob(commentLogic *logic.CommentLogic, cache cache.CommentCache) *worker.CommentJob {
+	return worker.NewRootCommentJob(commentLogic, cache)
 }

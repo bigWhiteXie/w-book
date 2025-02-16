@@ -77,8 +77,13 @@ func (dao *CommentDAO) GetChildCommentsByRootIDs(ctx context.Context, rootId int
 
 func (dao *CommentDAO) GetCommentByID(ctx context.Context, id int64) (*Comment, error) {
 	var comment Comment
-	if err := dao.db.WithContext(ctx).Where("id = ?", id).First(&comment).Error; err != nil {
-		return nil, err
+	if err := dao.db.WithContext(ctx).
+		Where("id = ? AND status = 0", id). // 排除已删除的评论
+		First(&comment).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("%w: comment id %d", gorm.ErrRecordNotFound, id)
+		}
+		return nil, fmt.Errorf("查询评论失败: %w", err)
 	}
 	return &comment, nil
 }
@@ -178,7 +183,7 @@ func (dao *CommentDAO) GetRootCommentsByScore(ctx context.Context, biz string, b
 	var comments []*Comment
 	query := dao.db.WithContext(ctx).
 		Where("biz = ? AND biz_id = ? AND parent_id IS NULL", biz, bizID).
-		Order("score DESC").
+		Order("score DESC,id DESC").
 		Limit(pageSize)
 
 	if lastScore > 0 {
@@ -240,8 +245,11 @@ func CommentDo2Domain(ctx context.Context, comment *Comment) *domain.Comment {
 	return &domain.Comment{
 		ID:       comment.ID,
 		Uid:      comment.Uid,
+		Biz:      comment.Biz,
+		BizID:    comment.BizID,
 		ChildNum: comment.ChildNum,
 		LikeCnt:  comment.LikeCnt,
+		ParentID: comment.ParentID.Int64,
 		Content:  comment.Content,
 		Childs:   []*domain.Comment{},
 		Ctime:    time.UnixMilli(comment.Ctime),
@@ -254,10 +262,38 @@ func CommentDomain2Do(ctx context.Context, comment *domain.Comment) *Comment {
 	return &Comment{
 		ID:       comment.ID,
 		Uid:      comment.Uid,
+		Biz:      comment.Biz,
+		ParentID: sql.NullInt64{Int64: comment.ParentID, Valid: comment.ParentID != 0},
+		BizID:    comment.BizID,
 		ChildNum: comment.ChildNum,
 		LikeCnt:  comment.LikeCnt,
 		Content:  comment.Content,
 		Score:    comment.Score,
 		RootID:   comment.RootID,
 	}
+}
+
+// 新增方法：分页获取多个资源的根评论
+func (dao *CommentDAO) GetRootCommentsByBizIDs(ctx context.Context, biz string, bizIDs []int64, size int) ([]*Comment, error) {
+	var comments []*Comment
+
+	query := dao.db.WithContext(ctx).Raw(`
+		SELECT * FROM (
+			SELECT *,
+				ROW_NUMBER() OVER (
+					PARTITION BY biz_id 
+					ORDER BY score DESC
+				) AS rn
+			FROM comment
+			WHERE biz = ? 
+				AND biz_id IN (?)
+				AND parent_id IS NULL
+		) t WHERE rn <= ?
+	`, biz, bizIDs, size)
+
+	if err := query.Scan(&comments).Error; err != nil {
+		return nil, fmt.Errorf("分资源分页查询失败: %w", err)
+	}
+
+	return comments, nil
 }

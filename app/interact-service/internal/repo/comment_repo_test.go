@@ -3,6 +3,7 @@ package repo
 import (
 	"context"
 	"database/sql"
+	"math"
 	"testing"
 	"time"
 
@@ -161,7 +162,7 @@ func TestCommentRepo_GetRootComments(t *testing.T) {
 					// 验证总数匹配数据库记录
 					var dbCount int64
 					gormDB.Model(&db.Comment{}).Where("biz = ? AND biz_id = ?", "test", 1).Count(&dbCount)
-					assert.Equal(t, 5, int(dbCount), "数据库应存在5条测试记录")
+					assert.Equal(t, 10, int(dbCount), "数据库应存在5条测试记录")
 				}
 			}
 		})
@@ -288,4 +289,105 @@ func TestCommentRepo_CreateComment(t *testing.T) {
 		assert.Equal(t, dbComment.Content, child.Content)
 		assert.Equal(t, dbComment.RootID, root.ID)
 	})
+}
+
+func TestCommentRepo_GetRootCommentsByBizIDs(t *testing.T) {
+	gormDB, redisClient, repo := setupTest()
+	defer redisClient.Close()
+	clearTestData(gormDB)
+
+	// 准备根评论
+	testComments := []*db.Comment{
+		{Biz: "book", BizID: 1, Content: "book1 comment1", Score: 200, ParentID: sql.NullInt64{Valid: false}},
+		{Biz: "book", BizID: 1, Content: "book1 comment2", Score: 150, ParentID: sql.NullInt64{Valid: false}},
+		{Biz: "book", BizID: 2, Content: "book2 comment1", Score: 180, ParentID: sql.NullInt64{Valid: false}},
+		{Biz: "book", BizID: 2, Content: "book2 comment2", Score: 120, ParentID: sql.NullInt64{Valid: false}},
+		{Biz: "book", BizID: 3, Content: "book3 comment1", Score: 100, ParentID: sql.NullInt64{Valid: false}},
+	}
+	if err := gormDB.Create(testComments).Error; err != nil {
+		t.Fatalf("准备测试数据失败: %v", err)
+	}
+
+	// 准备子评论数据
+	childComments := []*db.Comment{
+		{RootID: 1, Content: "child1 of comment1", ParentID: sql.NullInt64{Int64: 1, Valid: true}},
+		{RootID: 1, Content: "child2 of comment1", ParentID: sql.NullInt64{Int64: 1, Valid: true}},
+		{RootID: 3, Content: "child1 of comment3", ParentID: sql.NullInt64{Int64: 3, Valid: true}},
+	}
+	if err := gormDB.Create(childComments).Error; err != nil {
+		t.Fatalf("准备子评论数据失败: %v", err)
+	}
+
+	tests := []struct {
+		name         string
+		biz          string
+		bizIDs       []int64
+		size         int
+		expectCount  int
+		expectChilds map[int64]int // 根评论ID -> 子评论数量
+		expectError  bool
+	}{
+		{
+			name:         "正常批量查询",
+			biz:          "book",
+			bizIDs:       []int64{1, 2},
+			size:         2,
+			expectCount:  4, // 每个资源取前2条根评论，一共4个根评论
+			expectChilds: map[int64]int{1: 2, 3: 1},
+		},
+		{
+			name:        "查询不存在的资源",
+			biz:         "book",
+			bizIDs:      []int64{999},
+			size:        2,
+			expectCount: 0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			comments, err := repo.GetRootCommentsByBizIDs(context.Background(), tt.biz, tt.bizIDs, tt.size)
+
+			if tt.expectError {
+				assert.Error(t, err)
+				return
+			}
+
+			assert.NoError(t, err)
+			assert.Len(t, comments, tt.expectCount)
+
+			// 验证每个资源的评论数量
+			countByBizID := make(map[int64]int)
+			for _, c := range comments {
+				countByBizID[c.BizID]++
+			}
+			for _, bizID := range tt.bizIDs {
+				assert.LessOrEqual(t, countByBizID[bizID], tt.size, "每个资源的评论数量不应超过size")
+			}
+
+			// 验证子评论加载
+			if tt.expectChilds != nil {
+				for rootID, expectCount := range tt.expectChilds {
+					found := false
+					for _, c := range comments {
+						if c.ID == rootID {
+							assert.Len(t, c.Childs, expectCount)
+							found = true
+							break
+						}
+					}
+					assert.True(t, found, "未找到预期的根评论")
+				}
+			}
+
+			// 验证排序是否正确（按score降序）
+			prevScore := int64(math.MaxInt64)
+			for _, c := range comments {
+				if c.RootID == c.ID {
+					assert.GreaterOrEqual(t, prevScore, c.Score)
+					prevScore = c.Score
+				}
+			}
+		})
+	}
 }

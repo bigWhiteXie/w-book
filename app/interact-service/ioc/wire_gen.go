@@ -8,6 +8,7 @@ package ioc
 
 import (
 	"codexie.com/w-book-common/ioc"
+	"codexie.com/w-book-common/kafka/producer"
 	"codexie.com/w-book-common/repo"
 	"codexie.com/w-book-interact/internal/config"
 	"codexie.com/w-book-interact/internal/dao/cache"
@@ -17,7 +18,6 @@ import (
 	repo2 "codexie.com/w-book-interact/internal/repo"
 	"codexie.com/w-book-interact/internal/server"
 	"codexie.com/w-book-interact/internal/svc"
-	"codexie.com/w-book-interact/internal/worker"
 	"github.com/google/wire"
 )
 
@@ -42,14 +42,21 @@ func NewInteractApp(config2 config.Config, mysqlConf ioc.MySQLConf, redisConf io
 	readEvtListener := event.NewBatchReadEventListener(saramaClient, iInteractRepo)
 	createEventListener := event.NewCreateEventListener(saramaClient, iInteractRepo)
 	v := InitConsumers(readEvtListener, createEventListener)
+	commentCache := cache.NewCommentRedisCache(client)
+	iCommentRepo := repo2.NewCommentRepo(db, commentCache)
+	producerProducer := producer.NewKafkaProducer(saramaClient)
+	commentLogic := logic.NewCommentLogic(iCommentRepo, producerProducer)
+	commentJob := InitCommentJob(commentLogic, commentCache)
+	jobCron := InitJobCron(commentJob, client)
 	app := &App{
 		Server:    server,
 		Consumers: v,
+		JobCron:   jobCron,
 	}
 	return app, nil
 }
 
-func NewRpcApp(c config.Config, mysqlConf ioc.MySQLConf, redisConf ioc.RedisConf) (*server.InteractionServer, error) {
+func NewRpcApp(c config.Config, mysqlConf ioc.MySQLConf, redisConf ioc.RedisConf, kafkaConf ioc.KafkaConf) (*server.InteractionServer, error) {
 	serviceContext := svc.NewServiceContext(c)
 	client := ioc.InitRedis(redisConf)
 	redsync := ioc.InitRedLock(redisConf)
@@ -61,7 +68,12 @@ func NewRpcApp(c config.Config, mysqlConf ioc.MySQLConf, redisConf ioc.RedisConf
 	iInteractRepo := repo2.NewInteractRepository(baseRepo, interactCache, topLikeCache)
 	iCollectRepository := repo2.NewCollectRepository(interactCache, baseRepo)
 	interactLogic := logic.NewInteractLogic(iLikeInfoRepository, iInteractRepo, iCollectRepository)
-	interactionServer := InitRpcServer(serviceContext, interactLogic)
+	commentCache := cache.NewCommentRedisCache(client)
+	iCommentRepo := repo2.NewCommentRepo(db, commentCache)
+	saramaClient := ioc.InitKafkaClient(kafkaConf)
+	producerProducer := producer.NewKafkaProducer(saramaClient)
+	commentLogic := logic.NewCommentLogic(iCommentRepo, producerProducer)
+	interactionServer := InitRpcServer(serviceContext, interactLogic, commentLogic)
 	return interactionServer, nil
 }
 
@@ -69,20 +81,20 @@ func NewRpcApp(c config.Config, mysqlConf ioc.MySQLConf, redisConf ioc.RedisConf
 
 var ServerSet = wire.NewSet(InitServer, InitRpcServer)
 
-var HandlerSet = wire.NewSet(handler.NewInteractHandler)
+var HandlerSet = wire.NewSet(handler.NewInteractHandler, handler.NewMaintainceHandler)
 
-var LogicSet = wire.NewSet(logic.NewInteractLogic)
+var LogicSet = wire.NewSet(logic.NewInteractLogic, logic.NewCommentLogic)
 
 var SvcSet = wire.NewSet(svc.NewServiceContext)
 
-var RepoSet = wire.NewSet(repo2.NewCollectRepository, repo2.NewInteractRepository, repo2.NewLikeInfoRepository, repo.NewBaseRepo)
+var RepoSet = wire.NewSet(repo2.NewCollectRepository, repo2.NewInteractRepository, repo2.NewLikeInfoRepository, repo.NewBaseRepo, repo2.NewCommentRepo)
 
-var DaoSet = wire.NewSet(cache.NewInteractRedis, cache.NewBigCacheResourceCache)
+var DaoSet = wire.NewSet(cache.NewInteractRedis, cache.NewBigCacheResourceCache, cache.NewCommentRedisCache)
 
 var DbSet = wire.NewSet(ioc.InitGormDB, ioc.InitRedis, ioc.InitRedLock)
 
-var MessageSet = wire.NewSet(ioc.InitKafkaClient)
+var MessageSet = wire.NewSet(ioc.InitKafkaClient, producer.NewKafkaProducer)
 
-var ListenerSet = wire.NewSet(InitConsumers, event.NewCreateEventListener, event.NewBatchReadEventListener)
+var ListenerSet = wire.NewSet(InitConsumers, event.NewCreateEventListener, event.NewBatchReadEventListener, event.NewCommentEvtListener)
 
-var WokerSet = wire.NewSet(worker.NewTopLikeWorker)
+var WokerSet = wire.NewSet(InitCommentJob, InitJobCron)
