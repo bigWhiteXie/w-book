@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"time"
 
+	"codexie.com/w-book-common/codeerr"
 	"codexie.com/w-book-interact/internal/domain"
 	"github.com/pkg/errors"
 	"github.com/redis/go-redis/v9"
@@ -127,22 +129,38 @@ const userLikeKeyPrefix = "user:like:"
 
 func (c *CommentRedisCache) GetLikesStatus(ctx context.Context, uid int64, commentIDs []int64) (map[int64]bool, error) {
 	key := userLikeKey(uid)
-	pipe := c.client.Pipeline()
+	// 判断key是否存在
+	exists, err := c.client.Exists(ctx, key).Result()
+	if err != nil {
+		return make(map[int64]bool), codeerr.LogCodeError(ctx, "redis异常", "判断点赞状态key是否存在失败,key=%s", key)
+	}
 
+	if exists == 0 {
+		return make(map[int64]bool), nil
+	}
+
+	pipe := c.client.Pipeline()
 	// 批量查询
-	cmds := make([]*redis.BoolCmd, len(commentIDs))
+	statusCmds := make([]*redis.StringCmd, len(commentIDs))
+	existCmds := make([]*redis.BoolCmd, len(commentIDs))
+
 	for i, id := range commentIDs {
-		cmds[i] = pipe.SIsMember(ctx, key, id)
+		statusCmds[i] = pipe.HGet(ctx, key, strconv.FormatInt(id, 10))
+		existCmds[i] = pipe.HExists(ctx, key, strconv.FormatInt(id, 10))
 	}
 
 	if _, err := pipe.Exec(ctx); err != nil {
-		return nil, errors.Wrap(err, "批量查询点赞状态失败")
+		return nil, codeerr.LogCodeError(ctx, "redis异常", "批量查询点赞状态失败,key=%s,commentIDs=%v,err=%v", key, commentIDs, err)
 	}
 
 	result := make(map[int64]bool, len(commentIDs))
-	for i, cmd := range cmds {
-		result[commentIDs[i]] = cmd.Val()
+	for i, cmd := range statusCmds {
+		if !existCmds[i].Val() {
+			continue
+		}
+		result[commentIDs[i]] = cmd.Val() == "1"
 	}
+
 	return result, nil
 }
 
@@ -154,13 +172,13 @@ func (c *CommentRedisCache) SetLikesStatus(ctx context.Context, uid int64, comme
 	for _, id := range commentIDs {
 		if status, exists := statusMap[id]; exists {
 			if status {
-				pipe.SAdd(ctx, key, id)
+				pipe.HSet(ctx, key, strconv.FormatInt(id, 10), "1")
 			} else {
-				pipe.SRem(ctx, key, id)
+				pipe.HSet(ctx, key, strconv.FormatInt(id, 10), "0")
 			}
 		}
 	}
-	pipe.Expire(ctx, key, 7*24*time.Hour)
+	pipe.Expire(ctx, key, 3*24*time.Hour)
 
 	_, err := pipe.Exec(ctx)
 	return errors.Wrap(err, "更新点赞状态失败")

@@ -40,13 +40,15 @@ func NewInteractApp(config2 config.Config, mysqlConf ioc.MySQLConf, redisConf io
 	iCommentRepo := repo2.NewCommentRepo(db, commentCache)
 	saramaClient := ioc.InitKafkaClient(kafkaConf)
 	producerProducer := producer.NewKafkaProducer(saramaClient)
-	commentLogic := logic.NewCommentLogic(iCommentRepo, producerProducer,client)
+	commentLogic := logic.NewCommentLogic(iCommentRepo, producerProducer, client)
 	commentHandler := handler.NewCommentHandler(serviceContext, commentLogic)
 	maintainceHandler := handler.NewMaintainceHandler(baseRepo)
 	server := InitServer(config2, interactHandler, commentHandler, maintainceHandler, client)
 	readEvtListener := event.NewBatchReadEventListener(saramaClient, iInteractRepo)
 	createEventListener := event.NewCreateEventListener(saramaClient, iInteractRepo)
-	v := InitConsumers(readEvtListener, createEventListener)
+	commentLikeEvtListener := event.NewCommentLikeEvtListener(saramaClient, iCommentRepo)
+	commentEvtListener := event.NewCommentEvtListener(saramaClient, iCommentRepo)
+	v := InitConsumers(readEvtListener, createEventListener, commentLikeEvtListener, commentEvtListener)
 	commentJob := InitCommentJob(commentLogic, commentCache)
 	jobCron := InitJobCron(commentJob, client)
 	app := &App{
@@ -73,7 +75,7 @@ func NewRpcApp(c config.Config, mysqlConf ioc.MySQLConf, redisConf ioc.RedisConf
 	iCommentRepo := repo2.NewCommentRepo(db, commentCache)
 	saramaClient := ioc.InitKafkaClient(kafkaConf)
 	producerProducer := producer.NewKafkaProducer(saramaClient)
-	commentLogic := logic.NewCommentLogic(iCommentRepo, producerProducer,client)
+	commentLogic := logic.NewCommentLogic(iCommentRepo, producerProducer, client)
 	interactionServer := InitRpcServer(serviceContext, interactLogic, commentLogic)
 	return interactionServer, nil
 }
@@ -96,6 +98,6 @@ var DbSet = wire.NewSet(ioc.InitGormDB, ioc.InitRedis, ioc.InitRedLock)
 
 var MessageSet = wire.NewSet(ioc.InitKafkaClient, producer.NewKafkaProducer)
 
-var ListenerSet = wire.NewSet(InitConsumers, event.NewCreateEventListener, event.NewBatchReadEventListener, event.NewCommentEvtListener)
+var ListenerSet = wire.NewSet(InitConsumers, event.NewCreateEventListener, event.NewBatchReadEventListener, event.NewCommentEvtListener, event.NewCommentLikeEvtListener)
 
 var WokerSet = wire.NewSet(InitCommentJob, InitJobCron)

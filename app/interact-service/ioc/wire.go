@@ -36,7 +36,7 @@ var DbSet = wire.NewSet(ioc.InitGormDB, ioc.InitRedis, ioc.InitRedLock)
 
 var MessageSet = wire.NewSet(ioc.InitKafkaClient, producer.NewKafkaProducer)
 
-var ListenerSet = wire.NewSet(InitConsumers, event.NewCreateEventListener, event.NewBatchReadEventListener, event.NewCommentEvtListener)
+var ListenerSet = wire.NewSet(InitConsumers, event.NewCreateEventListener, event.NewBatchReadEventListener, event.NewCommentEvtListener, event.NewCommentLikeEvtListener)
 
 var WokerSet = wire.NewSet(InitCommentJob, InitJobCron)
 

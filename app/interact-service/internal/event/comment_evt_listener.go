@@ -35,19 +35,7 @@ func (c *CommentEvtListener) handleBatchComment(events []domain.CommentEvent, ms
 
 	// 处理每个评论事件
 	for _, evt := range events {
-		// todo: 处理幂等性
-
-		switch evt.Action {
-		case domain.CreateCommentEvt:
-			c.commentRepo.HandleCommentCreateEvent(ctx, evt.CommentID, evt.RootID)
-
-		case domain.LikeCommentEvt:
-			c.commentRepo.HandleLikeCommentEvent(ctx, evt.CommentID)
-
-		default:
-			logx.WithContext(ctx).Errorf("不支持的事件类型 action:%s", evt.Action)
-			continue
-		}
+		c.commentRepo.HandleCommentCreateEvent(ctx, evt.CommentID, evt.RootID)
 	}
 	return nil
 }

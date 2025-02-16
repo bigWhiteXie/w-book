@@ -52,7 +52,7 @@ const (
 	AliPaySignErr = 500005
 )
 
-func LogCodeError(ctx context.Context, troubleCode string, err error, format string, args ...interface{}) error {
+func LogCodeError(ctx context.Context, troubleCode string, format string, args ...interface{}) error {
 	// 生成格式化错误信息
 	errMsg := fmt.Sprintf(format, args...)
 	_, file, line, _ := runtime.Caller(1)
@@ -70,7 +70,7 @@ func LogCodeError(ctx context.Context, troubleCode string, err error, format str
 		)).Error(errMsg)
 	}
 
-	return err
+	return codeErr
 }
 
 func init() {

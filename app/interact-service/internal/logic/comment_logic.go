@@ -28,7 +28,11 @@ func NewCommentLogic(commentRepo repo.ICommentRepo, kafkaProducer producer.Produ
 
 // AddComment 添加评论
 func (l *CommentLogic) AddComment(ctx context.Context, req *types.AddCommentReq) (*domain.Comment, error) {
-	uid := int64(ctx.Value("id").(int))
+	userId, ok := ctx.Value("id").(int)
+	if !ok {
+		return nil, codeerr.LogCodeError(ctx, "认证异常", "用户id不存在")
+	}
+	uid := int64(userId)
 
 	comment, err := l.commentRepo.CreateComment(ctx, req.Biz, req.BizID, req.ParentID, req.Content, uid)
 	if err != nil {
@@ -41,7 +45,7 @@ func (l *CommentLogic) AddComment(ctx context.Context, req *types.AddCommentReq)
 	}
 	msgJson, _ := json.Marshal(msg)
 	if err := l.kafkaProducer.SendSync(ctx, domain.CommentEvtTopic, string(msgJson)); err != nil {
-		return nil, codeerr.LogCodeError(ctx, "发送评论事件失败", err, "EvtMsg=%s", msgJson)
+		return nil, codeerr.LogCodeError(ctx, "发送评论事件失败", "EvtMsg=%s", msgJson)
 	}
 	return comment, nil
 }
@@ -64,6 +68,7 @@ func (l *CommentLogic) GetRootComments(ctx context.Context, req *types.GetRootCo
 	filterStatus, _ := l.commentLikeFilter.JudgeKeys(ctx, keys, uid)
 	statusMap := make(map[int64]bool, len(comments))
 	cids := make([]int64, 0, len(comments))
+	// 筛选出没有点赞的评论，剩下的评论点赞状态走缓存+数据库
 	for i, status := range filterStatus {
 		if status == filter.KeyNotExist || status == filter.ValExist {
 			cids = append(cids, comments[i].ID)
@@ -115,17 +120,7 @@ func (l *CommentLogic) GetChildComments(ctx context.Context, req *types.GetChild
 func (l *CommentLogic) DeleteComment(ctx context.Context, commentID int64) error {
 	uid := int64(ctx.Value("id").(int))
 
-	// 先查询评论是否存在且属于当前用户
-	comment, err := l.commentRepo.GetCommentByID(ctx, commentID)
-	if err != nil {
-		return err
-	}
-
-	if comment.Uid != uid {
-		return codeerr.LogCodeError(ctx, "无权删除该评论", err, "uid=%d无权删除该评论 comment_id=%d", uid, commentID)
-	}
-
-	if err := l.commentRepo.DeleteComment(ctx, commentID); err != nil {
+	if err := l.commentRepo.DeleteComment(ctx, commentID, uid); err != nil {
 		return err
 	}
 	return nil
@@ -142,24 +137,17 @@ func (l *CommentLogic) LikeComment(ctx context.Context, commentID int64, isLike 
 	if err != nil {
 		return err
 	}
+	l.commentLikeFilter.AddNoCreate(ctx, fmt.Sprintf("comment:like_user:%d", commentID), time.Hour*24, uid)
 	go func() {
-		msg := domain.CommentEvent{
+		msg := domain.CommentLikeEvent{
 			CommentID: commentID,
-			Action:    domain.LikeCommentEvt,
+			IsLike:    isLike,
+			Uid:       uid,
 		}
-		comment, err := l.commentRepo.GetCommentByID(ctx, commentID)
-		if err != nil {
-			codeerr.LogCodeError(ctx, "获取评论失败导致未能发送点赞事件，需重新执行流程", err, "commentID=%d", commentID)
-			// todo: 告警
-			return
-		}
-		if comment.RootID != commentID {
-			return
-		}
-		msg.RootID = comment.RootID
+
 		msgJson, _ := json.Marshal(msg)
-		if err := l.kafkaProducer.SendSync(ctx, domain.CommentEvtTopic, string(msgJson)); err != nil {
-			codeerr.LogCodeError(ctx, "发送评论事件失败", err, "EvtMsg=%s", msgJson)
+		if err := l.kafkaProducer.SendSync(ctx, domain.CommentLikeEvtTopic, string(msgJson)); err != nil {
+			codeerr.LogCodeError(ctx, "发送评论事件失败", "EvtMsg=%s", msgJson)
 		}
 	}()
 	return nil

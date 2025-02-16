@@ -11,10 +11,10 @@ const (
 
 	HotArticleIdsKey = "hot:article:ids"
 
-	CommentEvtTopic = "comment_events"
+	CommentEvtTopic     = "comment_events"
+	CommentLikeEvtTopic = "comment_like_topic"
 
 	CreateCommentEvt = "create_comment"
-	LikeCommentEvt   = "like_comment"
 )
 
 type Comment struct {
@@ -37,4 +37,10 @@ type CommentEvent struct {
 	CommentID int64  `json:"comment_id"`
 	RootID    int64  `json:"root_id"` // 根评论ID（如果是根评论则为0）
 	Action    string `json:"action"`  // 事件类型
+}
+
+type CommentLikeEvent struct {
+	CommentID int64 `json:"comment_id"`
+	IsLike    bool  `json:"is_like"`
+	Uid       int64 `json:"uid"`
 }

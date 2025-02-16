@@ -216,6 +216,7 @@ func TestCommentDAO_DeleteComment(t *testing.T) {
 		Biz:     "article",
 		BizID:   1,
 		Content: "root comment",
+		Uid:     1,
 	}
 	err := dao.CreateComment(ctx, root)
 	require.NoError(t, err)
@@ -266,7 +267,7 @@ func TestCommentDAO_DeleteComment(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := dao.DeleteComment(ctx, tt.commentID)
+			err := dao.DeleteComment(ctx, tt.commentID, 1)
 			if tt.wantErr {
 				assert.Error(t, err)
 				return
@@ -355,7 +356,7 @@ func TestCommentDAO_CreateCommentV2(t *testing.T) {
 		assert.NoError(t, err)
 
 		// 删除根评论
-		err = dao.DeleteComment(context.Background(), root.ID)
+		err = dao.DeleteComment(context.Background(), root.ID, 0)
 		assert.NoError(t, err)
 
 		// 尝试创建子评论
@@ -397,7 +398,7 @@ func TestCommentDAO_DeleteCommentV2(t *testing.T) {
 		assert.NoError(t, err)
 
 		// 删除根评论
-		err = dao.DeleteComment(context.Background(), root.ID)
+		err = dao.DeleteComment(context.Background(), root.ID, 0)
 		assert.NoError(t, err)
 
 		// 验证根评论和子评论都被删除
@@ -433,7 +434,7 @@ func TestCommentDAO_DeleteCommentV2(t *testing.T) {
 		assert.NoError(t, err)
 
 		// 删除子评论
-		err = dao.DeleteComment(context.Background(), child.ID)
+		err = dao.DeleteComment(context.Background(), child.ID, 0)
 		assert.NoError(t, err)
 
 		// 验证子评论被删除，根评论仍然存在

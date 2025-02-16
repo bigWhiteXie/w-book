@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"codexie.com/w-book-common/codeerr"
 	"codexie.com/w-book-interact/internal/domain"
 	"gorm.io/gorm"
 )
@@ -90,12 +91,16 @@ func (dao *CommentDAO) GetCommentByID(ctx context.Context, id int64) (*Comment, 
 
 // DeleteComment 删除评论
 // 若为根评论则删除所有子评论，否则仅将自己的status设置为0
-func (dao *CommentDAO) DeleteComment(ctx context.Context, id int64) error {
+func (dao *CommentDAO) DeleteComment(ctx context.Context, id int64, uid int64) error {
 	return dao.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// 1. 获取评论信息
 		var target Comment
 		if err := tx.First(&target, id).Error; err != nil {
 			return err
+		}
+
+		if target.Uid != uid {
+			return codeerr.LogCodeError(ctx, "无权删除该评论", "uid=%d无权删除该评论 comment_id=%d", uid, id)
 		}
 
 		// 2. 判断是否为根评论
@@ -296,4 +301,11 @@ func (dao *CommentDAO) GetRootCommentsByBizIDs(ctx context.Context, biz string, 
 	}
 
 	return comments, nil
+}
+
+func (r *CommentDAO) RefreshCommentScore(ctx context.Context, rootID int64) error {
+	return r.db.WithContext(ctx).
+		Model(&Comment{}).
+		Where("id = ?", rootID).
+		Update("score", gorm.Expr("like_cnt * 2 + child_num")).Error
 }

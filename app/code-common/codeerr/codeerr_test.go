@@ -69,6 +69,5 @@ func b(ctx context.Context) error {
 
 func c(ctx context.Context) error {
 	return LogCodeError(ctx, "TEST_001",
-		errors.New("underlying error"),
 		"测试错误: %s", "参数")
 }

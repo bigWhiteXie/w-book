@@ -56,7 +56,7 @@ func (job *CommentJob) Run() error {
 				// 从Redis分页查询该类资源热点列表
 				ids, err := job.resourceRepo.GetResourceIDs(ctx, bizType, offset, idSize)
 				if err != nil {
-					codeerr.LogCodeError(ctx, "获取热点资源失败", err, "获取热点资源失败,biz=%s", bizType)
+					codeerr.LogCodeError(ctx, "获取热点资源失败", "获取热点资源失败,biz=%s", bizType)
 					return
 				}
 
@@ -67,7 +67,7 @@ func (job *CommentJob) Run() error {
 				// 数据库批量查询这批热点资源的首页评论
 				comments, err := job.commentLogic.GetRootCommentsByBizIDs(ctx, bizType, ids, 20)
 				if err != nil {
-					codeerr.LogCodeError(ctx, "获取热点资源评论失败", err, "获取热点资源评论失败,biz=%s", bizType)
+					codeerr.LogCodeError(ctx, "获取热点资源评论失败", "获取热点资源评论失败,biz=%s", bizType)
 					return
 				}
 				// 将评论按资源id分组
@@ -83,7 +83,7 @@ func (job *CommentJob) Run() error {
 					go func(biz string, id int64) {
 						defer subWg.Done()
 						if err := job.cache.SetRootComments(ctx, bizType, id, commentsMap[id], 10*time.Minute); err != nil {
-							codeerr.LogCodeError(ctx, "缓存热点资源评论失败", err, "缓存热点资源评论失败,biz=%s,id=%d", bizType, id)
+							codeerr.LogCodeError(ctx, "缓存热点资源评论失败", "缓存热点资源评论失败,biz=%s,id=%d", bizType, id)
 							return
 						}
 

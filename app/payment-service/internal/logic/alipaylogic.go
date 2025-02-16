@@ -80,7 +80,7 @@ func (l *AliPayLogic) PrePay(ctx context.Context, in *pb.PrepayReq) (*pb.PrepayR
 		// todo:监控该异常
 		// 更新数据库失败也没关系，会有定时任务继续更新，保持最终和支付宝平台的状态一致
 		l.payRepo.UpdatePaymentStatus(ctx, in.Biz, in.OutTradeNo, constant.FailPayStatus)
-		return nil, codeerr.LogCodeError(ctx, strconv.Itoa(codeerr.AliPrePayErr), err, fmt.Sprintf("fail to invoke prepay of ali, req: %v", req))
+		return nil, codeerr.LogCodeError(ctx, strconv.Itoa(codeerr.AliPrePayErr), fmt.Sprintf("fail to invoke prepay of ali, req: %v", req))
 	}
 
 	return &pb.PrepayResp{
@@ -118,7 +118,7 @@ func (l *AliPayLogic) PayCallback(ctx context.Context, req *types.AliPaymentMsg)
 
 func (l *AliPayLogic) VerifySign(r *http.Request) error {
 	if err := l.client.VerifySign(r.Form); err != nil {
-		return codeerr.LogCodeError(r.Context(), strconv.Itoa(codeerr.AliPaySignErr), err, fmt.Sprintf("fail to verify sign of ali, req: %v", r.Form))
+		return codeerr.LogCodeError(r.Context(), strconv.Itoa(codeerr.AliPaySignErr), fmt.Sprintf("fail to verify sign of ali, req: %v", r.Form))
 	}
 	return nil
 }

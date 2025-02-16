@@ -54,10 +54,12 @@ func InitServer(c config.Config, interactHandler *handler.InteractHandler, comme
 	return server
 }
 
-func InitConsumers(readListener *event.ReadEvtListener, createListener *event.CreateEventListener) []consumer.Consumer {
-	consumers := make([]consumer.Consumer, 0, 2)
+func InitConsumers(readListener *event.ReadEvtListener, createListener *event.CreateEventListener, commentLikeListener *event.CommentLikeEvtListener, commentEvtListener *event.CommentEvtListener) []consumer.Consumer {
+	consumers := make([]consumer.Consumer, 0, 4)
 	consumers = append(consumers, readListener)
 	consumers = append(consumers, createListener)
+	consumers = append(consumers, commentLikeListener)
+	consumers = append(consumers, commentEvtListener)
 	return consumers
 }
 

@@ -55,6 +55,31 @@ func (r *RedisBloomFilter) Add(ctx context.Context, key string, expire time.Dura
 	return err
 }
 
+func (r *RedisBloomFilter) AddNoCreate(ctx context.Context, key string, expire time.Duration, values ...interface{}) error {
+	// 判断key是否存在
+	exists := r.client.Exists(ctx, key)
+	if exists.Val() == 0 {
+		return nil
+	}
+	positions := make([][]uint64, 0, len(values))
+	for _, value := range values {
+		positions = append(positions, r.getHashPositions(value))
+	}
+
+	// 使用pipline批量设置位图
+	pipe := r.client.Pipeline()
+	for _, pos := range positions {
+		for _, p := range pos {
+			pipe.SetBit(ctx, key, int64(p), 1)
+		}
+	}
+	if expire > 0 {
+		pipe.Expire(ctx, key, expire)
+	}
+	_, err := pipe.Exec(ctx)
+	return err
+}
+
 func (r *RedisBloomFilter) JudgeKeys(ctx context.Context, keys []string, value interface{}) ([]FilterRes, error) {
 	res := make([]FilterRes, len(keys))
 	pipe := r.client.Pipeline()
