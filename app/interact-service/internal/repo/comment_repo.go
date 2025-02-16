@@ -20,9 +20,9 @@ type ICommentRepo interface {
 	GetRootComments(ctx context.Context, biz string, bizID int64, offset, size int, lastScore int64) ([]*domain.Comment, error)
 	GetChildComments(ctx context.Context, rootID int64, lastCTime int64, offset, size int) ([]*domain.Comment, error)
 	CreateComment(ctx context.Context, biz string, bizID int64, parentID int64, content string, uid int64) (*domain.Comment, error)
+	LikeComment(ctx context.Context, id int64, uid int64, isLike bool) error
 	DeleteComment(ctx context.Context, id int64) error
 	GetCommentByID(ctx context.Context, id int64) (*domain.Comment, error)
-	LikeComment(ctx context.Context, id int64, uid int64) error
 	GetRootCommentsByBizIDs(ctx context.Context, biz string, bizIDs []int64, size int) ([]*domain.Comment, error)
 	HandleCommentCreateEvent(ctx context.Context, commentID, rootID int64) error
 	HandleLikeCommentEvent(ctx context.Context, commentID int64) error
@@ -146,18 +146,24 @@ func (r *commentRepo) CreateComment(ctx context.Context, biz string, bizID int64
 	return db.CommentDo2Domain(ctx, comment), nil
 }
 
-func (r *commentRepo) LikeComment(ctx context.Context, id int64, uid int64) error {
+func (r *commentRepo) LikeComment(ctx context.Context, id int64, uid int64, isLike bool) error {
 	//0.开启事务
 	return r.GetDB().Transaction(func(tx *gorm.DB) error {
-		isLike := true
 		likeInfoDao := db.NewLikeInfoDao(tx)
-		if err := likeInfoDao.UpdateLikeInfo(ctx, uid, domain.CommentBiz, id, 1); err != nil {
-			if err != db.NoRowsAffected {
-				return err
+		if isLike {
+			if err := likeInfoDao.Like(ctx, uid, "comment", id); err != nil {
+				if err == db.NoRowsAffected {
+					return nil
+				}
+				return codeerr.LogCodeError(ctx, "数据库异常", err, "点赞失败,comment_id:%d,uid:%d", id, uid)
 			}
-			//说明状态已经是点赞过的
-			isLike = false
-			likeInfoDao.UpdateLikeInfo(ctx, uid, domain.CommentBiz, id, 0)
+		} else {
+			if err := likeInfoDao.UnLike(ctx, uid, "comment", id); err != nil {
+				if err == db.NoRowsAffected {
+					return nil
+				}
+				return codeerr.LogCodeError(ctx, "数据库异常", err, "取消点赞失败,comment_id:%d,uid:%d", id, uid)
+			}
 		}
 		commentDao := db.NewCommentDAO(tx)
 		return commentDao.LikeComment(ctx, id, isLike)

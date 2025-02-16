@@ -5282,3 +5282,49 @@ Starting rpc server at 0.0.0.0:20860...
 {"@timestamp":"2025-02-16T16:30:42.389+08:00","caller":"job/job.go:70","content":"[payment-584defc7-299d-41] 当前负载分数:23","level":"info"}
 {"@timestamp":"2025-02-16T16:31:00.001+08:00","caller":"job/job.go:124","content":"任务开始 payment_status_job  2025-02-16 16:31:00.001102311 +0800 CST m=+45287.656015782","level":"info"}
 {"@timestamp":"2025-02-16T16:31:00.002+08:00","caller":"job/job.go:130","content":"任务[payment_status_job]执行结束，耗时 0.000924 秒","level":"info"}
+{"@timestamp":"2025-02-16T16:31:12.357+08:00","caller":"stat/usage.go:61","content":"CPU: 23m, MEMORY: Alloc=4.0Mi, TotalAlloc=2788.3Mi, Sys=22.8Mi, NumGC=747","level":"stat"}
+{"@timestamp":"2025-02-16T16:31:12.388+08:00","caller":"job/job.go:70","content":"[payment-584defc7-299d-41] 当前负载分数:19","level":"info"}
+{"@timestamp":"2025-02-16T16:31:12.388+08:00","caller":"load/sheddingstat.go:61","content":"(api) shedding_stat [1m], cpu: 23, total: 0, pass: 0, drop: 0","level":"stat"}
+{"@timestamp":"2025-02-16T16:31:12.388+08:00","caller":"load/sheddingstat.go:61","content":"(rpc) shedding_stat [1m], cpu: 23, total: 0, pass: 0, drop: 0","level":"stat"}
+{"@timestamp":"2025-02-16T16:31:42.388+08:00","caller":"job/job.go:70","content":"[payment-584defc7-299d-41] 当前负载分数:18","level":"info"}
+{"@timestamp":"2025-02-16T16:32:00.001+08:00","caller":"job/job.go:124","content":"任务开始 payment_status_job  2025-02-16 16:32:00.000994443 +0800 CST m=+45347.655907904","level":"info"}
+{"@timestamp":"2025-02-16T16:32:00.003+08:00","caller":"job/job.go:130","content":"任务[payment_status_job]执行结束，耗时 0.002149 秒","level":"info"}
+{"@timestamp":"2025-02-16T16:32:12.357+08:00","caller":"stat/usage.go:61","content":"CPU: 30m, MEMORY: Alloc=4.0Mi, TotalAlloc=2792.0Mi, Sys=22.8Mi, NumGC=748","level":"stat"}
+{"@timestamp":"2025-02-16T16:32:12.388+08:00","caller":"load/sheddingstat.go:61","content":"(rpc) shedding_stat [1m], cpu: 30, total: 0, pass: 0, drop: 0","level":"stat"}
+{"@timestamp":"2025-02-16T16:32:12.388+08:00","caller":"load/sheddingstat.go:61","content":"(api) shedding_stat [1m], cpu: 30, total: 0, pass: 0, drop: 0","level":"stat"}
+{"@timestamp":"2025-02-16T16:32:12.388+08:00","caller":"job/job.go:70","content":"[payment-584defc7-299d-41] 当前负载分数:12","level":"info"}
+{"@timestamp":"2025-02-16T16:32:42.389+08:00","caller":"job/job.go:70","content":"[payment-584defc7-299d-41] 当前负载分数:9","level":"info"}
+{"@timestamp":"2025-02-16T16:33:00.001+08:00","caller":"job/job.go:124","content":"任务开始 payment_status_job  2025-02-16 16:33:00.00107848 +0800 CST m=+45407.655991940","level":"info"}
+{"@timestamp":"2025-02-16T16:33:00.001+08:00","caller":"job/job.go:130","content":"任务[payment_status_job]执行结束，耗时 0.000823 秒","level":"info"}
+{"@timestamp":"2025-02-16T16:33:12.357+08:00","caller":"stat/usage.go:61","content":"CPU: 22m, MEMORY: Alloc=3.9Mi, TotalAlloc=2795.7Mi, Sys=22.8Mi, NumGC=749","level":"stat"}
+{"@timestamp":"2025-02-16T16:33:12.388+08:00","caller":"job/job.go:70","content":"[payment-584defc7-299d-41] 当前负载分数:19","level":"info"}
+{"@timestamp":"2025-02-16T16:33:12.389+08:00","caller":"load/sheddingstat.go:61","content":"(api) shedding_stat [1m], cpu: 22, total: 0, pass: 0, drop: 0","level":"stat"}
+{"@timestamp":"2025-02-16T16:33:12.389+08:00","caller":"load/sheddingstat.go:61","content":"(rpc) shedding_stat [1m], cpu: 22, total: 0, pass: 0, drop: 0","level":"stat"}
+{"@timestamp":"2025-02-16T16:33:42.388+08:00","caller":"job/job.go:70","content":"[payment-584defc7-299d-41] 当前负载分数:2","level":"info"}
+{"@timestamp":"2025-02-16T16:34:00.000+08:00","caller":"job/job.go:124","content":"任务开始 payment_status_job  2025-02-16 16:34:00.000745871 +0800 CST m=+45467.655659334","level":"info"}
+{"@timestamp":"2025-02-16T16:34:00.001+08:00","caller":"job/job.go:130","content":"任务[payment_status_job]执行结束，耗时 0.000840 秒","level":"info"}
+{"@timestamp":"2025-02-16T16:34:12.357+08:00","caller":"stat/usage.go:61","content":"CPU: 22m, MEMORY: Alloc=3.8Mi, TotalAlloc=2799.3Mi, Sys=22.8Mi, NumGC=750","level":"stat"}
+{"@timestamp":"2025-02-16T16:34:12.389+08:00","caller":"job/job.go:70","content":"[payment-584defc7-299d-41] 当前负载分数:21","level":"info"}
+{"@timestamp":"2025-02-16T16:34:12.389+08:00","caller":"load/sheddingstat.go:61","content":"(rpc) shedding_stat [1m], cpu: 22, total: 0, pass: 0, drop: 0","level":"stat"}
+{"@timestamp":"2025-02-16T16:34:12.389+08:00","caller":"load/sheddingstat.go:61","content":"(api) shedding_stat [1m], cpu: 22, total: 0, pass: 0, drop: 0","level":"stat"}
+{"@timestamp":"2025-02-16T16:34:42.389+08:00","caller":"job/job.go:70","content":"[payment-584defc7-299d-41] 当前负载分数:13","level":"info"}
+{"@timestamp":"2025-02-16T16:35:00.000+08:00","caller":"job/job.go:124","content":"任务开始 payment_status_job  2025-02-16 16:35:00.000820637 +0800 CST m=+45527.655734138","level":"info"}
+{"@timestamp":"2025-02-16T16:35:00.002+08:00","caller":"job/job.go:130","content":"任务[payment_status_job]执行结束，耗时 0.001172 秒","level":"info"}
+{"@timestamp":"2025-02-16T16:35:12.357+08:00","caller":"stat/usage.go:61","content":"CPU: 17m, MEMORY: Alloc=7.5Mi, TotalAlloc=2803.0Mi, Sys=22.8Mi, NumGC=750","level":"stat"}
+{"@timestamp":"2025-02-16T16:35:12.388+08:00","caller":"job/job.go:70","content":"[payment-584defc7-299d-41] 当前负载分数:23","level":"info"}
+{"@timestamp":"2025-02-16T16:35:12.388+08:00","caller":"load/sheddingstat.go:61","content":"(api) shedding_stat [1m], cpu: 17, total: 0, pass: 0, drop: 0","level":"stat"}
+{"@timestamp":"2025-02-16T16:35:12.388+08:00","caller":"load/sheddingstat.go:61","content":"(rpc) shedding_stat [1m], cpu: 17, total: 0, pass: 0, drop: 0","level":"stat"}
+{"@timestamp":"2025-02-16T16:35:42.388+08:00","caller":"job/job.go:70","content":"[payment-584defc7-299d-41] 当前负载分数:14","level":"info"}
+{"@timestamp":"2025-02-16T16:36:00.000+08:00","caller":"job/job.go:124","content":"任务开始 payment_status_job  2025-02-16 16:36:00.000234263 +0800 CST m=+45587.655147739","level":"info"}
+{"@timestamp":"2025-02-16T16:36:00.001+08:00","caller":"job/job.go:130","content":"任务[payment_status_job]执行结束，耗时 0.001082 秒","level":"info"}
+{"@timestamp":"2025-02-16T16:36:12.357+08:00","caller":"stat/usage.go:61","content":"CPU: 16m, MEMORY: Alloc=7.4Mi, TotalAlloc=2806.7Mi, Sys=22.8Mi, NumGC=751","level":"stat"}
+{"@timestamp":"2025-02-16T16:36:12.389+08:00","caller":"load/sheddingstat.go:61","content":"(rpc) shedding_stat [1m], cpu: 16, total: 0, pass: 0, drop: 0","level":"stat"}
+{"@timestamp":"2025-02-16T16:36:12.389+08:00","caller":"job/job.go:70","content":"[payment-584defc7-299d-41] 当前负载分数:25","level":"info"}
+{"@timestamp":"2025-02-16T16:36:12.389+08:00","caller":"load/sheddingstat.go:61","content":"(api) shedding_stat [1m], cpu: 16, total: 0, pass: 0, drop: 0","level":"stat"}
+{"@timestamp":"2025-02-16T16:36:42.388+08:00","caller":"job/job.go:70","content":"[payment-584defc7-299d-41] 当前负载分数:5","level":"info"}
+{"@timestamp":"2025-02-16T16:37:00.001+08:00","caller":"job/job.go:124","content":"任务开始 payment_status_job  2025-02-16 16:37:00.001088775 +0800 CST m=+45647.656002234","level":"info"}
+{"@timestamp":"2025-02-16T16:37:00.002+08:00","caller":"job/job.go:130","content":"任务[payment_status_job]执行结束，耗时 0.000912 秒","level":"info"}
+{"@timestamp":"2025-02-16T16:37:12.358+08:00","caller":"stat/usage.go:61","content":"CPU: 19m, MEMORY: Alloc=7.3Mi, TotalAlloc=2810.4Mi, Sys=22.8Mi, NumGC=752","level":"stat"}
+{"@timestamp":"2025-02-16T16:37:12.389+08:00","caller":"job/job.go:70","content":"[payment-584defc7-299d-41] 当前负载分数:6","level":"info"}
+{"@timestamp":"2025-02-16T16:37:12.389+08:00","caller":"load/sheddingstat.go:61","content":"(api) shedding_stat [1m], cpu: 19, total: 0, pass: 0, drop: 0","level":"stat"}
+{"@timestamp":"2025-02-16T16:37:12.389+08:00","caller":"load/sheddingstat.go:61","content":"(rpc) shedding_stat [1m], cpu: 19, total: 0, pass: 0, drop: 0","level":"stat"}

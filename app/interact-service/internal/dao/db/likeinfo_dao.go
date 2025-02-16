@@ -77,6 +77,50 @@ func (d *LikeInfoDao) UpdateLikeInfo(ctx context.Context, uid int64, biz string,
 	return nil
 }
 
+func (d *LikeInfoDao) Like(ctx context.Context, uid int64, biz string, bizId int64) error {
+	now := time.Now().UnixMilli()
+	likeInfo := &LikeInfo{
+		Biz:    biz,
+		BizId:  bizId,
+		Uid:    uid,
+		Status: uint8(1),
+		Ctime:  now,
+		Utime:  now,
+	}
+	// 尝试插入点赞记录，若冲突则更新status和utime
+	res := d.db.Clauses(
+		clause.OnConflict{
+			DoUpdates: clause.Assignments(map[string]any{
+				"status": 1,
+				"utime":  now,
+			}), // 更新字段
+		},
+	).Create(likeInfo)
+
+	if res.Error != nil {
+		return res.Error
+	}
+
+	if res.RowsAffected == 0 {
+		return NoRowsAffected
+	}
+
+	return nil
+}
+
+func (d *LikeInfoDao) UnLike(ctx context.Context, uid int64, biz string, bizId int64) error {
+	res := d.db.Model(&LikeInfo{}).Where("biz=? and biz_id=? and uid=?", biz, bizId, uid).Update("status", 0)
+	if res.Error != nil {
+		return res.Error
+	}
+
+	if res.RowsAffected == 0 {
+		return NoRowsAffected
+	}
+
+	return nil
+}
+
 func (d *LikeInfoDao) FindLikeInfo(ctx context.Context, uid int64, biz string, bizId int64) (*LikeInfo, error) {
 	likeInfo := &LikeInfo{}
 	res := d.db.Where("biz=? and biz_id=? and uid=?", biz, bizId, uid).First(likeInfo)
